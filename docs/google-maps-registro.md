@@ -7,12 +7,10 @@
 ## Desarrollo local
 - Para que `/.netlify/functions/maps-browser-config` responda localmente, ejecutar con `netlify dev`.
 - Si trabajas con Live Server (`:5500`) sin Netlify Functions:
-  - Copia `public/shared/localMapsConfig.example.js` como `public/shared/localMapsConfig.js` y coloca tu key.
-  - `public/shared/localMapsConfig.js` está en `.gitignore` para no subirlo.
-- Alternativa rápida (sin archivo):
-  - En consola del navegador:
-    - `localStorage.setItem('GOOGLE_MAPS_BROWSER_KEY', 'TU_KEY')`
-    - recargar página.
+  - Usa fallback temporal en navegador:
+    - En consola del navegador:
+      - `localStorage.setItem('GOOGLE_MAPS_BROWSER_KEY', 'TU_KEY')`
+      - recargar página.
 
 ## Dónde se usa
 - Vista: `public/registroComercio.html` + `public/js/registroComercio.js`.
@@ -23,8 +21,9 @@
 - **Application restrictions**:
   - `HTTP referrers (web sites)` y agregar únicamente dominios autorizados.
   - Ejemplos:
-    - `https://findixi.com/*`
-    - `https://www.findixi.com/*`
+    - `https://test.findixi.com/*`
+    - `https://comercio.findixi.com/*`
+    - `https://administ.findixi.com/*`
     - `http://localhost:5500/*`
     - `http://127.0.0.1:5500/*`
 - **API restrictions**:

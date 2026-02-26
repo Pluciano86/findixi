@@ -106,7 +106,7 @@ async function callImageProcessEndpoint(payload, token) {
 
       if (response.status === 405) {
         lastError = new Error(
-          'No se pudo validar imagen en Live Server (405). Usa Netlify Dev (`netlify dev`) o prueba en test.enpe-erre.com.'
+          'No se pudo validar imagen en Live Server (405). Usa Netlify Dev (`netlify dev`) o prueba en test.findixi.com.'
         );
         continue;
       }

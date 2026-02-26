@@ -1,5 +1,19 @@
 import { supabase } from '../shared/supabaseClient.js';
-import { mostrarMensajeVacio } from '/js/mensajesUI.js';
+
+function mostrarMensajeVacio(
+  contenedor,
+  mensaje = 'No se encontraron especiales para los filtros seleccionados.',
+  icono = '🍽️'
+) {
+  contenedor.innerHTML = `
+    <div class="col-span-full flex justify-center items-center py-12">
+      <div class="w-full max-w-xs text-center text-gray-600 px-4">
+        <div class="text-5xl mb-2 animate-bounce">${icono}</div>
+        <p class="text-lg font-medium leading-tight mb-1">${mensaje}</p>
+      </div>
+    </div>
+  `;
+}
 
 const contenedorAlmuerzos = document.getElementById('contenedorAlmuerzos');
 const contenedorHappy = document.getElementById('contenedorHappy');

@@ -276,7 +276,7 @@
 
 <script type="module" src="./js/ubicacionGoogle.js"></script>
 <script type="module" src="./shared/supabaseClient.js"></script>
-<script type="module" src="./js/utils.js"></script>
+<script type="module" src="./shared/utils.js"></script>
 <script type="module" src="./js/perfil.js"></script>
 <script type="module" src="./js/especialesComercio.js"></script> 
 <script type="module" src="./js/galeria.js"></script>
@@ -310,8 +310,8 @@
 <script type="module" src="js/footer.js"></script>
 
 <script type="module">
-  import { mostrarLugaresCercanos } from './mostrarLugaresCercanos.js';
-  import { obtenerComercioPorID } from './perfil.js'; // Asumiendo que ahí cargas el comercio
+  import { mostrarLugaresCercanos } from './js/lugaresCercanos.js';
+  import { obtenerComercioPorID } from './js/perfil.js';
 
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");

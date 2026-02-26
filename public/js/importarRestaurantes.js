@@ -2,7 +2,17 @@ import fetch from 'node-fetch';
 import readline from 'readline';
 import { supabase } from '../shared/supabaseClient.js';
 
-const GOOGLE_API_KEY = 'AIzaSyBxfWTx5kMwy_2UcOnKhILbnLkbU4VMaBI';
+const GOOGLE_API_KEY =
+  process.env.GOOGLE_MAPS_API_KEY ||
+  process.env.GOOGLE_MAPS_BROWSER_KEY ||
+  '';
+
+if (!GOOGLE_API_KEY) {
+  throw new Error(
+    'Falta GOOGLE_MAPS_API_KEY o GOOGLE_MAPS_BROWSER_KEY en variables de entorno para importar restaurantes.'
+  );
+}
+
 const location = '17.9854,-66.6141';
 const radius = 5000;
 const type = 'restaurant';

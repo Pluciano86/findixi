@@ -1,5 +1,9 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { PLANES_PRELIMINARES, formatoPrecio, obtenerPlanPorNivel } from '../shared/planes.js';
+import {
+  COMERCIO_LOGIN_BASE_URL,
+  getComercioLoginHostLabel as getComercioLoginHostLabelFromConfig,
+} from '../shared/runtimeConfig.js';
 
 const planesGrid = document.getElementById('planesGrid');
 const planLabel = document.getElementById('planActualLabel');
@@ -104,10 +108,6 @@ const MATCH_STRONG_DISTANCE_M = 150;
 const MATCH_MEDIUM_DISTANCE_M = 400;
 const PIN_MOVE_ALLOW_NEW_M = 250;
 const DUPLICATE_DISTANCE_M = 200;
-const COMERCIO_LOGIN_BASE_URL =
-  String(window.FINDIXI_COMERCIO_LOGIN_BASE_URL || 'https://comercio.enpe-erre.com').trim() ||
-  'https://comercio.enpe-erre.com';
-
 let selectedNivel = null;
 let mapPickerInstance = null;
 let mapPickerMarker = null;
@@ -924,16 +924,7 @@ function showOtpVerifiedSummary(nombreComercio) {
 }
 
 function getComercioLoginHostLabel() {
-  const hostname = String(window.location.hostname || '').toLowerCase();
-  if (['localhost', '127.0.0.1', '::1'].includes(hostname)) {
-    return `${window.location.host}/comercio/login.html`;
-  }
-  try {
-    const configured = new URL(COMERCIO_LOGIN_BASE_URL);
-    return configured.host || 'comercio.enpe-erre.com';
-  } catch (_error) {
-    return 'comercio.enpe-erre.com';
-  }
+  return getComercioLoginHostLabelFromConfig();
 }
 
 function buildComercioLoginUrl(idComercio) {
@@ -956,7 +947,7 @@ function buildComercioLoginUrl(idComercio) {
   try {
     baseUrl = new URL(COMERCIO_LOGIN_BASE_URL);
   } catch (_error) {
-    baseUrl = new URL('https://comercio.enpe-erre.com');
+    baseUrl = new URL('https://comercio.findixi.com');
   }
   const loginUrl = new URL('/login.html', baseUrl.origin);
   loginUrl.searchParams.set('returnTo', `./editarPerfilComercio.html?${query.toString()}`);
@@ -2029,14 +2020,7 @@ async function tryLoadLocalMapsConfig() {
     window.__ENV__.GOOGLE_MAPS_BROWSER_KEY = keyFromStorage;
     return keyFromStorage;
   }
-
-  try {
-    await import('../shared/localMapsConfig.js');
-  } catch (error) {
-    return '';
-  }
-
-  return getGoogleMapsKeyFromWindow();
+  return '';
 }
 
 async function fetchMapsKeyFromEndpoint(url) {

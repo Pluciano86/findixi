@@ -2,6 +2,7 @@ import { supabase } from '../shared/supabaseClient.js';
 import { obtenerMapaCategorias } from './obtenerMapaCategorias.js';
 import { calcularDistancia } from './distanciaLugar.js';
 import { t } from './i18n.js';
+import { QR_REDIMIR_URL } from '../shared/runtimeConfig.js';
 
 const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 const basePath = isLocal ? '/public' : '';
@@ -138,7 +139,6 @@ let searchQueryLugares = '';
 let favoritosPlayas = [];
 let searchQueryPlayas = '';
 let cuponesUsuario = [];
-const QR_REDIMIR_URL = 'https://test.enpe-erre.com/redimir-cupon.html';
 const CUPONES_POR_PAGINA = 6;
 let cuponesGuardadosPagina = 1;
 let cuponesRedimidosPagina = 1;

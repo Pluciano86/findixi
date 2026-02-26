@@ -7,12 +7,12 @@ import { mostrarPlayasCercanas } from './playasCercanas.js';
 import { showPopup } from './popups.js';
 import { resolverPlanComercio } from '../shared/planes.js';
 import { mostrarLugaresCercanos } from './lugaresCercanos.js';
+import { QR_REDIMIR_URL } from '../shared/runtimeConfig.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 let latUsuario = null;
 let lonUsuario = null;
 let comercioActual = null;
-const QR_REDIMIR_URL = 'https://test.enpe-erre.com/redimir-cupon.html';
 const CUPON_PLACEHOLDER = 'https://placehold.co/600x400?text=Cup%C3%B3n';
 const isLocalEnv = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 const LOGIN_URL = isLocalEnv ? '/public/logearse.html' : '/logearse.html';

@@ -1,4 +1,5 @@
 import { idComercio as idComercioImportado } from '../shared/supabaseClient.js';
+import { getAppBaseUrl } from '../shared/runtimeConfig.js';
 
 const params = new URLSearchParams(window.location.search);
 const idQuery =
@@ -8,8 +9,7 @@ const idQuery =
   params.get('comercioId');
 const idFinal = idComercioImportado || idQuery;
 
-const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-const BASE_COMERCIO = isLocal ? `${location.origin}/comercio` : 'https://comercio.enpe-erre.com';
+const BASE_COMERCIO = getAppBaseUrl('comercio');
 
 const btnAdminMenu = document.getElementById('btnAdminMenu');
 

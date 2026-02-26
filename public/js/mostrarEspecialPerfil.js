@@ -1,6 +1,6 @@
 
 import { supabase } from '../shared/supabaseClient.js';
-import { obtenerImagenEspecial } from '../../especiales/renderImagenesEspecial.js';
+import { obtenerImagenEspecial } from '../especiales/renderImagenesEspecial.js';
 
 const hoy = new Date().getDay();
 const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
