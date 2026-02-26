@@ -937,8 +937,8 @@ function buildComercioLoginUrl(idComercio) {
   const hostname = String(window.location.hostname || '').toLowerCase();
 
   if (['localhost', '127.0.0.1', '::1'].includes(hostname)) {
-    const returnTo = `/comercio/editarPerfilComercio.html?${query.toString()}`;
-    const loginUrl = new URL('/comercio/login.html', window.location.origin);
+    const returnTo = `/editarPerfilComercio.html?${query.toString()}`;
+    const loginUrl = new URL('/login.html', window.location.origin);
     loginUrl.searchParams.set('returnTo', returnTo);
     return loginUrl.toString();
   }

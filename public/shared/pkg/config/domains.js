@@ -2,7 +2,7 @@ export const LOCAL_HOSTNAMES = Object.freeze(['localhost', '127.0.0.1', '::1']);
 
 export const APP_SEGMENTS = Object.freeze({
   public: '/public',
-  comercio: '/comercio',
+  comercio: '',
   admin: '/admin',
 });
 

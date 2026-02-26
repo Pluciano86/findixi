@@ -16,7 +16,7 @@
   <script type="module">
     import { supabase } from "./shared/supabaseClient.js";
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) window.location.href = "/comercio/login.html";
+    if (!session) window.location.href = "/login.html";
   </script>
   <header class="bg-[#1f1f1f] text-white shadow">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">

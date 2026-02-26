@@ -92,7 +92,9 @@
     function sanitizeReturnTo(raw) {
       const value = String(raw || '').trim();
       if (!value) return '';
-      if (value.startsWith('/comercio/')) return value;
+      if (/^https?:\/\//i.test(value) || value.startsWith('//')) return '';
+      if (value.startsWith('/comercio/')) return value.replace(/^\/comercio(?=\/)/, '');
+      if (value.startsWith('/')) return value;
       if (value.startsWith('./')) return value;
       return '';
     }

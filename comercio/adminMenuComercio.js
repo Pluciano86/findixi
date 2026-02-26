@@ -1494,7 +1494,7 @@ async function lanzarImportacionClover() {
     const accessToken = session?.access_token;
     if (!accessToken) {
       alert('Debes iniciar sesión para importar desde Clover.');
-      window.location.href = "/comercio/login.html";
+      window.location.href = "/login.html";
       return false;
     }
 

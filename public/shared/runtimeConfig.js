@@ -2,7 +2,7 @@ const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
 
 const APP_SEGMENTS = Object.freeze({
   public: '/public',
-  comercio: '/comercio',
+  comercio: '',
   admin: '/admin',
 });
 
@@ -100,7 +100,7 @@ export const COMERCIO_LOGIN_BASE_URL = normalizeBaseUrl(
 
 export function getComercioLoginHostLabel() {
   if (isLocalRuntime() && typeof window !== 'undefined') {
-    return `${window.location.host}/comercio/login.html`;
+    return `${window.location.host}/login.html`;
   }
 
   try {
