@@ -1,0 +1,142 @@
+[
+  {
+    "nombre": "Ponce Plaza Hotel and Casino",
+    "direccion": "163 Calle Reina Duarte, Ponce",
+    "latitud": 18.012208,
+    "longitud": -66.61470380000002,
+    "place_id": "ChIJvzy8M61iz4cRV-_jvaSIr7Q"
+  },
+  {
+    "nombre": "Burger King",
+    "direccion": "Esquina Ave. de Hostos, Las Américas Avenue, Ponce",
+    "latitud": 18.0038803,
+    "longitud": -66.6132947,
+    "place_id": "ChIJjZxQOIvVHIwR7WeIDSvfJNQ"
+  },
+  {
+    "nombre": "Sizzler",
+    "direccion": "2050 Ponce Bypass Ste 207, Ponce",
+    "latitud": 17.9936464,
+    "longitud": -66.612156,
+    "place_id": "ChIJJdeaBInVHIwRDc-5VNFsVNA"
+  },
+  {
+    "nombre": "El Mesón Sandwiches (El Tuque, Ponce)",
+    "direccion": "Carr. 2, Km. 223.5 Bo. Canas Sector, Ponce",
+    "latitud": 17.987828,
+    "longitud": -66.6481536,
+    "place_id": "ChIJT4XTJycqHYwRFd8ZbCoaW6M"
+  },
+  {
+    "nombre": "Utopia Souvenir Shop",
+    "direccion": "6953 Calle Isabel-Muñoz Rivera, Ponce",
+    "latitud": 18.012508,
+    "longitud": -66.613891,
+    "place_id": "ChIJRQLt64jVHIwRUGgCiR909AY"
+  },
+  {
+    "nombre": "Domino's Pizza",
+    "direccion": "Plaza Nuevo Mundo Ave, Avenue Boulevard Miguel Pou",
+    "latitud": 18.0067551,
+    "longitud": -66.5960198,
+    "place_id": "ChIJudOqyZPVHIwRuprvZqLdqGw"
+  },
+  {
+    "nombre": "Oriental Fusion",
+    "direccion": "606 Avenida Tito Castro #115, Ponce",
+    "latitud": 18.0256088,
+    "longitud": -66.59899159999999,
+    "place_id": "ChIJY0bEyHXVHIwRDrfZslsZkEo"
+  },
+  {
+    "nombre": "Burger King",
+    "direccion": "Ponce Towne Center, Puerto Rico 2, Ponce",
+    "latitud": 17.995232,
+    "longitud": -66.6369761,
+    "place_id": "ChIJ77sdXhcqHYwRkkpaP5Bc9zs"
+  },
+  {
+    "nombre": "Subway",
+    "direccion": "Urb, 2325 Las Américas Avenue, Ponce",
+    "latitud": 18.0032258,
+    "longitud": -66.6219016,
+    "place_id": "ChIJJ-9CwojVHIwRvf5n8ChRo8g"
+  },
+  {
+    "nombre": "Subway",
+    "direccion": "Centro Del Sur Mall, Avenue Boulevard Miguel Pou Local #18, Ponce",
+    "latitud": 18.0102313,
+    "longitud": -66.6024815,
+    "place_id": "ChIJuaqqqt4rHYwRhYHWWPDMgNo"
+  },
+  {
+    "nombre": "Subway",
+    "direccion": "Gas Station, San Rafael Industrial Park, Pr No.2 Corner, K Street, Ponce",
+    "latitud": 18.00511029999999,
+    "longitud": -66.5942024,
+    "place_id": "ChIJ0WabZevVHIwRIEEUUJsOHXw"
+  },
+  {
+    "nombre": "Papa Johns Pizza",
+    "direccion": "Plaza Del Caribe Mall, Ponce",
+    "latitud": 17.9893016,
+    "longitud": -66.6114123,
+    "place_id": "ChIJjQVoKfrVHIwRFsLYCaTZh4c"
+  },
+  {
+    "nombre": "Cesar's BBQ",
+    "direccion": "X9JH+PHW, 32 Avenida Padre Noel, Ponce",
+    "latitud": 17.9817545,
+    "longitud": -66.6208121,
+    "place_id": "ChIJkew6gP8pHYwRgtvqlh8WAv4"
+  },
+  {
+    "nombre": "Church's Chicken",
+    "direccion": "Plaza del Caribe Carr 2 Km 227 Bo, Ponce",
+    "latitud": 17.9935459,
+    "longitud": -66.612087,
+    "place_id": "ChIJObrWM_fVHIwR5WIyIJw-Rcc"
+  },
+  {
+    "nombre": "LongHorn Steakhouse",
+    "direccion": "2050, 2050 Ponce Bypass Ste 225, Ponce",
+    "latitud": 17.9935392,
+    "longitud": -66.6123132,
+    "place_id": "ChIJz5_OMPfVHIwRn4oXBcToxRM"
+  },
+  {
+    "nombre": "Subway",
+    "direccion": "705 Avenida Caribe Esq, Avenida Santiago de los Caballeros, Ponce",
+    "latitud": 17.97791999999999,
+    "longitud": -66.610049,
+    "place_id": "ChIJfTBdHgfWHIwRU-TOEwnVTbM"
+  },
+  {
+    "nombre": "Subway",
+    "direccion": "First Floor Hospital Damas, 2213 Ponce Bypass, Ponce",
+    "latitud": 17.9970279,
+    "longitud": -66.6180889,
+    "place_id": "ChIJV1aa5gkqHYwRX0l4PlxeX4Y"
+  },
+  {
+    "nombre": "CoffeeHouse",
+    "direccion": "Ponce Bypass, Ponce",
+    "latitud": 17.9954899,
+    "longitud": -66.6217168,
+    "place_id": "ChIJExRm0QgqHYwRt_VLHi0fxtU"
+  },
+  {
+    "nombre": "Antonino's Pizza Ponce",
+    "direccion": "1122 Avenida Muñoz Rivera, Ponce",
+    "latitud": 17.9976434,
+    "longitud": -66.6207633,
+    "place_id": "ChIJnydc_vbVHIwRzLucr1u14WA"
+  },
+  {
+    "nombre": "Delicias Criollas",
+    "direccion": "18°00'07. 66°36'47., 9 Zumbador, Ponce",
+    "latitud": 18.0014606,
+    "longitud": -66.6134002,
+    "place_id": "ChIJC8U7x_TVHIwRcZ31Tmtq3tQ"
+  }
+]

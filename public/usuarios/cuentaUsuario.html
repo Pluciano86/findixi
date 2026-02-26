@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mi Cuenta</title>
+  <script src="https://cdn.tailwindcss.com"></script> <!-- ✅ Este sí funciona -->
+  <script> tailwind.config = {theme: {extend: {fontFamily: {sans: ['Kanit', 'sans-serif']}}}}
+</script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    @keyframes membershipGlow {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    .membership-logo-animate {
+      animation: membershipGlow 2s ease-in-out infinite;
+    }
+    .action-card-label {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-align: center;
+      width: 100%;
+    }
+  </style>
+
+</head>
+<body class="bg-[#121212]">
+
+<div class="min-h-screen flex justify-center bg-[#121212]">
+  <div class="w-full max-w-md bg-white text-gray-800">
+
+    <!-- Header -->
+<div id="headerContainer"></div>
+<script type="module" src="../js/header.js"></script>
+
+  <main class="min-h-screen overflow-y-auto pb-20 px-4 py-6 text-center">
+    <div id="perfilUsuario" class="flex flex-col items-center gap-2 relative">
+      <button id="btnMensajes" class="absolute top-0 right-0 inline-flex items-center justify-center w-10 h-10 rounded-full bg-cyan-50 text-cyan-700 hover:bg-cyan-100 border border-cyan-100 shadow-sm">
+        <i class="fa-solid fa-message"></i>
+      </button>
+      <img id="fotoPerfil" src="https://placehold.co/100x100?text=User" class="w-24 h-24 rounded-full object-cover shadow">
+      <h2 id="nombreUsuario" class="text-xl font-bold">Nombre Usuario</h2>
+      <div id="membresiaUpBadge" class="hidden w-full max-w-xs bg-gradient-to-r from-sky-100 to-blue-50 p-4 rounded-2xl shadow-sm flex flex-col items-center text-center gap-2">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/UpFondoClaro.png" alt="Logo Membresía Up" class="w-16 h-16 md:w-20 md:h-20 object-contain rounded-2xl drop-shadow-md membership-logo-animate" />
+        <div>
+          <p class="text-green-600 font-semibold flex items-center justify-center gap-2">
+            <i class="fas fa-check-circle"></i>
+            Membresía Up — Activa
+          </p>
+          <p class="text-xs text-gray-500 mt-1">Válida hasta el 31 de diciembre de 2025</p>
+        </div>
+      </div>
+      <div id="upgradeMembresiaBox" class="hidden w-full max-w-md bg-gradient-to-r from-blue-50 to-sky-100 p-5 rounded-2xl shadow-sm flex flex-col items-center text-center gap-3 mt-4 cursor-pointer">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/UpFondoClaro.png" alt="Logo Membresía Up" class="w-20 h-20 object-contain drop-shadow-md" />
+        <div class="flex flex-col items-center w-full gap-2">
+          <p class="text-base font-semibold text-gray-800">💎 Membresía Up — Gratis hasta el 31 de diciembre de 2025</p>
+          <button type="button" id="toggleUpgradeDetails" class="text-sm font-medium text-blue-600 underline">Ver más</button>
+        </div>
+        <div id="upgradeDetails" class="w-full overflow-hidden max-h-0 opacity-0 transition-all duration-500 ease-in-out space-y-3">
+          <div class="space-y-1">
+            <p class="text-xs text-gray-500">A partir del 1 de enero de 2026 el costo será de $9.95 al mes.</p>
+            <p class="text-sm text-gray-600">Disfruta todos los privilegios En Pe Erre sin costo por tiempo limitado.</p>
+          </div>
+          <div class="text-left space-y-2 text-sm text-gray-700 w-full">
+            <div class="flex items-center gap-2">
+              <i class="fas fa-check text-sky-500"></i>
+              <span>Acceso a cupones exclusivos</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <i class="fas fa-check text-sky-500"></i>
+              <span>Descuentos especiales</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <i class="fas fa-check text-sky-500"></i>
+              <span>Notificaciones personalizadas</span>
+            </div>
+          </div>
+          <button id="btnUpgradeUp" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl py-2.5 transition mt-2">Hazte Up hoy</button>
+        </div>
+      </div>
+      <p id="emailUsuario" class="text-sm text-gray-600">correo@ejemplo.com</p>
+      <p id="municipioUsuario" class="text-sm text-gray-600">Municipio</p>
+      <p id="fechaRegistro" class="text-sm text-gray-500">Activo desde ...</p>
+
+      <button id="btnEditarPerfil" class="mt-3 bg-orange-500 text-white px-4 py-2 rounded-lg text-sm shadow hover:bg-orange-600">
+        ✏️ Editar Perfil
+      </button>
+    </div>
+
+    <section class="mt-7 text-left">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 mb-3">Acciones rápidas</p>
+      <div class="grid grid-cols-2 gap-3">
+        <button id="btnFavoritos" class="min-h-[84px] rounded-2xl border border-sky-100 bg-sky-50 text-sky-700 px-3 py-3 shadow-sm hover:bg-sky-100 active:scale-[0.98] transition flex flex-col items-center justify-center gap-2">
+          <span class="text-2xl">
+            <i class="fa-solid fa-store"></i>
+          </span>
+          <span class="action-card-label text-sm font-medium leading-tight">Comercios favoritos</span>
+        </button>
+
+        <button id="btnFavoritosLugares" class="min-h-[84px] rounded-2xl border border-orange-100 bg-orange-50 text-orange-700 px-3 py-3 shadow-sm hover:bg-orange-100 active:scale-[0.98] transition flex flex-col items-center justify-center gap-2">
+          <span class="text-2xl">
+            <i class="fa-solid fa-location-dot"></i>
+          </span>
+          <span class="action-card-label text-sm font-medium leading-tight">Lugares favoritos</span>
+        </button>
+
+        <button id="btnFavoritosPlayas" class="min-h-[84px] rounded-2xl border border-cyan-100 bg-cyan-50 text-cyan-700 px-3 py-3 shadow-sm hover:bg-cyan-100 active:scale-[0.98] transition flex flex-col items-center justify-center gap-2">
+          <span class="text-2xl">
+            <i class="fa-solid fa-umbrella-beach"></i>
+          </span>
+          <span class="action-card-label text-sm font-medium leading-tight">Playas favoritas</span>
+        </button>
+
+        <button id="btnCupones" class="min-h-[84px] rounded-2xl border border-violet-100 bg-violet-50 text-violet-700 px-3 py-3 shadow-sm hover:bg-violet-100 active:scale-[0.98] transition flex flex-col items-center justify-center gap-2">
+          <span class="text-2xl">
+            <i class="fa-solid fa-ticket"></i>
+          </span>
+          <span class="action-card-label text-sm font-medium leading-tight">Mis cupones</span>
+        </button>
+      </div>
+    </section>
+
+<button id="btnPedidos" class="mt-4 w-full min-h-[64px] rounded-2xl bg-emerald-600 text-white px-4 py-3 shadow-md hover:bg-emerald-700 active:scale-[0.98] transition flex flex-col items-center justify-center gap-1">
+  <span class="text-2xl">
+    <i class="fa-solid fa-bag-shopping"></i>
+  </span>
+  <span class="action-card-label text-base font-medium leading-tight">Mis pedidos</span>
+</button>
+
+<button id="btnLogout" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm mt-4 w-full">
+  Cerrar sesión
+</button>
+
+  </main>
+
+  <!-- Modal Mensajes -->
+  <div id="modalMensajes" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Mensajes</p>
+          <h3 class="text-xl font-semibold text-gray-900">Notificaciones</h3>
+        </div>
+        <button id="modalMensajesCerrar" class="text-gray-500 hover:text-gray-800">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div id="mensajesLista" class="space-y-2 max-h-80 overflow-y-auto text-sm text-gray-800">
+        <p class="text-gray-500 text-sm" id="mensajesVacio">Sin mensajes.</p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Modal -->
+  <div id="modalEditar" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
+  <div class="bg-white rounded-xl p-6 w-11/12 max-w-sm shadow-xl relative">
+    <h3 class="text-lg font-bold mb-4">Editar Perfil</h3>
+    <form id="formEditarPerfil" class="space-y-4">
+
+      <!-- Nombre y Apellido -->
+      <div class="flex gap-2">
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-600">Nombre</label>
+          <input type="text" id="inputNombre" class="w-full border rounded px-3 py-2" required>
+        </div>
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-600">Apellido</label>
+          <input type="text" id="inputApellido" class="w-full border rounded px-3 py-2">
+        </div>
+      </div>
+
+      <!-- Imagen -->
+<div>
+  <label class="block text-sm font-medium text-gray-600 mb-2">Foto de Perfil</label>
+  <div class="flex gap-4 items-center">
+    <!-- Imagen actual -->
+    <div class="text-center">
+      <img id="imagenActual" src="https://placehold.co/80x80?text=User" class="w-20 h-20 rounded-full object-cover border" />
+    </div>
+
+    <!-- Imagen nueva (preview) -->
+    <div class="text-center">
+      <img id="previewFoto" class="w-20 h-20 rounded-full object-cover border hidden" />
+    </div>
+  </div>
+
+  <!-- Input de archivo -->
+  <input type="file" id="inputFoto" accept="image/*" class="w-full mt-2">
+</div>
+
+      <!-- Teléfono -->
+      <div>
+        <label class="block text-sm font-medium text-gray-600">Teléfono</label>
+        <input type="tel" id="inputTelefono" class="w-full border rounded px-3 py-2" placeholder="787-555-1234">
+      </div>
+
+      <!-- Municipio -->
+      <div>
+        <label class="block text-sm font-medium text-gray-600">Municipio</label>
+        <select id="inputMunicipio" class="w-full border rounded px-3 py-2">
+          <option value="">Selecciona un municipio</option>
+        </select>
+      </div>
+
+      <!-- Botones -->
+      <div class="flex justify-end gap-2 mt-4">
+        <button type="button" id="btnCancelar" class="text-gray-500 text-sm">Cancelar</button>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Guardar</button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<script type="module" src="../js/cuentaUsuario.js"></script>
+
+<!-- Modal Membresía Up -->
+<div id="modalMembresiaUp" class="fixed inset-0 bg-black/70 z-[11000] hidden items-center justify-center px-4">
+  <div id="modalMembresiaUpCard" class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center space-y-5 transform transition duration-300 opacity-0 scale-95 relative">
+    <button type="button" id="modalUpCloseIcon" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+      <i class="fas fa-times text-lg"></i>
+    </button>
+    <div class="flex justify-center">
+      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/UpFondoClaro.png" alt="Logo Membresía Up" class="w-24 h-24 object-contain" />
+    </div>
+    <div class="space-y-2 text-gray-700 text-sm leading-relaxed">
+      <p class="font-semibold text-base text-gray-800">Para guardar y disfrutar de este y otros privilegios EnPeErre necesitas una Membresía Up.</p>
+      <p>¡Aprovecha la promoción y obténla completamente GRATIS hasta el 31 de diciembre de 2025!</p>
+      <p class="text-xs text-gray-500">A partir del 1 de enero de 2026 el costo será de $9.95 al mes.</p>
+    </div>
+    <div class="space-y-3">
+      <button type="button" id="modalUpSubmit" class="w-full py-2.5 rounded-xl bg-sky-500 text-white font-semibold transition hover:bg-sky-600">Hazte Up Ahora</button>
+      <button type="button" id="modalUpClose" class="w-full py-2.5 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+
+  <!-- Modal Favoritos -->
+<div id="modalFavoritos" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-lg w-[90%] max-w-lg h-[80%] flex flex-col">
+    <!-- Header -->
+    <div class="flex justify-between items-center p-4 border-b">
+      <h2 class="text-xl font-semibold">Mis Comercios Favoritos</h2>
+      <button onclick="document.getElementById('modalFavoritos').classList.add('hidden')">✕</button>
+    </div>
+
+    <!-- Contenido scrollable -->
+    <div class="flex-1 overflow-y-auto p-4">
+      <!-- Buscador con lupa -->
+      <div class="flex items-center w-full mb-3 border rounded-md shadow-sm overflow-hidden">
+        <span class="px-3 text-gray-500">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </span>
+        <input 
+          type="text" 
+          id="buscadorFavoritos" 
+          placeholder="Buscar comercio..." 
+          class="w-full p-2 focus:outline-none focus:ring focus:border-blue-300" />
+      </div>
+
+      <!-- Filtros -->
+      <div class="flex justify-between gap-2 mb-4">
+        <select id="filtroMunicipio" class="w-1/3 p-2 border rounded-md">
+          <option value="">Municipio</option>
+        </select>
+        <select id="filtroCategoria" class="w-1/3 p-2 border rounded-md">
+          <option value="">Categoría</option>
+        </select>
+        <select id="filtroOrden" class="w-1/3 p-2 border rounded-md">
+          <option value="alfabetico">Orden alfabético</option>
+          <option value="recientes">Recientes</option>
+          <option value="cercania">Cercanía</option>
+        </select>
+      </div>
+
+      <!-- Lista de favoritos -->
+      <div id="favoritos-list" class="space-y-3"></div>
+      </div>
+    <!-- Botón cerrar -->
+    <button id="btnCerrarFavoritos" class="absolute top-2 right-2 text-gray-600 hover:text-black">&times;</button>
+  </div>
+</div>
+
+  <!-- Modal Cupones -->
+  <div id="modalCupones" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg w-[95%] max-w-3xl h-[85%] flex flex-col relative">
+      <div class="flex justify-between items-center p-4 border-b">
+        <h2 class="text-xl font-semibold">Mis Cupones</h2>
+        <button id="btnCerrarCupones" class="text-gray-600 hover:text-black text-xl leading-none">&times;</button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 space-y-6">
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <select id="cuponFiltroComercio" class="w-full border rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Todos los comercios</option>
+            </select>
+            <select id="cuponFiltroMunicipio" class="w-full border rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Todos los municipios</option>
+            </select>
+            <select id="cuponFiltroCategoria" class="w-full border rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Todas las categorías</option>
+            </select>
+          </div>
+          <div class="flex justify-end">
+            <button id="btnLimpiarFiltrosCupones" class="mt-2 whitespace-nowrap px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition border border-blue-100 rounded-lg">
+              Limpiar filtros
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center gap-1 rounded-xl bg-gray-100 p-1 text-sm font-medium">
+            <button data-cupon-tab="guardados" class="cupon-tab-active flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white text-slate-900 shadow-sm transition">
+              Guardados
+              <span id="cuponesGuardadosBadge" class="text-[11px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">0</span>
+            </button>
+            <button data-cupon-tab="redimidos" class="cupon-tab flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-transparent text-gray-500 transition">
+              Redimidos
+              <span id="cuponesRedimidosBadge" class="text-[11px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">0</span>
+            </button>
+          </div>
+
+          <div class="relative mt-4 min-h-[320px]">
+            <div id="cuponesGuardadosPanel" data-cupon-panel="guardados" class="space-y-3 transition-opacity duration-200">
+              <div id="cuponesGuardadosLista" class="space-y-3"></div>
+              <p id="cuponesGuardadosMensaje" class="text-sm font-medium text-gray-500 text-center hidden"></p>
+            </div>
+            <div id="cuponesRedimidosPanel" data-cupon-panel="redimidos" class="space-y-3 transition-opacity duration-200 hidden opacity-0 pointer-events-none">
+              <div id="cuponesRedimidosLista" class="space-y-3"></div>
+              <p id="cuponesRedimidosMensaje" class="text-sm font-medium text-gray-500 text-center hidden"></p>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 mt-4">
+            <button id="btnCargarMasGuardados" class="hidden w-full sm:w-auto px-4 py-2 rounded-lg border text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+              Mostrar más cupones
+            </button>
+            <button id="btnCargarMasRedimidos" class="hidden w-full sm:w-auto px-4 py-2 rounded-lg border text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+              Mostrar más cupones
+            </button>
+          </div>
+        </div>
+      </div>
+      <p id="cuponesModalMensaje" class="text-sm font-medium text-gray-500 text-center pb-4 hidden">No has guardado cupones todavía.</p>
+    </div>
+  </div>
+
+  <div id="modalCuponQr" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-lg w-[90%] max-w-sm p-6 flex flex-col items-center gap-4 relative">
+      <button id="btnCerrarCuponQr" class="absolute top-3 right-3 text-gray-500 hover:text-black text-2xl leading-none">&times;</button>
+      <img id="modalCuponQrImg" src="" alt="QR del cupón" class="w-56 h-56 object-contain">
+      <div class="flex flex-col items-center gap-2">
+        <img id="modalCuponQrLogo" src="" alt="Logo del comercio" class="w-16 h-16 object-cover rounded-full border hidden">
+        <p id="modalCuponQrComercio" class="text-base font-semibold text-[#424242] text-center"></p>
+        <p id="modalCuponQrNombre" class="text-lg font-semibold text-[#424242] text-center"></p>
+        <p id="modalCuponQrDescripcion" class="text-sm text-gray-600 text-center hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Favoritos Lugares -->
+  <div id="modalFavoritosLugares" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg w-[90%] max-w-lg h-[80%] flex flex-col relative">
+      <div class="flex justify-between items-center p-4 border-b">
+        <h2 class="text-xl font-semibold">Mis Lugares Favoritos</h2>
+        <button id="btnCerrarFavoritosLugares" class="text-gray-600 hover:text-black text-xl leading-none">&times;</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="flex items-center w-full border rounded-md shadow-sm overflow-hidden">
+          <span class="px-3 text-gray-500">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
+          <input
+            type="text"
+            id="buscadorFavoritosLugares"
+            placeholder="Buscar lugar..."
+            class="w-full p-2 focus:outline-none focus:ring focus:border-blue-300"
+          />
+        </div>
+
+        <div class="flex justify-between gap-2">
+          <select id="filtroMunicipioLugares" class="w-1/3 p-2 border rounded-md">
+            <option value="">Municipio</option>
+          </select>
+          <select id="filtroCategoriaLugares" class="w-1/3 p-2 border rounded-md">
+            <option value="">Categoría</option>
+          </select>
+          <select id="filtroOrdenLugares" class="w-1/3 p-2 border rounded-md">
+            <option value="alfabetico">Orden alfabético</option>
+            <option value="recientes">Recientes</option>
+            <option value="cercania">Cercanía</option>
+          </select>
+        </div>
+
+        <div id="favoritos-lugares-list" class="space-y-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Favoritos Playas -->
+  <div id="modalFavoritosPlayas" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg w-[90%] max-w-lg h-[80%] flex flex-col relative">
+      <div class="flex justify-between items-center p-4 border-b">
+        <h2 class="text-xl font-semibold">Mis Playas Favoritas</h2>
+        <button id="btnCerrarFavoritosPlayas" class="text-gray-600 hover:text-black text-xl leading-none">&times;</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="flex items-center w-full border rounded-md shadow-sm overflow-hidden">
+          <span class="px-3 text-gray-500">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
+          <input
+            type="text"
+            id="buscadorFavoritosPlayas"
+            placeholder="Buscar playa..."
+            class="w-full p-2 focus:outline-none focus:ring focus:border-blue-300"
+          />
+        </div>
+
+        <div class="flex justify-between gap-2">
+          <select id="filtroMunicipioPlayas" class="w-1/3 p-2 border rounded-md">
+            <option value="">Municipio</option>
+          </select>
+          <select id="filtroCategoriaPlayas" class="w-1/3 p-2 border rounded-md">
+            <option value="">Categoría</option>
+          </select>
+          <select id="filtroOrdenPlayas" class="w-1/3 p-2 border rounded-md">
+            <option value="alfabetico">Orden alfabético</option>
+            <option value="recientes">Recientes</option>
+            <option value="cercania">Cercanía</option>
+          </select>
+        </div>
+
+        <div id="favoritos-playas-list" class="space-y-3"></div>
+      </div>
+    </div>
+  </div>
+
+
+<!-- Footer -->
+<div id="footerContainer"></div>
+<script type="module" src="../js/footer.js"></script>
+
+  <script src="../js/bloquearPantalla.js"></script>
+</div>
+</div>
+  <script type="module" src="../js/introSplash.js"></script>
+</body>
+</html>

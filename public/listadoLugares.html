@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Lugares de Interés</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script type="module" src="./js/i18n.js"></script>
+  
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+  </style>
+</head>
+<body class="bg-[#121212] text-gray-800">
+
+<div class="min-h-screen flex justify-center bg-[#121212]">
+  <div class="w-full max-w-md bg-white">
+
+  <!-- Header -->
+<div id="headerContainer"></div>
+<script type="module" src="js/header.js"></script>
+
+
+<section class="p-4">
+
+  <!-- Título y buscador -->
+<h1 class="text-center text-2xl font-medium mt-4 mb-4" data-i18n="listadoLugares.titulo">Lugares de Interés en Puerto Rico</h1>
+
+  <div class="rounded-xl border border-gray-300 p-4 bg-white space-y-4">
+    <!-- Buscador -->
+    <div class="flex items-center gap-2">
+      <span id="iconoCategoria" class="text-lg text-[#3ea6c4] flex items-center justify-center">
+        <i class="fas fa-map-marked-alt"></i>
+      </span>
+      <input type="text" id="searchInput" placeholder="Buscar por nombre" data-i18n-placeholder="area.buscar"
+             class="flex-1 px-4 py-2 border rounded-full text-base" />
+      <i class="fas fa-search text-gray-400"></i>
+    </div>
+
+    <!-- Dropdowns -->
+    <div class="flex gap-2 text-sm">
+      <!-- Municipios -->
+      <div class="flex flex-col flex-1">
+        <label for="selectMunicipio" class="text-xs font-semibold text-gray-500 mb-1" data-i18n="area.municipios">Municipios:</label>
+        <select id="selectMunicipio" class="border rounded px-2 py-1 w-full text-sm">
+          <option value="" data-i18n="listadoLugares.todos">Todos</option>
+        </select>
+      </div>
+
+      <!-- Categoría (tipo comida o lugar) -->
+      <div class="flex flex-col flex-1">
+        <label for="selectCategoria" class="text-xs font-semibold text-gray-500 mb-1" data-i18n="listadoLugares.categorias">Categorías:</label>
+        <select id="selectCategoria" class="border rounded px-2 py-1 w-full text-sm">
+          <option value="" data-i18n="listadoLugares.todas">Todas</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Switches de filtros -->
+    <div class="flex flex-wrap gap-4 text-sm mt-2 text-center w-full">
+      <!-- Abierto Ahora -->
+      <div class="flex-1">
+        <div class="mb-1 text-gray-700 font-medium" data-i18n="area.abierto">Abierto ahora</div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="btnAbierto" class="sr-only peer">
+          <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-500 transition-colors duration-300"></div>
+          <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform duration-300 transform peer-checked:translate-x-5"></div>
+        </label>
+      </div>
+
+      <!-- Mis Favoritos -->
+      <div class="flex-1">
+        <div class="mb-1 text-gray-700 font-medium" data-i18n="area.favoritos">Mis Favoritos</div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="btnFavoritos" class="sr-only peer">
+          <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-pink-500 transition-colors duration-300"></div>
+          <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform duration-300 transform peer-checked:translate-x-5"></div>
+        </label>
+      </div>
+
+      <!-- Gratis -->
+      <div class="flex-1">
+        <div class="mb-1 text-gray-700 font-medium" data-i18n="area.gratis">Gratis</div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="btnGratis" class="sr-only peer">
+          <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-sky-500 transition-colors duration-300"></div>
+          <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform duration-300 transform peer-checked:translate-x-5"></div>
+        </label>
+      </div>
+    </div>
+  </div>
+</section>
+
+  <!-- Resultados -->
+  <section class="px-4 mt-4 mb-24">
+    <div id="lugaresContainer" class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4">
+      <!-- Tarjetas de lugares se insertarán aquí -->
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <div id="footerContainer"></div>
+  <script type="module" src="js/footer.js"></script>
+
+  <!-- Script principal -->
+  <script type="module" src="./js/lugares.js"></script>
+
+  <script src="js/bloquearPantalla.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.initI18n) window.initI18n();
+    });
+  </script>
+</div>
+</div>
+  <script type="module" src="js/introSplash.js"></script>
+</body>
+</html>

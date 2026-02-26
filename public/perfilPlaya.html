@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Perfil de Playa</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script type="module" src="./js/i18n.js"></script>
+  <style>
+    html,
+    body {
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
+    }
+  </style>
+</head>
+
+<body class="bg-[#121212] font-[Kanit]">
+
+<div class="min-h-screen flex justify-center bg-[#121212] overflow-y-auto overflow-x-hidden">
+  <div class="w-full max-w-md bg-white text-gray-800 pb-24">
+
+  <!-- Header -->
+  <div id="headerContainer" class="z-50 relative"></div>
+
+  <!-- Imagen principal -->
+  <section class="relative w-full h-72 md:h-70 overflow-hidden bg-gray-200">
+    <img id="imagenPlaya" src="" alt="Imagen de la playa" class="w-full h-full object-cover" />
+  </section>
+
+<!-- Bloque de Clima -->
+<section id="climaSection" class="bg-[#424242] text-white text-center py-5">
+  <div class="max-w-md mx-auto grid grid-cols-3 items-center px-4">
+
+    <!-- Temperatura -->
+    <div class="flex flex-col items-center">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-temperature-half text-4xl"></i>
+        <p id="temperatura" class="text-5xl font-light leading-none">--°</p>
+      </div>
+      <p id="rangoTemperatura" class="text-base opacity-80 mt-1" data-i18n="perfilPlaya.climaRango">
+        Mínima: --° · Máxima: --°
+      </p>
+    </div>
+
+    <!-- Estado del clima -->
+    <div class="flex flex-col items-center">
+      <p id="descripcionClima" class="text-base font-semibold uppercase tracking-wide mt-1" data-i18n="perfilPlaya.climaActualizando">
+        Actualizando...
+      </p>
+    </div>
+
+    <!-- Viento y humedad -->
+    <div class="flex flex-col items-center space-y-2">
+      <p class="flex items-center gap-1 text-3xl">
+        <i class="fa-solid fa-wind">  </i> <span id="viento">-- mph</span>
+      </p>
+      <p class="flex items-center gap-1 text-3xl">
+        <i class="fa-solid fa-droplet">  </i> <span id="humedad">--%</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+  <!-- Información principal -->
+  <section class="p-5 space-y-4 text-center">
+    <!-- Nombre -->
+    <div>
+      <h1 id="nombrePlaya" class="text-3xl font-bold text-gray-900 mb-1" data-i18n="perfilPlaya.cargandoInfo">Cargando...</h1>
+      <p id="municipioPlaya" class="text-base text-gray-600">--</p>
+    </div>
+
+    <!-- Apta para -->
+    <h3 class="text-lg font-semibold text-[#424242]" data-i18n="perfilPlaya.aptaPara">Playa apta para:</h3>
+    <div id="aptitudesContainer" class="flex justify-center gap-6 text-center text-gray-700 text-sm">
+      <!-- Se rellena dinámicamente -->
+    </div>
+      <!-- Dirección -->
+    <div id="direccionComercio" class="flex items-center gap-2 text-[#3ea6c4] font-medium text-xl mt-3 leading-none mx-auto w-fit mb-2">
+  <i class="fas fa-map-pin"></i>
+  <span id="direccionPlaya"></span>
+</div>
+
+    <p id="tiempoVehiculo" class="text-[#9c9c9c] text-xl font-medium  mb-4">
+        <i class="fas fa-car"></i> <span data-i18n="perfilPlaya.distancia">Cargando distancia...</span>
+    </p>
+    <!-- Botones de navegación -->
+    <div class="flex justify-center gap-4 mt-5">
+      <a id="btnGoogleMaps" href="#" target="_blank">
+        <img
+          src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/google%20map.jpg"
+          alt="Google Maps"
+          class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-10"
+        />
+      </a>
+      <a id="btnWaze" href="#" target="_blank">
+        <img
+          src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/waze.jpg"
+          alt="Waze"
+          class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-10"
+        />
+      </a>
+    </div>
+
+    <button id="btnFavoritoPlaya" class="flex items-center justify-center gap-2 text-xl font-medium text-[#555] mx-auto mt-4">
+      <i class="far fa-heart text-xl transition-colors duration-200"></i>
+      <span class="leading-tight" data-i18n="perfilPlaya.btnFavorito">Añadir a favoritos</span>
+    </button>
+
+<!-- Descripción -->
+    <div class="bg-white rounded-lg p- shadow mt-4">
+      <h2 class="text-lg font-semibold text-gray-800 mb-2" data-i18n="perfilPlaya.descripcion">Descripción</h2>
+      <p id="descripcionPlaya" class="text-sm text-gray-700 leading-relaxed">
+        <span data-i18n="perfilPlaya.cargandoInfo">Cargando información...</span>
+      </p>
+    </div>
+
+    <div class="bg-white rounded-lg p-4 shadow">
+        <h2 class="text-lg font-semibold text-gray-800 mb-2" data-i18n="perfilPlaya.acceso">Acceso</h2>
+        <p id="infoAcceso" class="text-sm text-gray-600">
+          Información sobre cómo llegar a la playa.
+        </p>
+      </div>
+
+    <!-- Estacionamiento y acceso 
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      <div class="bg-white rounded-lg p-4 shadow">
+        <h2 class="text-lg font-semibold text-gray-800 mb-2">Estacionamiento</h2>
+        <p id="infoEstacionamiento" class="text-sm text-gray-600">
+          Información sobre dónde estacionarse.
+        </p>
+      </div>-->
+
+<!-- ==================== Comercios Cercanos ==================== -->
+<section id="cercanosComidaContainer" class="hidden mt-8 w-full">
+  <h2 class="text-lg font-medium mb-4 px-4" data-i18n="perfilPlaya.cercanosComida">
+    Lugares para Comer a menos de 10 minutos de
+    <span id="nombreCercanosComida" class="text-primary"></span>
+  </h2>
+
+  <div id="sliderCercanosComida" class="swiper cercanosSwiper w-full">
+    <div class="swiper-wrapper"></div>
+  </div>
+</section>
+
+<!-- ==================== Lugares Cercanos ==================== -->
+<section id="cercanosLugaresContainer" class="hidden mt-8 w-full">
+  <h2 class="text-lg font-medium mb-4 px-4" data-i18n="perfilPlaya.cercanosLugares">
+    Lugares de interés cerca de
+    <span id="nombreCercanosLugares" class="text-primary"></span>
+  </h2>
+
+  <div id="sliderCercanosLugares" class="swiper lugaresSwiper w-full">
+    <div class="swiper-wrapper"></div>
+  </div>
+</section>
+
+<!-- ==================== Playas Cercanas ==================== -->
+<section id="cercanosPlayasContainer" class="hidden mt-8 w-full">
+  <h2 class="text-lg font-medium mb-4 px-4" data-i18n="perfilPlaya.playas45">
+    Playas a menos de 45 minutos de
+    <span id="nombreCercanosPlayas" class="text-primary"></span>
+  </h2>
+
+  <div id="sliderPlayasCercanas" class="swiper playasSwiper w-full">
+    <div class="swiper-wrapper"></div>
+  </div>
+</section>
+
+<!-- SwiperJS -->
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<!-- ===================================================== -->
+<!-- SwiperJS -->
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+<!-- Cercanos Playa JS -->
+<script type="module" src="./js/cercanosPlaya.js"></script>
+  <!-- Loader -->
+  <div id="loader" class="fixed inset-0 bg-black/40 hidden flex items-center justify-center z-50">
+    <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png" alt="Cargando información" class="w-16 h-16 animate-spin">
+  </div>
+
+  <!-- Footer -->
+  <div id="footerContainer" class="mt-8"></div>
+
+  <!-- Scripts -->
+  <script type="module" src="./js/header.js"></script>
+  <script type="module" src="./js/footer.js"></script>
+  <script type="module" src="./js/perfilPlaya.js"></script>
+<script type="module" src="./js/calcularTiemposParaLista.js"></script> <!-- solo si NO lo importas dentro -->
+<script type="module" src="./js/cercanosPlaya.js"></script>
+  <script src="js/bloquearPantalla.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.initI18n) window.initI18n();
+    });
+  </script>
+</div>
+</div>
+  <script type="module" src="js/introSplash.js"></script>
+</body>
+</html>

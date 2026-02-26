@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Crear Cupón | En Pe Erre</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body class="bg-gray-100 min-h-screen font-[Kanit]">
+  <div id="headerContainer"></div>
+  <script type="module">
+    import { loadAdminHeader } from './js/loadAdminHeader.js';
+    loadAdminHeader();
+  </script>
+
+  <main class="max-w-3xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between gap-3 mb-6 flex-wrap">
+      <h1 class="text-3xl font-semibold text-gray-800">Crear Nuevo Cupón</h1>
+      <a id="btnAdminMenu" href="#" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium shadow text-sm">
+        Administrar Menú
+      </a>
+    </div>
+
+    <form id="formCrearCupon" class="bg-white rounded-xl shadow p-6 space-y-5">
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1">Buscar comercio</label>
+        <input id="buscarComercio" type="text" placeholder="Nombre del comercio" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:border-blue-400">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1">Selecciona el comercio *</label>
+        <select id="selectComercio" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:border-blue-400">
+          <option value="">Cargando comercios...</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1">Título *</label>
+        <input id="titulo" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:border-blue-400" required>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1">Descripción</label>
+        <textarea id="descripcion" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:border-blue-400"></textarea>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Descuento (%)</label>
+          <input id="descuento" type="number" min="0" max="100" step="0.01" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:border-blue-400">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Cantidad Disponible</label>
+          <input id="cantidadDisponible" type="number" min="0" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:border-blue-400" value="0">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Inicio *</label>
+          <input id="fechaInicio" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:border-blue-400" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Finalización *</label>
+          <input id="fechaFin" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:border-blue-400" required>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1">Código Secreto (para redimir) *</label>
+        <input id="codigoSecreto" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:border-blue-400 uppercase" required>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-600 mb-1">Imagen del Cupón</label>
+        <input id="inputImagenCupon" type="file" accept="image/*" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:border-blue-400">
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4">
+        <button type="reset" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition">Limpiar</button>
+        <button id="btnGuardarCupon" type="button" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">Guardar Cupón</button>
+      </div>
+    </form>
+
+    <p id="mensajeResultado" class="mt-4 text-sm text-gray-600"></p>
+  </main>
+
+  <script type="module" src="./js/botonAdminMenu.js"></script>
+  <script type="module" src="./js/crearCupon.js"></script>
+</body>
+</html>

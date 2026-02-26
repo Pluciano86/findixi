@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Upgrade Membresía Up</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            celeste: '#3ea6c4'
+          },
+          fontFamily: {
+            sans: ['Kanit', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes blink {
+      0% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script type="module" src="./js/i18n.js"></script>
+</head>
+<body class="min-h-screen bg-[#f4f4f5] text-gray-800 flex items-center justify-center px-4 py-10 font-sans">
+  <div id="globalLoader" class="fixed inset-0 bg-black/70 z-[9998] hidden items-center justify-center flex-col gap-4 transition-opacity duration-500 opacity-0">
+    <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Favicon.svg" alt="Loader" class="w-20 h-20 md:w-24 md:h-24" style="animation: spin 1.5s linear infinite;">
+    <p class="text-white text-lg font-medium tracking-wide" style="animation: blink 1.5s ease-in-out infinite alternate;">Actualizando tu cuenta...</p>
+  </div>
+
+  <div class="w-full max-w-md">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 space-y-5 animate-[fadeUp_0.5s_ease]">
+      <div class="text-center space-y-3">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo%20UP.png" alt="Logo Up" class="w-24 h-24 mx-auto" />
+        <div>
+          <h1 class="text-2xl font-semibold text-gray-800">Actualiza tu cuenta a Membresía Up</h1>
+          <p class="text-sm text-gray-600 mt-2 leading-relaxed">
+            ¡Aprovecha la promoción y obtén tu Membresía Up completamente GRATIS hasta el 31 de diciembre de 2025!
+          </p>
+          <p class="text-celeste mt-1">A partir del 1 de enero de 2026 el costo será de $9.95 al mes.</p>
+        </div>
+      </div>
+
+      <form id="formUpgradeUp" class="space-y-4" enctype="multipart/form-data">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-medium text-gray-700">Nombre</label>
+            <input type="text" id="nombreUpgrade" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-sky-500 focus:ring-sky-500" required />
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-700">Apellido</label>
+            <input type="text" id="apellidoUpgrade" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-sky-500 focus:ring-sky-500" required />
+          </div>
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-gray-700">Email</label>
+          <input type="email" id="emailUpgrade" class="w-full px-3 py-2 rounded-lg border border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed" readonly />
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-gray-700">Teléfono</label>
+          <input type="tel" id="telefonoUpgrade" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-sky-500 focus:ring-sky-500" placeholder="(787) 123-4567" required />
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-gray-700">Municipio (opcional)</label>
+          <select id="municipioUpgrade" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-sky-500 focus:ring-sky-500">
+            <option value="">Selecciona un municipio</option>
+            <option value="1">Adjuntas</option>
+            <option value="2">Aguada</option>
+            <option value="3">Aguadilla</option>
+            <option value="4">Aguas Buenas</option>
+            <option value="5">Aibonito</option>
+            <option value="6">Añasco</option>
+            <option value="7">Arecibo</option>
+            <option value="8">Arroyo</option>
+            <option value="9">Barceloneta</option>
+            <option value="10">Barranquitas</option>
+            <option value="11">Bayamón</option>
+            <option value="12">Cabo Rojo</option>
+            <option value="13">Caguas</option>
+            <option value="14">Camuy</option>
+            <option value="15">Canóvanas</option>
+            <option value="16">Carolina</option>
+            <option value="17">Cataño</option>
+            <option value="18">Cayey</option>
+            <option value="19">Ceiba</option>
+            <option value="20">Ciales</option>
+            <option value="21">Cidra</option>
+            <option value="22">Coamo</option>
+            <option value="23">Comerío</option>
+            <option value="24">Corozal</option>
+            <option value="25">Culebra</option>
+            <option value="26">Dorado</option>
+            <option value="27">Fajardo</option>
+            <option value="28">Florida</option>
+            <option value="29">Guánica</option>
+            <option value="30">Guayama</option>
+            <option value="31">Guayanilla</option>
+            <option value="32">Guaynabo</option>
+            <option value="33">Gurabo</option>
+            <option value="34">Hatillo</option>
+            <option value="35">Hormigueros</option>
+            <option value="36">Humacao</option>
+            <option value="37">Isabela</option>
+            <option value="38">Jayuya</option>
+            <option value="39">Juana Díaz</option>
+            <option value="40">Juncos</option>
+            <option value="41">Lajas</option>
+            <option value="42">Lares</option>
+            <option value="43">Las Marías</option>
+            <option value="44">Las Piedras</option>
+            <option value="45">Loíza</option>
+            <option value="46">Luquillo</option>
+            <option value="47">Manatí</option>
+            <option value="48">Maricao</option>
+            <option value="49">Maunabo</option>
+            <option value="50">Mayagüez</option>
+            <option value="51">Moca</option>
+            <option value="52">Morovis</option>
+            <option value="53">Naguabo</option>
+            <option value="54">Naranjito</option>
+            <option value="55">Orocovis</option>
+            <option value="56">Patillas</option>
+            <option value="57">Peñuelas</option>
+            <option value="58">Ponce</option>
+            <option value="59">Quebradillas</option>
+            <option value="60">Rincón</option>
+            <option value="61">Río Grande</option>
+            <option value="62">Sabana Grande</option>
+            <option value="63">Salinas</option>
+            <option value="64">San Germán</option>
+            <option value="65">San Juan</option>
+            <option value="66">San Lorenzo</option>
+            <option value="67">San Sebastián</option>
+            <option value="68">Santa Isabel</option>
+            <option value="69">Toa Alta</option>
+            <option value="70">Toa Baja</option>
+            <option value="71">Trujillo Alto</option>
+            <option value="72">Utuado</option>
+            <option value="73">Vega Alta</option>
+            <option value="74">Vega Baja</option>
+            <option value="75">Vieques</option>
+            <option value="76">Villalba</option>
+            <option value="77">Yabucoa</option>
+            <option value="78">Yauco</option>
+          </select>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-gray-700">Imagen de perfil</label>
+          <div class="flex items-center justify-center">
+            <div class="w-28 h-28 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+              <img id="fotoPreviewUpgrade" class="hidden w-full h-full object-cover" alt="Preview foto" />
+              <span id="fotoPlaceholderUpgrade" class="text-gray-400 text-xs">Sin foto</span>
+            </div>
+          </div>
+          <div class="flex justify-center">
+            <button type="button" id="btnSeleccionarFoto" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm font-medium">Seleccionar imagen</button>
+            <input type="file" id="fotoUpgrade" accept="image/*" class="hidden" />
+          </div>
+        </div>
+
+        <label class="flex items-start gap-2 text-sm text-gray-700">
+          <input type="checkbox" id="terminosCheckbox" class="mt-1 accent-sky-500" disabled />
+          <span>He leído y acepto los <button type="button" id="abrirTerminos" class="text-sky-500 underline">términos y condiciones</button>.</span>
+        </label>
+
+        <p id="upgradeError" class="text-red-500 text-sm hidden"></p>
+        <p id="upgradeSuccess" class="text-green-600 text-sm hidden">¡Tu cuenta ha sido actualizada a Membresía Up! Ya puedes disfrutar de todos los beneficios En Pe Erre.</p>
+
+        <button type="submit" id="btnActivarUp" class="w-full py-2.5 rounded-xl bg-sky-500 text-white font-semibold transition hover:bg-sky-600">Activar Membresía Up</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="./shared/supabaseClient.js"></script>
+  <script type="module" src="./js/upgradeUp.js"></script>
+
+  <div id="modalTerminos" class="fixed inset-0 bg-black/50 z-[10000] hidden items-center justify-center px-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+      <div class="text-center flex items-center justify-between px-6 py-4 border-b">
+        <h2 class="text-center text-lg font-semibold text-gray-800">Términos y Condiciones</h2>
+        <button type="button" id="cerrarModalTerminos" class="text-gray-500 hover:text-gray-700">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div id="modalContenido" class="px-6 py-4 overflow-y-auto text-sm text-gray-700 space-y-4" style="max-height: 60vh;">
+        <p><strong>Términos y Condiciones de la Membresía UP</strong></p>
+        <p>Al crear tu cuenta y activar tu Membresía UP, aceptas los siguientes términos:</p>
+        <ol class="text-start list-decimal pl-5 space-y-3">
+          <li>
+            <strong>Costo y renovación automática:</strong><br />
+            La Membresía UP tiene un costo de <strong>$9.95 mensuales</strong>, con renovación automática cada mes a través del método de pago registrado.<br />
+            Actualmente, el servicio es <strong>gratis hasta el 31 de diciembre de 2025</strong>. A partir de esa fecha, comenzará el cobro mensual sin interrupción, salvo que el usuario cancele su suscripción antes de la fecha de facturación.
+          </li>
+          <li>
+            <strong>Cancelación:</strong><br />
+            Puedes cancelar tu membresía en cualquier momento desde tu perfil o comunicándote con nuestro equipo de soporte. No se emitirán reembolsos parciales por periodos no utilizados.
+          </li>
+          <li>
+            <strong>Promociones y comunicaciones:</strong><br />
+            Al aceptar estos términos, autorizas a En Pe Erre a enviarte <strong>mensajes de texto, correos electrónicos o notificaciones</strong> con promociones, descuentos, actualizaciones o información relacionada con tu cuenta y comercios afiliados.
+          </li>
+          <li>
+            <strong>Uso responsable:</strong><br />
+            La membresía es personal e intransferible. El uso indebido, la reventa o el intento de fraude con beneficios o cupones puede conllevar la cancelación inmediata de la cuenta.
+          </li>
+          <li>
+            <strong>Modificaciones:</strong><br />
+            En Pe Erre se reserva el derecho de modificar estos términos, precios o beneficios en cualquier momento. Cualquier cambio será notificado con antelación a los usuarios activos.
+          </li>
+        </ol>
+        <p>Al continuar, confirmas que has leído y aceptas estos términos y condiciones.</p>
+      </div>
+      <div class="px-6 py-4 border-t flex justify-end gap-3">
+        <button type="button" id="cancelarModalTerminos" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100">Cancelar</button>
+        <button type="button" id="aceptarTerminosBtn" class="px-4 py-2 rounded-lg bg-celeste text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed" disabled>Aceptar</button>
+      </div>
+    </div>
+  </div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => { if (window.initI18n) window.initI18n(); });
+</script>
+  <script type="module" src="js/introSplash.js"></script>
+</body>
+</html>

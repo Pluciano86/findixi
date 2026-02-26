@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Editar Comercio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+    label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
+  </style>
+</head>
+
+<body class="bg-gray-50 pb-24">
+
+<div id="headerContainer"></div>
+<script type="module">
+import { loadAdminHeader } from './js/loadAdminHeader.js';
+loadAdminHeader();
+</script>
+
+<main class="px-4 py-6">
+  <div class="max-w-5xl mx-auto">
+    <h2 class="text-2xl text-center font-medium mb-4">Editar Comercio</h2>
+    <form id="formComercio" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div><label for="nombre">Nombre</label><input id="nombre" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="telefono">Teléfono</label><input id="telefono" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="direccion">Dirección</label><input id="direccion" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <select id="municipio" class="w-full p-2 border rounded">
+        <option value="">Selecciona un municipio</option>
+      </select>
+
+      <div class="md:col-span-2 bg-white border rounded p-4 shadow-sm" id="sucursalesSection">
+        <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <h3 class="text-lg font-semibold text-gray-800">Sucursales</h3>
+          <button id="btnAddSucursal" type="button" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+            <i class="fas fa-plus"></i> Añadir Sucursal
+          </button>
+        </div>
+        <div id="infoComercioPrincipal" class="mb-3 text-sm text-gray-600"></div>
+        <div id="sucursalesRelacionadas" class="hidden">
+          <h4 class="text-md font-semibold text-gray-700 mb-2">Sucursales Relacionadas</h4>
+          <div id="listaSucursalesRelacionadas" class="flex flex-col gap-2"></div>
+          <p id="mensajeSucursales" class="text-sm text-gray-500 hidden"></p>
+        </div>
+      </div>
+
+      <div><label for="latitud">Latitud</label><input id="latitud" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="longitud">Longitud</label><input id="longitud" class="w-full border rounded px-3 py-2 text-sm" /></div>
+
+      <!-- Categorías -->
+      <div class="md:col-span-2">
+        <label for="categoria">Categorías</label>
+        <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
+          <span class="text-sm text-gray-700">Selecciona una o varias categorías disponibles.</span>
+          <div class="flex gap-2">
+            <button type="button" id="toggleCategorias" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 text-gray-800 border border-gray-300 rounded hover:bg-gray-200 transition">
+              <i class="fa-solid fa-chevron-down"></i> Mostrar/ocultar
+            </button>
+            <button type="button" id="btnNuevaCategoria" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 transition">
+              <i class="fas fa-plus"></i> Nueva Categoría
+            </button>
+          </div>
+        </div>
+        <div id="categoriasSeleccionadas" class="flex flex-wrap mt-2"></div>
+        <div id="panelCategorias" class="mt-3 hidden">
+          <div id="opcionesCategorias" class="grid grid-cols-2 gap-2 bg-white border border-gray-200 p-4 rounded shadow"></div>
+        </div>
+      </div>
+
+      <!-- Subcategorías -->
+      <div class="md:col-span-2">
+        <label for="subcategoria">Subcategorías</label>
+        <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
+          <span class="text-sm text-gray-700">Relaciona subcategorías para el comercio.</span>
+          <div class="flex gap-2">
+            <button type="button" id="toggleSubcategorias" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 text-gray-800 border border-gray-300 rounded hover:bg-gray-200 transition">
+              <i class="fa-solid fa-chevron-down"></i> Mostrar/ocultar
+            </button>
+            <button type="button" id="btnNuevaSubcategoria" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 transition">
+              <i class="fas fa-plus"></i> Nueva Subcategoría
+            </button>
+          </div>
+        </div>
+        <div id="subcategoriasSeleccionadas" class="flex flex-wrap mt-2"></div>
+        <div id="panelSubcategorias" class="mt-3 hidden">
+          <div id="opcionesSubcategorias" class="grid grid-cols-2 gap-2 bg-white border border-gray-200 p-4 rounded shadow"></div>
+        </div>
+      </div>
+
+      <div><label for="whatsapp">Whatsapp</label><input id="whatsapp" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="facebook">Facebook</label><input id="facebook" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="instagram">Instagram</label><input id="instagram" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="tiktok">TikTok</label><input id="tiktok" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="webpage">Webpage</label><input id="webpage" class="w-full border rounded px-3 py-2 text-sm" /></div>
+
+      <div class="md:col-span-2">
+        <label for="descripcion">Descripción</label>
+        <textarea id="descripcion" rows="4" class="w-full border rounded px-3 py-2 text-sm"></textarea>
+      </div>
+
+      <!-- Plan del comercio (admin) -->
+      <div class="md:col-span-2 bg-white border rounded p-4 shadow-sm" id="adminPlanSection">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800">Plan del comercio</h3>
+            <p id="planActualAdmin" class="text-sm text-gray-600">Cargando plan...</p>
+          </div>
+          <span class="text-xs text-gray-400">Solo administradores</span>
+        </div>
+        <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <div class="md:col-span-2">
+            <label for="selectPlanAdmin">Selecciona un plan</label>
+            <select id="selectPlanAdmin" class="w-full border rounded px-3 py-2 text-sm"></select>
+            <p id="planPreviewAdmin" class="text-xs text-gray-500 mt-1"></p>
+          </div>
+          <button id="btnActualizarPlanAdmin" type="button" class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 w-full">
+            Actualizar Plan
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Logo -->
+    <div id="logo-actual" class="mb-4">
+      <label class="block mb-1 font-medium">Logo actual:</label>
+      <img id="preview-logo" class="w-32 h-32 object-contain border rounded bg-white p-1 shadow" />
+      <button type="button" id="btn-eliminar-logo" class="text-red-500 text-sm mt-2 block">Eliminar logo</button>
+    </div>
+
+    <div class="mb-4">
+      <label for="nuevo-logo" class="block mb-1 font-medium">Nuevo logo:</label>
+      <input type="file" id="nuevo-logo" accept="image/*" />
+    </div>
+
+    <!-- Duplicar logo -->
+    <button id="btnDuplicarLogoSucursal" class="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700">
+      Duplicar logo de otra sucursal
+    </button>
+
+    <!-- Modal duplicar logo -->
+    <div id="modalDuplicarLogo" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
+        <h3 class="text-lg font-semibold mb-4 text-center">Seleccionar sucursal</h3>
+        <select id="selectSucursalLogo" class="w-full border rounded px-3 py-2 mb-4">
+          <option value="">Selecciona una sucursal...</option>
+        </select>
+        <div class="flex justify-end gap-2">
+          <button id="btnCancelarDuplicado" class="px-3 py-1.5 bg-gray-300 rounded hover:bg-gray-400">Cancelar</button>
+          <button id="btnConfirmarDuplicado" class="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700">Duplicar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Portada -->
+    <div class="mt-8">
+      <h3 class="text-lg font-semibold">Imagen de Portada</h3>
+      <img id="portadaPreview" class="w-full h-48 object-cover rounded border mt-2" />
+      <button id="eliminarPortada" class="mt-2 text-sm text-red-600">Eliminar Portada</button>
+    </div>
+
+    <!-- Galería -->
+    <div id="galeria-comercio" class="grid grid-cols-2 md:grid-cols-4 gap-4 my-4"></div>
+    <div class="my-4">
+      <label class="block mb-1 font-medium">Subir nueva imagen:</label>
+      <input type="file" id="nueva-imagen-galeria" accept="image/*" multiple />
+      <button id="btn-subir-imagen" class="mt-2 px-4 py-1 bg-green-600 text-white rounded">Subir Imagen</button>
+    </div>
+
+    <button id="btnDuplicarGaleria" class="hidden mt-2 px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">
+      Duplicar galería del comercio principal
+    </button>
+
+    <!-- Horarios -->
+    <div class="mt-8">
+      <h3 class="text-lg font-semibold">Horarios</h3>
+      <div id="horariosContainer" class="space-y-2"></div>
+    </div>
+
+    <!-- Feriados -->
+    <div class="mt-6">
+      <h3 class="text-lg font-semibold mb-2">Feriados</h3>
+      <div id="feriadosContainer" class="flex flex-col gap-2"></div>
+      <button id="btn-añadir-feriado" class="mt-2 bg-blue-600 text-white px-4 py-1 rounded">Añadir Feriado</button>
+    </div>
+
+    <!-- Amenidades -->
+    <div class="mt-8">
+      <h3 class="text-lg font-semibold">Amenidades</h3>
+      <div id="amenidadesContainer" class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2"></div>
+      <button id="nuevaAmenidadBtn" class="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Añadir nueva amenidad</button>
+      <div id="nuevaAmenidadForm" class="mt-4 hidden">
+        <input type="text" id="nuevoNombreAmenidad" placeholder="Nombre de la amenidad" class="border px-2 py-1 rounded w-full mb-2">
+        <input type="text" id="nuevoIconoAmenidad" placeholder="Clase de ícono (ej: fa-solid fa-star)" class="border px-2 py-1 rounded w-full mb-2">
+        <button id="agregarAmenidad" class="bg-blue-500 text-white px-4 py-1 rounded">Añadir nueva amenidad</button>
+      </div>
+    </div>
+
+    <!-- Colores -->
+    <div class="mt-8 grid grid-cols-2 gap-4">
+      <div>
+        <label for="colorPrimario">Color Primario</label>
+        <input type="color" id="colorPrimario" class="w-full h-10 rounded border border-gray-300" />
+      </div>
+      <div>
+        <label for="colorSecundario">Color Secundario</label>
+        <input type="color" id="colorSecundario" class="w-full h-10 rounded border border-gray-300" />
+      </div>
+    </div>
+
+    <br>
+
+    <!-- Botones extra -->
+    <div class="flex flex-col sm:flex-row sm:flex-wrap gap-3 mt-6 mb-2">
+      <a id="btnAdminMenu" href="#" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium shadow block text-center sm:inline-flex sm:items-center sm:justify-center">
+        Administrar Menú
+      </a>
+      <a id="btnAdministrarEspeciales" href="#" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition shadow">
+        🥘 Administrar Almuerzos y Happy Hours
+      </a>
+    </div>
+    <button id="btn-guardar" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded">Guardar Cambios</button>
+  </div>
+</main>
+
+<div id="adminModalRoot"></div>
+
+<!-- Importación de módulos -->
+<script type="module" src="./shared/supabaseClient.js"></script>
+<script type="module" src="./js/mainAdmin.js"></script>
+<script type="module" src="./js/adminLogoComercio.js"></script>
+<script type="module" src="./js/adminGaleriaComercio.js"></script>
+<script type="module" src="./js/adminHorarioComercio.js"></script>
+<script type="module" src="./js/adminFeriadosComercio.js"></script>
+<script type="module" src="./js/adminAmenidadesComercio.js"></script>
+<script type="module" src="./js/adminCategoriasModal.js"></script>
+<script type="module" src="./js/adminCategoriasComercio.js"></script>
+<script type="module" src="./js/botonAdminMenu.js"></script>
+<script type="module" src="./js/botonEspeciales.js"></script>
+<script type="module" src="./js/adminSucursalesComercio.js"></script>
+<script type="module" src="./js/adminEditarComercio.js"></script>
+<script type="module" src="./js/adminGuardarCambios.js"></script>
+
+
+<!-- ✅ Bloque final: carga logo, portada y horarios -->
+<script type="module">
+  import { supabase, idComercio } from './shared/supabaseClient.js';
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🟡 Iniciando carga visual de comercio con ID:', idComercio);
+
+    if (!idComercio) {
+      console.error('❌ idComercio no encontrado en la URL.');
+      return;
+    }
+
+    // 🖼️ Cargar logo
+    try {
+      const { data: logoData, error: logoError } = await supabase
+        .from('imagenesComercios')
+        .select('imagen')
+        .eq('idComercio', idComercio)
+        .eq('logo', true)
+        .maybeSingle();
+
+      console.log('📸 Logo:', logoData);
+
+      if (!logoError && logoData?.imagen) {
+        const url = supabase.storage.from('galeriacomercios').getPublicUrl(logoData.imagen).data.publicUrl;
+        document.getElementById('preview-logo').src = url;
+      }
+    } catch (err) {
+      console.error('❌ Error cargando logo:', err);
+    }
+
+    // 🖼️ Cargar portada
+    try {
+      const { data: portadaData, error: portadaError } = await supabase
+        .from('imagenesComercios')
+        .select('imagen')
+        .eq('idComercio', idComercio)
+        .eq('portada', true)
+        .maybeSingle();
+
+      console.log('🏞️ Portada:', portadaData);
+
+      if (!portadaError && portadaData?.imagen) {
+        const url = supabase.storage.from('galeriacomercios').getPublicUrl(portadaData.imagen).data.publicUrl;
+        document.getElementById('portadaPreview').src = url;
+      }
+    } catch (err) {
+      console.error('❌ Error cargando portada:', err);
+    }
+
+    // ⏰ Cargar horarios
+    try {
+      const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const cont = document.getElementById('horariosContainer');
+      cont.innerHTML = '';
+
+      const { data: horarios, error: errHor } = await supabase
+        .from('Horarios')
+        .select('*')
+        .eq('idComercio', idComercio);
+
+      console.log('🕒 Horarios:', horarios);
+
+      if (errHor) {
+        cont.innerHTML = '<p class="text-red-600">Error al cargar horarios.</p>';
+        console.error(errHor);
+        return;
+      }
+
+      dias.forEach((dia, i) => {
+        const row = horarios.find(h => h.diaSemana === i) || {};
+        const apertura = row.apertura?.substring(0, 5) || '';
+        const cierre = row.cierre?.substring(0, 5) || '';
+        const cerrado = row.cerrado || false;
+
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-4';
+        div.innerHTML = `
+          <label class="w-24 font-medium">${dia}</label>
+          <input type="time" class="border rounded px-2 py-1 apertura" value="${apertura}" ${cerrado ? 'disabled' : ''}>
+          <span>a</span>
+          <input type="time" class="border rounded px-2 py-1 cierre" value="${cierre}" ${cerrado ? 'disabled' : ''}>
+          <label class="flex items-center gap-1 text-sm">
+            <input type="checkbox" class="cerrado" ${cerrado ? 'checked' : ''}> Cerrado
+          </label>
+        `;
+        const cb = div.querySelector('.cerrado');
+        const ap = div.querySelector('.apertura');
+        const ci = div.querySelector('.cierre');
+        cb.addEventListener('change', () => {
+          ap.disabled = cb.checked;
+          ci.disabled = cb.checked;
+        });
+        cont.appendChild(div);
+      });
+    } catch (err) {
+      console.error('❌ Error cargando horarios:', err);
+    }
+  });
+
+  // Toggle acordeones de categorías
+  const toggleCategorias = document.getElementById('toggleCategorias');
+  const toggleSubcategorias = document.getElementById('toggleSubcategorias');
+  const panelCategorias = document.getElementById('panelCategorias');
+  const panelSubcategorias = document.getElementById('panelSubcategorias');
+
+  const togglePanel = (btn, panel) => {
+    if (!btn || !panel) return;
+    btn.addEventListener('click', () => {
+      panel.classList.toggle('hidden');
+      const icon = btn.querySelector('i');
+      if (icon) icon.classList.toggle('rotate-180');
+    });
+  };
+
+  togglePanel(toggleCategorias, panelCategorias);
+  togglePanel(toggleSubcategorias, panelSubcategorias);
+
+</script>
+
+</body>
+</html>

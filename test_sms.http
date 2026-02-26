@@ -1,0 +1,8 @@
+POST https://zgjaxanqfkweslkxtayt.supabase.co/functions/v1/enviar_sms
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c
+Content-Type: application/json
+
+{
+  "telefono": "+17873292399",
+  "mensaje": "Hola Peter, prueba de SMS desde En Pe Erre"
+}

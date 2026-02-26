@@ -1,0 +1,47 @@
+/* Galeria Nuevo Comercio */
+
+.preview-img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+@keyframes logoTraverse {
+  0% {
+    transform: translate3d(-65vw, 0, 0) rotate(-90deg) scale(0.9);
+    opacity: 0;
+  }
+  15% {
+    transform: translate3d(-35vw, 0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate3d(0, 0, 0) rotate(360deg) scale(1.05);
+    opacity: 1;
+  }
+  85% {
+    transform: translate3d(35vw, 0, 0) rotate(540deg) scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(65vw, 0, 0) rotate(720deg) scale(0.92);
+    opacity: 0;
+  }
+}
+
+.animate-logo {
+  animation: logoTraverse 3.75s cubic-bezier(0.6, 0.05, 0.4, 0.95) infinite;
+}
+
+#gridMunicipios {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+#gridMunicipios > *:nth-last-child(-n+5):nth-child(n+11) {
+  justify-self: center;
+}
+
+

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Administrar Paquetes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+    input, select, textarea { font-size: 16px; }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div id="headerContainer"></div>
+  <script type="module">
+    import { loadAdminHeader } from './js/loadAdminHeader.js';
+    loadAdminHeader();
+  </script>
+
+  <main class="flex-1 p-6 lg:p-8">
+    <div class="max-w-6xl mx-auto space-y-6">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold text-[#23b4e9]">Administrar Paquetes</h1>
+          <p class="text-sm text-gray-500">Crea, edita y ordena los planes visibles para los comercios.</p>
+        </div>
+        <div id="estadoPlanes" class="text-sm text-gray-500"></div>
+      </div>
+
+      <section class="bg-white rounded-xl shadow-sm border border-gray-100/60 p-6 space-y-4">
+        <h2 class="text-lg font-semibold text-gray-900">Plan</h2>
+        <form id="planForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input type="hidden" id="planId" />
+
+          <label class="block">
+            <span class="text-sm font-semibold text-gray-700">Nombre</span>
+            <input id="planNombre" class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="Findixi Regular" required />
+          </label>
+
+          <label class="block">
+            <span class="text-sm font-semibold text-gray-700">Precio mensual</span>
+            <input id="planPrecio" type="number" step="0.01" min="0" class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="65" />
+          </label>
+
+          <label class="block">
+            <span class="text-sm font-semibold text-gray-700">Nivel</span>
+            <select id="planNivel" class="mt-1 w-full border rounded-lg px-3 py-2">
+              <option value="0">0 - Basic</option>
+              <option value="1">1 - Regular</option>
+              <option value="2">2 - Plus</option>
+              <option value="3">3 - Premium</option>
+            </select>
+          </label>
+
+          <label class="block">
+            <span class="text-sm font-semibold text-gray-700">Orden</span>
+            <input id="planOrden" type="number" min="0" class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="1" />
+          </label>
+
+          <label class="block md:col-span-2">
+            <span class="text-sm font-semibold text-gray-700">Descripción corta</span>
+            <input id="planDescripcion" class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="Plan mensual" />
+          </label>
+
+          <label class="block md:col-span-2">
+            <span class="text-sm font-semibold text-gray-700">Features (una por línea)</span>
+            <textarea id="planFeatures" rows="4" class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="Galería\nRedes sociales\nDescripción"></textarea>
+          </label>
+
+          <label class="inline-flex items-center gap-2">
+            <input id="planActivo" type="checkbox" class="h-4 w-4" checked />
+            <span class="text-sm font-semibold text-gray-700">Activo</span>
+          </label>
+
+          <div class="flex items-center gap-2 md:col-span-2">
+            <button type="submit" class="px-4 py-2 bg-cyan-600 text-white rounded-lg font-semibold hover:bg-cyan-700">
+              Guardar plan
+            </button>
+            <button type="button" id="cancelarEdicion" class="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-100">
+              Cancelar
+            </button>
+            <span id="formMensaje" class="text-sm text-gray-500"></span>
+          </div>
+        </form>
+      </section>
+
+      <section class="bg-white rounded-xl shadow-sm border border-gray-100/60 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-900">Planes activos</h2>
+          <button id="refreshPlanes" class="text-sm text-cyan-700 font-semibold">Refrescar</button>
+        </div>
+        <div id="planesLista" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        <p id="planesEmpty" class="text-center text-gray-500 mt-4 hidden">No hay planes registrados.</p>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="./js/adminPaquetes.js"></script>
+</body>
+</html>

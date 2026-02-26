@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cerca de mí</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <script type="module" src="./js/i18n.js"></script>
+</head>
+
+<body class="bg-[#121212]" style="font-family: 'Kanit', sans-serif;">
+
+<div class="min-h-screen flex justify-center bg-[#121212]">
+  <div class="w-full max-w-md bg-white text-gray-800 h-screen flex flex-col">
+
+  <div id="headerContainer" class="h-16 shrink-0 z-40"></div>
+
+<section
+  class="px-4 md:px-6 py-3 bg-white text-center border-b shadow space-y-4"
+  style="position: sticky; top: 0; z-index: 1000;"
+>
+
+  <h2 class="text-2xl font-medium mb-4" data-i18n="cerca.title">COMERCIOS CERCA DE MI</h2>
+
+<div class="mb-3">
+  <label class="flex items-center gap-2 border border-gray-200 rounded-xl shadow-sm px-3 py-2 bg-white focus-within:ring-2 focus-within:ring-blue-500 w-full">
+    <i class="fas fa-search text-gray-400"></i>
+    <input
+      id="searchNombre"
+      type="text"
+      placeholder="Buscar comercios o descripciones"
+      data-i18n-placeholder="cerca.placeholder"
+      class="flex-1 text-sm outline-none bg-transparent"
+    />
+  </label>
+</div>
+
+<div class="flex flex-row items-center gap-3 w-full mb-3">
+
+  <select
+    id="filtroCategoria"
+    class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white shadow-sm 
+           focus:ring-2 focus:ring-[#3ea6c4] focus:outline-none"
+  >
+    <option value="" data-i18n="cerca.categoriasTodas">Todas las categorías</option>
+  </select>
+
+  <button
+    id="btnToggleFiltros"
+    type="button"
+    class="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 
+           text-gray-800 text-sm font-medium px-4 py-2 rounded-xl border 
+           border-gray-200 shadow-sm transition whitespace-nowrap"
+  >
+    <i class="fas fa-sliders-h"></i>
+    <span data-i18n="cerca.filtros">Filtros</span>
+  </button>
+</div>
+
+  <div id="panelFiltros" class="mt-4 space-y-4 hidden">
+    <div class="flex flex-wrap items-center justify-center gap-6 text-sm">
+      <label class="flex items-center gap-2 cursor-pointer select-none">
+        <span class="relative inline-flex items-center">
+          <input id="filtroAbierto" type="checkbox" class="sr-only peer" />
+          <span class="w-11 h-6 bg-gray-300 rounded-full transition-colors peer-checked:bg-green-500"></span>
+          <span class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></span>
+        </span>
+        <span class="font-medium text-gray-800" data-i18n="cerca.abierto">Abierto ahora</span>
+      </label>
+
+      <label class="flex items-center gap-2 cursor-pointer select-none">
+        <span class="relative inline-flex items-center">
+          <input id="filtroFavoritos" type="checkbox" class="sr-only peer" />
+          <span class="w-11 h-6 bg-gray-300 rounded-full transition-colors peer-checked:bg-purple-600"></span>
+          <span class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></span>
+        </span>
+        <span class="font-medium text-gray-800" data-i18n="cerca.favoritos">Mis Favoritos</span>
+      </label>
+    </div>
+
+    <div class="flex flex-col items-center justify-center space-y-2">
+      <p class="text-xs text-gray-500 text-center" data-i18n="cerca.ajusteRadio">
+        Ajusta el radio para ampliar o reducir el perímetro de búsqueda.
+      </p>
+      <div class="flex items-center justify-center gap-3">
+        <label for="radioKm" class="text-sm font-medium" data-i18n="cerca.radio">Radio (mi):</label>
+        <input
+          id="radioKm"
+          type="range"
+          min="1"
+          max="100"
+          step="1"
+          value="5"
+          class="w-60 accent-[#3ea6c4]"
+        />
+        <span id="radioKmLabel" class="text-sm">5 mi</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+  <main class="flex-1 relative">
+    <div id="map" class="absolute inset-0 w-full h-full pb-1 z-0"></div>
+  </main>
+
+  <div id="loader" class="fixed inset-0 hidden items-center justify-center z-40">
+    <img
+      src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png"
+      alt="Cargando"
+      class="w-16 h-16 animate-spin"
+    />
+  </div>
+
+  <div id="footerContainer" class="h-16 shrink-0"></div>
+
+  <script src="https://kit.fontawesome.com/a2e0e6ad5b.js" crossorigin="anonymous"></script>
+  <script type="module" src="./js/header.js"></script>
+  <script type="module" src="./js/footer.js"></script>
+  <script type="module" src="./js/cercaDeMi.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.initI18n) window.initI18n();
+    });
+  </script>
+
+  <style>
+  /* === Logo en el pin === */
+  .marker-wrapper {
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
+    background: white;
+  }
+
+  .marker-logo img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid white;
+  }
+
+  /* === Popup limpio sin márgenes extras === */
+  .leaflet-popup-content {
+    margin: 0 !important;
+    width: auto !important;
+  }
+
+  .leaflet-popup-content-wrapper {
+    border-radius: 20px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .leaflet-popup-tip-container {
+    display: none !important; /* ocultar la flechita del popup */
+  }
+
+  /* === Tarjeta interna === */
+  .popup-comercio {
+    width: 280px; /* igual al ancho del card original */
+    border-radius: 20px;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .popup-comercio .card-comercio {
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 20px;
+  }
+
+ /* 🔧 Corrige el botón de teléfono dentro del popup */
+.leaflet-popup-content .card-comercio a[href^="tel:"],
+.leaflet-popup-content .card-comercio button[href^="tel:"] {
+  color: #ffffff !important;
+  background-color: #dc2626 !important; /* rojo igual al del listado */
+  border: none !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  padding: 10px 22px !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  transition: opacity 0.2s ease !important;
+  line-height: 1 !important;
+}
+
+/* 🔹 Asegura color blanco en texto e ícono dentro del botón */
+.leaflet-popup-content .card-comercio a[href^="tel:"] *,
+.leaflet-popup-content .card-comercio a[href^="tel:"] i,
+.leaflet-popup-content .card-comercio a[href^="tel:"] span {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+/* 🔹 Efecto hover */
+.leaflet-popup-content .card-comercio a[href^="tel:"]:hover {
+  opacity: 0.9 !important;
+}
+</style>
+  <script src="js/bloquearPantalla.js"></script>
+
+</div>
+</div>
+  <script type="module" src="js/introSplash.js"></script>
+</body>
+</html>

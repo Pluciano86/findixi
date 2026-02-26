@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perfil de Usuario</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-800 text-white">
+
+  <!-- Header y Sidebar -->
+  <div id="headerContainer"></div>
+  <script type="module">
+    import { loadAdminHeader } from './js/loadAdminHeader.js';
+    loadAdminHeader();
+  </script>
+
+  <!-- Contenido -->
+  <main class="px-4 lg:px-6 py-8 max-w-5xl mx-auto space-y-6">
+    <div class="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+      <div class="flex flex-col md:flex-row md:items-center gap-6">
+        <div class="relative self-center">
+          <div class="absolute inset-0 blur-2xl bg-cyan-400/20 rounded-full"></div>
+          <img id="user-foto" src="https://placehold.co/120x120" 
+               alt="Foto usuario" 
+               class="relative w-28 h-28 rounded-full object-cover border-4 border-white/20 shadow-lg" />
+        </div>
+        <div class="flex-1 text-center md:text-left space-y-1">
+          <h1 id="user-nombre" class="text-2xl font-semibold text-white">Nombre Apellido</h1>
+          <p id="user-email" class="text-sm text-gray-200">email@ejemplo.com</p>
+          <p id="user-municipio" class="text-sm text-gray-300">Municipio</p>
+          <p id="user-creado" class="text-xs text-gray-400 uppercase tracking-wide">Creado: --</p>
+        </div>
+        <div class="flex flex-col gap-3 w-full md:w-auto">
+          <label class="w-full inline-flex items-center justify-center gap-3 text-white font-semibold cursor-pointer py-2">
+            <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo%20UP_FondoOscuro.png" alt="UP" class="h-7 w-auto">
+            <span>Membresía Up</span>
+            <input id="toggleMembresiaUp" type="checkbox" class="h-5 w-5 accent-cyan-500">
+          </label>
+          <button id="btnEditarUsuario" 
+                  class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow">
+            <i class="fa-solid fa-pen"></i> Editar Usuario
+          </button>
+          <button id="btnAsignarComercio" 
+                  class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white font-semibold shadow">
+            <i class="fa-solid fa-plus"></i> Asignar a un Comercio
+          </button>
+          <button id="btnEliminarUsuario" 
+                  class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold shadow">
+            <i class="fa-solid fa-user-xmark"></i> Eliminar Usuario
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="comercios-card" class="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl hidden">
+      <div class="flex items-center justify-between gap-2 mb-4">
+        <div>
+          <p class="text-xs uppercase tracking-[0.25em] text-gray-400">Asignaciones</p>
+          <h2 class="text-xl font-semibold text-white">Comercios asignados</h2>
+        </div>
+      </div>
+      <div id="comercios-list" class="space-y-3">
+        <!-- Dinámico -->
+      </div>
+    </div>
+
+    <div class="space-y-3">
+      <button data-panel="fav-comercios" class="accordion-btn w-full flex justify-between items-center px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white">
+        <span class="font-semibold">Comercios favoritos</span>
+        <i class="fa-solid fa-chevron-down transition-transform"></i>
+      </button>
+      <div id="fav-comercios" class="hidden bg-white/5 border border-white/10 rounded-xl p-4 space-y-3"></div>
+
+      <button data-panel="fav-playas" class="accordion-btn w-full flex justify-between items-center px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white">
+        <span class="font-semibold">Playas favoritas</span>
+        <i class="fa-solid fa-chevron-down transition-transform"></i>
+      </button>
+      <div id="fav-playas" class="hidden bg-white/5 border border-white/10 rounded-xl p-4 space-y-3"></div>
+
+      <button data-panel="fav-lugares" class="accordion-btn w-full flex justify-between items-center px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white">
+        <span class="font-semibold">Lugares favoritos</span>
+        <i class="fa-solid fa-chevron-down transition-transform"></i>
+      </button>
+      <div id="fav-lugares" class="hidden bg-white/5 border border-white/10 rounded-xl p-4 space-y-3"></div>
+    </div>
+  </main>
+
+  <!-- Modal Asignar Comercio -->
+  <div id="modalComercios" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg w-[90%] max-w-xl max-h-[80vh] flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900">Asignar como admin de un comercio</h3>
+          <p class="text-sm text-gray-500">Busca un comercio activo y asígnalo a este usuario.</p>
+        </div>
+        <button id="btnCerrarModal" class="text-gray-500 hover:text-gray-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="p-4 space-y-3 flex-1 flex flex-col">
+        <input id="searchComercio" type="text" placeholder="Buscar comercio por nombre" class="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-400">
+        <div id="listaComercios" class="flex-1 overflow-y-auto divide-y border rounded bg-gray-50"></div>
+        <p id="estadoComercios" class="text-sm text-gray-500 hidden"></p>
+      </div>
+      <div class="px-4 py-3 border-t flex justify-end gap-2">
+        <button id="btnCancelarAsignacion" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm">Cancelar</button>
+        <button id="btnConfirmarAsignacion" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm">Asignar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Usuario -->
+  <div id="modalEditarUsuario" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50">
+    <div class="bg-slate-900 text-white border border-white/10 rounded-2xl shadow-2xl w-[95%] max-w-2xl max-h-[85vh] overflow-auto p-6">
+      <div class="flex items-start justify-between mb-4 gap-3">
+        <div class="flex items-center gap-3">
+          <img id="editFotoPreview" src="https://placehold.co/80x80?text=User" class="w-14 h-14 rounded-full object-cover border border-white/20 bg-white/20" alt="Foto usuario">
+          <div>
+            <p class="text-xs uppercase tracking-[0.25em] text-gray-400">Perfil</p>
+            <h3 class="text-xl font-semibold">Editar usuario</h3>
+          </div>
+        </div>
+        <button id="btnCerrarEditar" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <label class="text-sm text-gray-200">Nombre
+          <input id="editNombre" type="text" class="w-full mt-1 border border-white/15 bg-white/5 text-white rounded px-3 py-2 focus:outline-none focus:border-cyan-400" />
+        </label>
+        <label class="text-sm text-gray-200">Apellido
+          <input id="editApellido" type="text" class="w-full mt-1 border border-white/15 bg-white/5 text-white rounded px-3 py-2 focus:outline-none focus:border-cyan-400" />
+        </label>
+        <label class="text-sm text-gray-200">Email
+          <input id="editEmail" type="email" class="w-full mt-1 border border-white/15 bg-white/5 text-white rounded px-3 py-2 focus:outline-none focus:border-cyan-400" />
+        </label>
+        <label class="text-sm text-gray-200">Teléfono
+          <input id="editTelefono" type="tel" class="w-full mt-1 border border-white/15 bg-white/5 text-white rounded px-3 py-2 focus:outline-none focus:border-cyan-400" />
+        </label>
+        <label class="text-sm text-gray-200">Municipio
+          <select id="editMunicipio" class="w-full mt-1 border border-white/15 bg-white/5 text-white rounded px-3 py-2 focus:outline-none focus:border-cyan-400">
+            <option value="">Selecciona Municipio</option>
+          </select>
+        </label>
+        <label class="text-sm text-gray-200">Imagen (URL)
+          <input id="editImagen" type="url" class="w-full mt-1 border border-white/15 bg-white/5 text-white rounded px-3 py-2 focus:outline-none focus:border-cyan-400" />
+        </label>
+      </div>
+      <div class="flex justify-end gap-2 mt-6">
+        <button id="btnCancelarEditar" class="px-4 py-2 rounded bg-white/10 border border-white/15 text-white hover:bg-white/20">Cancelar</button>
+        <button id="btnGuardarEditar" class="px-4 py-2 rounded bg-cyan-500 text-white hover:bg-cyan-600">Guardar</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./js/usuarioPerfil.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# Local Netlify folder
+.netlify
+.netlify/
+**/.netlify/
+public/.netlify/
+
+.env
+.env.local
+public/shared/localMapsConfig.js

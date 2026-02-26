@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acceso | Admin ENPR</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            oscuro: '#0e3652',
+            celeste: '#3ea6c4'
+          },
+          fontFamily: {
+            sans: ['Kanit', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+    input, button { font-size: 16px; }
+    @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+    @keyframes blink { 0% { opacity: 0.5; } 100% { opacity: 1; } }
+  </style>
+</head>
+<body class="min-h-screen bg-oscuro text-white flex flex-col items-center px-6 pt-12 pb-10">
+  <div id="globalLoader" class="fixed inset-0 bg-black/70 z-[9998] hidden flex items-center justify-center flex-col gap-4 transition-opacity duration-500 opacity-0">
+    <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Favicon.png" alt="Loader" class="w-20 h-20 md:w-24 md:h-24" style="animation: spin 1.5s linear infinite;">
+    <p class="text-white text-lg font-medium tracking-wide text-center px-4" style="animation: blink 1.5s ease-in-out infinite alternate;">Validando acceso...</p>
+  </div>
+
+  <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/logoFindixi.png" alt="Logo" class="w-48 mb-8">
+  <div class="w-full max-w-md bg-white/10 backdrop-blur rounded-2xl shadow-2xl p-8 space-y-6 border border-white/10">
+    <div class="text-center space-y-2">
+      <p class="text-xs uppercase tracking-[0.25em] text-blue-300">Panel Administrativo</p>
+      <h1 class="text-2xl font-bold">Inicia sesión</h1>
+      <p class="text-sm text-gray-200">Acceso exclusivo para administradores.</p>
+    </div>
+
+    <div class="space-y-4">
+      <label class="block text-sm text-gray-200">Correo electrónico
+        <input id="email" type="email" autocomplete="email" required class="w-full mt-1 px-3 py-2 rounded bg-white/15 border border-white/15 focus:outline-none focus:border-blue-400 text-white placeholder-gray-300" placeholder="admin@enpr.com">
+      </label>
+      <label class="block text-sm text-gray-200">Contraseña
+        <div class="relative mt-1">
+          <input id="password" type="password" autocomplete="current-password" required class="w-full px-3 py-2 rounded bg-white/15 border border-white/15 focus:outline-none focus:border-blue-400 text-white placeholder-gray-300 pr-10" placeholder="••••••••">
+          <button type="button" id="togglePassword" class="absolute inset-y-0 right-3 flex items-center text-gray-300 hover:text-white" aria-label="Mostrar u ocultar contraseña">
+            <i class="fa-solid fa-eye-slash"></i>
+          </button>
+        </div>
+      </label>
+      <button id="btnLogin" class="w-full bg-blue-600 hover:bg-blue-700 transition py-2.5 rounded font-semibold shadow-md">Entrar</button>
+      <p id="mensaje" class="text-center text-sm text-red-300 hidden"></p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../shared/supabaseClient.js';
+
+    const email = document.getElementById('email');
+    const password = document.getElementById('password');
+    const btnLogin = document.getElementById('btnLogin');
+    const mensaje = document.getElementById('mensaje');
+    const togglePassword = document.getElementById('togglePassword');
+
+    function setMsg(texto, tipo = 'error') {
+      mensaje.textContent = texto;
+      mensaje.classList.remove('hidden');
+      mensaje.classList.toggle('text-red-300', tipo === 'error');
+      mensaje.classList.toggle('text-green-200', tipo === 'ok');
+    }
+
+    const showLoader = () => {
+      const loader = document.getElementById('globalLoader');
+      if (!loader) return;
+      loader.classList.remove('hidden');
+      requestAnimationFrame(() => (loader.style.opacity = '1'));
+    };
+    const hideLoader = () => {
+      const loader = document.getElementById('globalLoader');
+      if (!loader) return;
+      loader.style.opacity = '0';
+      setTimeout(() => loader.classList.add('hidden'), 300);
+    };
+
+    async function validarRolAdmin(user) {
+      const rolMeta = user?.user_metadata?.rol_app;
+      if (rolMeta === 'app_admin') return true;
+
+      // Consulta usuarios.id (PK vincula con auth.users.id)
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('rol_app')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.warn('Error consultando rol_app:', error);
+        return false;
+      }
+      return data?.rol_app === 'app_admin';
+    }
+
+    async function handleLogin() {
+      setMsg('');
+      btnLogin.disabled = true;
+      btnLogin.classList.add('opacity-70', 'cursor-not-allowed');
+      const correo = email.value.trim();
+      const pass = password.value.trim();
+      if (!correo || !pass) {
+        setMsg('Ingresa correo y contraseña');
+        btnLogin.disabled = false;
+        btnLogin.classList.remove('opacity-70', 'cursor-not-allowed');
+        return;
+      }
+
+      const { data: signData, error: signError } = await supabase.auth.signInWithPassword({ email: correo, password: pass });
+      if (signError || !signData?.user) {
+        setMsg(signError?.message || 'Credenciales inválidas');
+        btnLogin.disabled = false;
+        btnLogin.classList.remove('opacity-70', 'cursor-not-allowed');
+        return;
+      }
+
+      showLoader();
+      // Refrescar user desde auth para asegurar consistencia
+      const { data: sessionUser } = await supabase.auth.getUser();
+      const user = sessionUser?.user || signData.user;
+
+      const autorizado = user ? await validarRolAdmin(user) : false;
+      if (!autorizado) {
+        setMsg('No autorizado');
+        await supabase.auth.signOut();
+        btnLogin.disabled = false;
+        btnLogin.classList.remove('opacity-70', 'cursor-not-allowed');
+        hideLoader();
+        return;
+      }
+
+      setMsg('Acceso concedido', 'ok');
+      window.location.href = './index.html';
+    }
+
+    btnLogin.addEventListener('click', handleLogin);
+    password.addEventListener('keyup', (e) => e.key === 'Enter' && handleLogin());
+    togglePassword?.addEventListener('click', () => {
+      const isHidden = password.type === 'password';
+      password.type = isHidden ? 'text' : 'password';
+      togglePassword.querySelector('i').className = isHidden ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+    });
+  </script>
+</body>
+</html>

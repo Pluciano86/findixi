@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Descubre por Área</title> 
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script type="module" src="./js/i18n.js"></script>
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+    #modalComida {
+    backdrop-filter: blur(4px);
+    transition: opacity 0.2s ease;
+  }
+    
+  </style>
+</head>
+<body class="bg-[#121212] text-gray-800">
+
+<div class="min-h-screen flex justify-center bg-[#121212]">
+  <div class="w-full max-w-md bg-white">
+
+  <!-- Header -->
+  <div id="headerContainer"></div>
+  <script type="module" src="js/header.js"></script>
+
+  <header class="bg-white shadow px-4 py-4 sticky top-0 z-10 flex items-center gap-3">
+    <h1 class="text-2xl text-center font-bold flex-1" data-i18n="area.title">Descubre por Área</h1>
+  </header>
+
+  <section class="py-6">
+    <h2 class="text-xl font-normal text-center mb-4" data-i18n="area.subtitle">Municipios del Área</h2>
+    <div class="flex justify-center">
+      <div class="relative inline-block w-64">
+        <select id="dropdownMunicipios"
+          class="w-full appearance-none border border-gray-300 rounded-xl px-4 py-2 text-gray-700 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#3ea6c4] focus:border-[#3ea6c4]">
+          <option value="" data-i18n="area.selectMunicipio">Selecciona un municipio...</option>
+        </select>
+        <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+          <i class="fas fa-chevron-down text-sm"></i>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="volverAreaContainer" class="text-center mt-4"></div>
+
+  <main class="text-center mb-36">
+
+
+    <!-- Lugares Turísticos -->
+<section class="text-center my-8 px-4 w-full">
+  <h2 class="text-2xl font-medium mb-4" data-i18n="area.lugares">LUGARES PA' VISITAR</h2>
+  <div id="lugaresCarousel"></div>
+</section>
+
+
+
+<!-- Carrusel de Eventos -->
+<section class="text-center my-6 px-4">
+  <h2 class="text-2xl font-medium mb-4" data-i18n="area.eventos">PRÓXIMOS EVENTOS</h2>
+  <div id="eventosCarousel"></div>
+</section>
+
+<!-- SwiperJS CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
+<!-- SwiperJS JS -->
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+<!-- Render del Carrusel -->
+<script type="module">
+  import { renderEventosCarousel } from "./js/eventosCarousel.js";
+
+  document.addEventListener("DOMContentLoaded", () => {
+    renderEventosCarousel("eventosCarousel");
+  });
+</script>
+
+<!-- Carrusel de JANGUEO -->
+<section class="text-center my-8 px-4">
+  <h2 class="text-2xl font-medium mb-4" data-i18n="area.jangueo">Aquí hay Jangueo 🔥</h2>
+  <div id="jangueoCarousel"></div>
+</section>
+
+
+    <section id="cercanosComidaContainer" class="mt-8">
+      <h2 class="text-2xl mb-4" data-i18n="area.comida">¿HAMBRE? CHEQUEA ESTOS PLATOS 🤤</h2>
+      <div id="gridComida" class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-2 px-3 transition-transform duration-700 ease-in-out"></div>
+    </section>
+
+<div id="modalComida" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-lg w-[95%] max-w-md max-h-[85%] overflow-y-auto relative flex flex-col">
+    <div class="flex items-center justify-between px-4 py-2 bg-[#231F20] text-white rounded-t-lg sticky top-0 z-50">
+  <div class="flex-1 text-center">
+    <h2 class="text-xl font-medium" data-i18n="area.modalComida">Todos los lugares para comer</h2>
+  </div>
+  <button id="cerrarModalComida" class="text-white hover:text-gray-300 text-4xl leading-none ml-2">&times;</button>
+</div>
+    <div id="gridComidaModal" class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-3 p-4"></div>
+  </div>
+</div>
+
+
+
+</main>
+
+<!-- Modal de Evento -->
+<div id="modalEvento" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[9999] hidden px-4 py-6">
+  <div class="bg-white rounded-lg shadow-lg w-[95%] h-[85vh] overflow-y-auto relative">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 py-2 bg-[#231F20] text-white rounded-t-lg sticky top-0 z-50">
+      <h2 id="modalTitulo" class="flex-1 text-center text-2xl font-medium"></h2>
+      <button id="cerrarModal"
+              class="text-white hover:text-gray-300 text-5xl font-extralight leading-none ml-2">&times;</button>
+    </div>
+
+    <!-- Contenido -->
+    <div class="flex-1 overflow-y-auto px-4 pb-6 pt-4 space-y-2 text-center">
+      <div class="w-full overflow-hidden rounded-lg bg-gray-200 aspect-[7/5]">
+        <img id="modalImagen" src="" alt="Imagen evento" class="w-full h-full object-contain" />
+      </div>
+
+        <p id="modalDescripcion" class="text-sm text-justify text-gray-700 whitespace-pre-line"></p>
+
+      <div id="modalFechaPrincipal" class="text-2xl text-red-600 font-semibold leading-5 space-y-1"></div>
+      <div id="modalHoraPrincipal" class="text-2xl text-gray-600 font-medium"></div>
+
+      <button id="modalVerFechas" type="button"
+              class="text-gray-500 text-base font-medium underline hidden"></button>
+      <div id="modalFechasListado" class="hidden text-base text-gray-600 space-y-1"></div>
+
+      <div id="modalLugar" class="text-2xl font-semibold text-gray-700"></div>
+      <div id="modalDireccion" class="text-medium space-y-0 text-gray-500"></div>
+      <div id="modalCosto" class="text-3xl font-medium text-green-600"></div>
+
+      <a id="modalBoletos" href="#" target="_blank" rel="noopener noreferrer"
+         class="hidden inline-flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-full"
+         data-i18n="area.comprarBoletos">
+        Comprar boletos
+      </a>
+    </div>
+  </div>
+</div>
+
+  <!-- Footer -->
+  <div id="footerContainer"></div>
+  <script type="module" src="js/footer.js"></script>
+
+  <script type="module">
+  import { renderLugaresCarousel } from "./js/lugaresCarousel.js";
+  renderLugaresCarousel("lugaresCarousel");
+</script>
+
+  <!-- Scripts principales -->
+  <script type="module" src="./js/listadoArea.js"></script>
+  <script type="module" src="./js/gridComida.js"></script>
+  <script type="module" src="./js/cardLugarSlide.js"></script>
+  <script type="module" src="./js/cardPlayaSlide.js"></script>
+  <script type="module" src="./js/cardEventoSlide.js"></script>
+
+  <script src="js/bloquearPantalla.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.initI18n) window.initI18n();
+    });
+  </script>
+</div>
+</div>
+  <script type="module" src="js/introSplash.js"></script>
+</body>
+</html>

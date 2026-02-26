@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tarjeta Comercios Cercanos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+   <style>
+    body { font-family: 'Kanit', sans-serif; }
+  </style>
+  <script type="module" src="./js/i18n.js"></script>
+</head>
+<body class="bg-gray-100 p-4">
+
+  <h1 class="text-lg font-bold mb-3">Cercanos para comer</h1>
+
+  <div class="flex overflow-x-auto gap-4 pb-2">
+
+    <!-- Tarjeta individual -->
+    <div class="w-40 shrink-0 rounded-xl overflow-hidden shadow bg-white relative">
+    <!-- Imagen de fondo -->
+    <div class="w-full h-24 relative bg-gray-300">
+      <img src="https://placehold.co/200x120" alt="Portada" class="w-full h-full object-cover" />
+      
+      <!-- Logo circular -->
+      <div class="absolute -bottom-5 left-1/2 transform -translate-x-1/2 w-10 h-10 bg-black text-white text-xs flex items-center justify-center rounded-full border-2 border-white shadow">
+        logo
+      </div>
+    </div>
+
+    <!-- Contenido -->
+    <div class="pt-6 px-2 pb-2 text-center">
+      <h3 class="text-sm font-semibold truncate">La Esquinita del Sabor</h3>
+      <p class="text-xs text-gray-500 truncate">Foodtruck</p>
+      <div class="flex items-center justify-center gap-1 text-[11px] text-gray-600 mt-1">
+        <i class="fas fa-map-pin text-sky-600"></i>
+        <span>Ponce</span>
+        <i class="fas fa-car text-red-500 ml-2"></i>
+        <span>a 7 min</span>
+      </div>
+    </div>
+  </div>
+
+    <!-- Otra tarjeta de ejemplo -->
+    <div class="w-40 shrink-0 rounded-xl overflow-hidden shadow bg-white relative">
+    <!-- Imagen de fondo -->
+    <div class="w-full h-24 relative bg-gray-300">
+      <img src="https://placehold.co/200x120" alt="Portada" class="w-full h-full object-cover" />
+      
+      <!-- Logo circular -->
+      <div class="absolute -bottom-5 left-1/2 transform -translate-x-1/2 w-10 h-10 bg-black text-white text-xs flex items-center justify-center rounded-full border-2 border-white shadow">
+        logo
+      </div>
+    </div>
+
+    <!-- Contenido -->
+    <div class="pt-6 px-2 pb-2 text-center">
+      <h3 class="text-sm font-semibold truncate">La Esquinita del Sabor</h3>
+      <p class="text-xs text-gray-500 truncate">Foodtruck</p>
+      <div class="flex items-center justify-center gap-1 text-[11px] text-gray-600 mt-1">
+        <i class="fas fa-map-pin text-sky-600"></i>
+        <span>Ponce</span>
+        <i class="fas fa-car text-red-500 ml-2"></i>
+        <span>a 7 min</span>
+      </div>
+    </div>
+  </div>
+  </div>
+  <script src="js/bloquearPantalla.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => { if (window.initI18n) window.initI18n(); });
+</script>
+  <script type="module" src="js/introSplash.js"></script>
+</body>
+</html>

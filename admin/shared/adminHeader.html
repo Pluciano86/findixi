@@ -1,0 +1,48 @@
+<!-- Header fijo estilo app -->
+<header class="bg-[#231F20] text-white flex items-center justify-between p-4 shadow-md relative z-50">
+  <!-- Botón hamburguesa -->
+  <button id="menuToggle" class="text-white text-xl focus:outline-none lg:hidden">
+    <i class="fas fa-bars"></i>
+  </button>
+
+  <!-- Logo centrado -->
+  <a href="#" data-resolve-path="index.html" class="absolute left-1/2 transform -translate-x-1/2">
+    <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo_fondo%20oscuro.png"
+         alt="Logo" class="h-8 mx-auto">
+  </a>
+
+  <!-- Placeholder para balance -->
+  <div class="w-6 lg:hidden"></div>
+</header>
+
+<!-- Sidebar -->
+<aside id="adminSidebar"
+       class="fixed top-0 left-0 h-full w-64 bg-[#231F20] text-white shadow-lg transform -translate-x-full transition-transform duration-300 z-40 lg:translate-x-0">
+  <div class="p-4 border-b border-gray-700 font-semibold text-lg flex items-center justify-between">
+    <span>Panel de Admin</span>
+    <button id="btnUsuarios"
+            data-resolve-path="usuarios.html"
+            data-resolve-assign="location"
+            class="text-sm px-3 py-1 bg-yellow-400 text-[#231F20] rounded-md hover:bg-yellow-300 transition">
+      Usuarios
+    </button>
+  </div>
+  <nav class="flex flex-col p-4 space-y-3 text-base">
+    <a href="#" data-resolve-path="index.html" class="hover:text-yellow-400 transition">🏠 Dashboard</a>
+    <a href="#" data-resolve-path="adminComercios.html" class="hover:text-yellow-400 transition">📦 Comercios</a>
+    <a href="#" data-resolve-path="adminPaquetes.html" class="hover:text-yellow-400 transition">💳 Paquetes</a>
+    <a href="#" data-resolve-path="adminModeracion.html" class="hover:text-yellow-400 transition">🛡️ Moderación</a>
+    <a href="#" data-resolve-path="adminPlayas.html" class="hover:text-yellow-400 transition">🏖️ Playas</a>
+    <a href="#" data-resolve-path="adminLugares.html" class="hover:text-yellow-400 transition">🏛️ Lugares</a>
+    <a href="#" data-resolve-path="crearCupon.html" class="hover:text-yellow-400 transition">🎟️ Cupones</a>
+    <a href="#" data-resolve-path="adminBanners.html" class="hover:text-yellow-400 transition">🎞️ Banners</a>
+    <a href="#" data-resolve-path="adminEventos.html" class="hover:text-yellow-400 transition">🎉 Eventos</a>
+    <a href="#" data-resolve-path="usuarios.html" class="hover:text-yellow-400 transition">👥 Usuarios</a>
+    <a href="#" class="hover:text-yellow-400 transition">⚙️ Configuración</a>
+    <a href="#" class="hover:text-red-400 transition mt-4">🔒 Cerrar sesión</a>
+  </nav>
+</aside>
+
+<!-- Overlay para móviles -->
+<div id="sidebarOverlay"
+     class="fixed inset-0 bg-black bg-opacity-40 z-30 hidden lg:hidden"></div>

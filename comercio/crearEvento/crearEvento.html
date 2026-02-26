@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Crear Evento</title>
+  <script src="https://kit.fontawesome.com/your-free-kit.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"/>
+</head>
+<body class="bg-gray-50 p-6">
+  <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-md p-6">
+    <h1 class="text-2xl font-bold mb-4">Crear Nuevo Evento</h1>
+    <form id="formCrearEvento" class="space-y-6">
+      <div>
+        <label class="block font-medium">Nombre del Evento</label>
+        <input required type="text" name="nombre" class="w-full border rounded px-3 py-2"/>
+      </div>
+
+      <div>
+        <label class="block font-medium">Descripción</label>
+        <textarea required name="descripcion" rows="3" class="w-full border rounded px-3 py-2"></textarea>
+      </div>
+
+      <section class="space-y-3">
+        <header class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p class="block font-medium">Municipios y fechas</p>
+            <p class="text-sm text-gray-500">Cada municipio tiene su lugar, dirección y fechas.</p>
+          </div>
+          <button type="button" id="btnAgregarSede" class="bg-slate-900 text-white px-4 py-2 rounded hover:bg-slate-800">
+            Agregar municipio
+          </button>
+        </header>
+
+        <div id="sedesContainer" class="space-y-4"></div>
+      </section>
+
+      <div class="flex items-center gap-2">
+        <input type="checkbox" id="gratis" name="gratis" class="form-checkbox h-5 w-5 text-blue-600">
+        <label for="gratis" class="font-medium">Gratis</label>
+      </div>
+
+      <div>
+        <label class="block font-medium">Costo</label>
+        <input required type="text" name="costo" id="costo" class="w-full border rounded px-3 py-2"/>
+      </div>
+
+      <div>
+        <label class="block font-medium">Categoría</label>
+        <select required name="categoria" id="categoria" class="w-full border rounded px-3 py-2">
+          <option value="">Selecciona una categoría</option>
+        </select>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block font-medium">Boletos</label>
+        <label class="inline-flex items-center gap-2 text-sm text-gray-600">
+          <input type="checkbox" id="boletosGlobal" class="form-checkbox h-4 w-4 text-blue-600" checked>
+          Usar un solo link para todas las localidades
+        </label>
+        <input type="url" name="enlaceBoletos" id="enlaceBoletos" class="w-full border rounded px-3 py-2" placeholder="Link global de boletos (opcional)"/>
+      </div>
+
+      <section class="space-y-2">
+        <label class="block font-medium">Imagen del Evento</label>
+        <input required type="file" name="imagen" accept="image/*" class="w-full"/>
+        <p class="text-xs text-gray-500">Se admiten archivos JPG o PNG de hasta 5 MB.</p>
+      </section>
+
+      <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+        Guardar Evento
+      </button>
+    </form>
+  </div>
+  <script type="module" src="./crearEvento.js"></script>
+
+  <script>
+    const checkGratis = document.getElementById('gratis');
+    const inputCosto = document.getElementById('costo');
+
+    checkGratis.addEventListener('change', () => {
+      if (checkGratis.checked) {
+        inputCosto.value = 'Libre de Costo';
+        inputCosto.setAttribute('readonly', true);
+      } else {
+        inputCosto.value = '';
+        inputCosto.removeAttribute('readonly');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+id,event_id,municipio_id,lugar,direccion,enlaceboletos
+78,65,17,Coliseo Boxístico Pedro Rodríguez Gaya,"Coliseo Boxístico Pedro Rodríguez Gaya, Cataño, Puerto Rico",https://boletos.prticket.com/events/en/3raedicionmuaythai
+79,66,65,AGUA SOL Y SERENO,"AGUA SOL Y SERENO, San Juan, Puerto Rico (1106 Ave Las Palmas, Santurce)",https://boletos.prticket.com/events/en/7vecessiete
+80,67,65,Teatro de la Universidad de Puerto Rico,"Teatro de la Universidad de Puerto Rico, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/anastasiaedicionjuvenil
+81,68,65,Teatro Shorty Castro en Santurce,"Teatro Shorty Castro en Santurce, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/asalto
+82,69,65,Centro de Convenciones P.R.,"Centro de Convenciones P.R., San Juan, San Juan",https://boletos.prticket.com/events/en/asianspringfest2026
+83,70,65,Segundo Nivel de Plaza las Américas (Antiguo Sears),"Segundo Nivel de Plaza las Américas (Antiguo Sears), San Juan, Puerto Rico",https://boletos.prticket.com/events/en/babyexpo
+84,71,54,Cancha Gelito Ortega,"Cancha Gelito Ortega, Naranjito, Puerto Rico",https://boletos.prticket.com/events/en/batallaenlamontana
+85,72,65,Coliseito Pedrin Zorrilla,"Coliseito Pedrin Zorrilla, San Juan",https://boletos.prticket.com/events/en/big-time
+86,73,65,Coliseo Roberto Clemente,"Coliseo Roberto Clemente, San Juan",https://boletos.prticket.com/events/en/cangrejeras
+87,74,65,Centro de Convenciones de Puerto Rico,"Centro de Convenciones de Puerto Rico, San Juan",https://boletos.prticket.com/events/en/caribbean2026
+88,75,11,Teatro Braulio Castillo,"Teatro Braulio Castillo, Bayamón, Puerto Rico",https://boletos.prticket.com/events/en/carlossanchezenpr
+89,76,65,Abracadabra Counter Café en Santurce,"Abracadabra Counter Café en Santurce, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/cortaditoocapuchino
+90,77,65,Plaza de la Independencia,"Plaza de la Independencia, San Juan",https://boletos.prticket.com/events/en/dnz26
+91,78,65,Abracadabra Counter Café en Santurce,"Abracadabra Counter Café en Santurce, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/dragacadabra
+92,79,65,Centro de Bellas Artes de Santurce,"Centro de Bellas Artes de Santurce, San Juan, San Juan",https://boletos.prticket.com/events/en/elaumento
+93,80,11,Teatro de la Universidad Interamericana de Bayamón,"Teatro de la Universidad Interamericana de Bayamón, Puerto Rico",https://boletos.prticket.com/events/en/enamoradosdelafe
+94,81,65,Sala del Tribunal en el Teatro Tapia,"Sala del Tribunal en el Teatro Tapia, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/enchaquetaocomedyshows2
+95,82,65,Coliseo Roberto Clemente,"Coliseo Roberto Clemente, San Juan",https://boletos.prticket.com/events/en/fiba2026
+96,83,5,Coliseo José Marrón Aponte,"Coliseo José Marrón Aponte, La Plata, Aibonito",https://boletos.prticket.com/events/en/itf-aibonito
+97,84,34,Coliseo Francisco “Pancho” Deida,"Coliseo Francisco “Pancho” Deida, Hatillo, Puerto Rico",https://boletos.prticket.com/events/en/itfeslapelea
+98,85,65,Abracadabra Counter Café en Santurce,"Abracadabra Counter Café en Santurce, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/jazznight2026
+99,86,34,Teatro Municipal José A. Monrouzeau,"Teatro Municipal José A. Monrouzeau, Hatillo, Puerto Rico",https://boletos.prticket.com/events/en/lajamonasecasaprena
+100,87,11,Colegio De La Salle,"Colegio De La Salle, Bayamón, Puerto Rico",https://boletos.prticket.com/events/en/lasallistadiafamiliar
+101,88,65,Teatro Tapia en Viejo San Juan,"Teatro Tapia en Viejo San Juan, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/mammamiamusicalsaintjohnsschool
+102,89,27,Teatro José M. Lugo Emanuelli,"Teatro José M. Lugo Emanuelli, Fajardo, Puerto Rico",https://boletos.prticket.com/events/en/masturbadoquetu
+103,89,50,Teatro Yagüez,"Teatro Yagüez, Mayagüez, Puerto Rico",https://boletos.prticket.com/events/en/masturbadoquetu
+104,90,65,Teatro Shorty Castro en Santurce,"Teatro Shorty Castro en Santurce, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/mision939
+105,91,11,Teatro Braulio Castillo,"Teatro Braulio Castillo, Bayamón, Puerto Rico",https://boletos.prticket.com/events/en/ndi-pantis
+106,92,65,Hotel Sheraton Distrito de Convenciones,"Hotel Sheraton Distrito de Convenciones, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/nochedeperreo
+107,93,65,Taller Teatro “Y No Había Luz”,"Taller Teatro “Y No Había Luz”, San Juan, San Juan",https://boletos.prticket.com/events/en/nubarron-picaro
+108,94,11,Teatro Braulio Castillo,"Teatro Braulio Castillo, Bayamón, Puerto Rico",https://boletos.prticket.com/events/en/penetradostandup
+109,95,5,Casa Villa Julita,"Casa Villa Julita, Aibonito PR",https://boletos.prticket.com/events/en/popurri
+110,96,65,Teatro Tapia en Viejo San Juan,"Teatro Tapia en Viejo San Juan, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/rememberinginacoustic
+111,97,13,Moneró Café Teatro,"Moneró Café Teatro, Caguas, Puerto Rico",https://boletos.prticket.com/events/en/rickycolonencomplicidad
+112,98,65,Teatro Tapia en Viejo San Juan,"Teatro Tapia en Viejo San Juan, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/standoperoscuartoaniversario
+113,99,65,Abracadabra Counter Café en Santurce,"Abracadabra Counter Café en Santurce, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/synergylive
+114,100,11,Teatro Braulio Castillo,"Teatro Braulio Castillo, Bayamón, Puerto Rico",https://boletos.prticket.com/events/en/tataymelatienenunshow
+115,101,65,Teatro Tapia en Viejo San Juan,"Teatro Tapia en Viejo San Juan, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/tresespermatozoides
+116,102,65,Abracadabra Counter Café en Santurce,"Abracadabra Counter Café en Santurce, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/unidosporlamagia
+117,103,65,Coliseo Pedrín Zorrilla,"Coliseo Pedrín Zorrilla, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/winterclash2026
+118,104,65,Coliseo Roberto Clemente en San Juan,"Coliseo Roberto Clemente en San Juan, Puerto Rico",https://boletos.prticket.com/events/en/wwcaniversario53
+119,105,65,Teatro Tapia en Viejo San Juan,"Teatro Tapia en Viejo San Juan, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/yaenmitierranoeslomismo
+120,105,50,Teatro Yagüez en Mayagüez,"Teatro Yagüez en Mayagüez, Puerto Rico",https://boletos.prticket.com/events/en/yaenmitierranoeslomismo

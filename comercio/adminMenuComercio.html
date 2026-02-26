@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administrar Menú del Comercio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+    /* Evita zoom en móviles al enfocar inputs numéricos/texto */
+    input, select, textarea { font-size: 16px; }
+  </style>
+</head>
+<body class="text-gray-800 pb-20">
+  <header class="text-center pt-4">
+    <div class="flex justify-center mb-2">
+      <a id="linkPerfilDelLogo" href="#">
+        <img id="logoComercio" src="" alt="Logo Comercio" class="h-40 object-contain" />
+      </a>
+    </div>
+    <h1 class="text-2xl font-bold">Administrar Menú</h1>
+    <p id="nombreComercio" class="text-xl font-semibold text-[#424242]"></p>
+    <div id="planInfoBar" class="mt-3 flex flex-wrap items-center justify-center gap-3">
+      <span id="planBadge" class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">—</span>
+      <a id="btnCambiarPlan" href="#" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+        Cambiar Plan
+      </a>
+    </div>
+    <div id="cloverBar" class="mt-4"></div>
+  </header>
+
+  <style>
+    /* Aplica la fuente de cada option si el navegador lo permite */
+    select.fuente-preview option {
+      font-family: var(--option-font-family, 'Kanit', sans-serif);
+    }
+  </style>
+
+  <section class="bg-white shadow rounded-lg px-4 py-4 mx-4 mt-4 space-y-4 max-w-6xl mx-auto">
+    <details class="space-y-4">
+      <summary class="cursor-pointer text-lg font-semibold flex items-center gap-2 py-2 select-none">
+        <i class="fa-solid fa-sliders text-blue-600"></i>
+        Personalización del Menú
+        <span class="text-sm text-gray-500 font-normal">Opcional</span>
+      </summary>
+
+    <div class="flex items-center justify-between flex-wrap gap-3">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-800">Personalización del Menú</h2>
+        <p class="text-sm text-gray-500">Ajusta portada, fondos y PDF.</p>
+      </div>
+      <button id="btnGuardarTema" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 text-sm">
+        Guardar Diseño
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="space-y-3">
+        <label class="block text-sm font-medium text-gray-700">URL del menú en PDF</label>
+        <input id="pdfUrl" type="url" placeholder="https://..." class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-400" />
+
+        <label class="block text-sm font-medium text-gray-700">Portada horizontal (portadaimagen)</label>
+        <div class="flex items-center gap-3">
+          <input id="inputPortada" type="file" accept="image/*" class="text-sm" />
+          <button id="btnQuitarPortada" type="button" class="text-red-600 text-sm underline">Quitar</button>
+        </div>
+        <div class="mt-2">
+          <img id="previewPortada" src="" alt="Portada" class="w-full h-36 object-cover rounded border hidden" />
+        </div>
+
+        <label class="block text-sm font-medium text-gray-700">Fondo imagen opcional</label>
+        <div class="flex items-center gap-3">
+          <input id="inputBackgroundImg" type="file" accept="image/*" class="text-sm" />
+          <button id="btnQuitarBackground" type="button" class="text-red-600 text-sm underline">Quitar</button>
+        </div>
+        <div class="mt-2">
+          <img id="previewBackground" src="" alt="Background" class="w-full h-24 object-cover rounded border hidden" />
+        </div>
+      </div>
+
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div class="bg-gray-50 border rounded p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-semibold text-gray-700">Sección 1: Header</p>
+          <span class="text-xs text-gray-500">Nombre + “Menú”</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-gray-700">Fuente Nombre Comercio</label>
+            <select id="fontNombreSelect" class="w-full border rounded px-3 py-2 text-sm fuente-preview"></select>
+            <input id="nombreFontSize" type="number" min="12" max="60" class="w-24 border rounded px-2 py-1 text-sm" placeholder="px" />
+            <p id="previewFontNombre" class="text-xs text-gray-500">Ejemplo Nombre Comercio</p>
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-gray-700">Fuente palabra “Menú”</label>
+            <select id="fontMenuWordSelect" class="w-full border rounded px-3 py-2 text-sm fuente-preview"></select>
+            <input id="menuFontSize" type="number" min="12" max="48" class="w-24 border rounded px-2 py-1 text-sm" placeholder="px" />
+            <p id="previewFontMenuWord" class="text-xs text-gray-500">Texto “Menú”</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <label class="flex items-center justify-between gap-3">
+            <span class="text-gray-700">Overlay oscuro (0-80)</span>
+            <input id="overlayOscuro" type="range" min="0" max="80" step="2" class="w-32" />
+          </label>
+          <label class="flex items-center justify-between gap-3">
+            <span class="text-gray-700">Color fondo</span>
+            <input id="backgroundColor" type="color" class="w-16 h-10 border rounded" />
+          </label>
+          <label class="col-span-1 sm:col-span-2 flex items-center justify-between gap-3">
+            <span class="text-gray-700">Texto “Menú”</span>
+            <input id="textoMenu" type="text" class="flex-1 border rounded px-2 py-1 text-sm" placeholder="Menú" />
+          </label>
+          <div id="compartirSucursales" class="col-span-1 sm:col-span-2 bg-white border rounded p-3 space-y-2 hidden">
+            <div class="flex items-center justify-between">
+              <span class="text-gray-700 font-semibold text-sm">Compartir menú con sucursales</span>
+              <span class="text-xs text-gray-500">Selecciona las sucursales</span>
+            </div>
+            <div id="listaSucursales" class="flex flex-col gap-2 text-sm text-gray-700"></div>
+          </div>
+          <div class="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="flex items-center justify-between gap-3">
+              <span class="text-gray-700">Color botón PDF</span>
+              <input id="colorBotonPdf" type="color" class="w-16 h-10 border rounded" />
+            </label>
+            <label class="flex items-center justify-between gap-3">
+              <span class="text-gray-700">Opacidad botón PDF (0-100)</span>
+              <input id="opacidadBotonPdf" type="range" min="0" max="100" step="5" class="w-32" />
+            </label>
+          </div>
+          <label class="flex items-center justify-between gap-3">
+            <span class="text-gray-700">Color Nombre</span>
+            <input id="colorNombre" type="color" class="w-16 h-10 border rounded" />
+          </label>
+          <label class="flex items-center justify-between gap-3">
+            <span class="text-gray-700">Color “Menú”</span>
+            <input id="colorMenuWord" type="color" class="w-16 h-10 border rounded" />
+          </label>
+          <label class="flex items-center justify-between gap-3 col-span-1 sm:col-span-2">
+            <span class="text-gray-700">Ocultar nombre del comercio</span>
+            <input id="hideNombre" type="checkbox" class="w-5 h-5 border rounded" />
+          </label>
+          <label class="flex items-center justify-between gap-3 col-span-1 sm:col-span-2">
+            <span class="text-gray-700">Ocultar palabra “Menú”</span>
+            <input id="hideMenuWord" type="checkbox" class="w-5 h-5 border rounded" />
+          </label>
+        </div>
+        <div id="previewHeader" class="relative rounded-lg overflow-hidden h-44 flex items-center justify-center text-center text-white">
+          <img id="previewHeaderBg" class="absolute inset-0 w-full h-full object-cover hidden" />
+          <div id="previewHeaderOverlay" class="absolute inset-0 bg-black/30"></div>
+          <div class="relative z-10 space-y-1 px-4">
+            <p id="previewNombreComercio" class="text-2xl font-bold">Nombre Comercio</p>
+            <p id="previewMenuWord" class="text-lg font-semibold">Menú</p>
+          </div>
+        </div>
+        <div class="space-y-2 text-sm">
+          <h3 class="font-semibold text-gray-700">Stroke & sombra</h3>
+          <div class="flex items-center gap-3">
+            <label class="text-xs text-gray-600">Nombre</label>
+            <input id="nombreStrokeWidth" type="number" min="0" max="8" step="0.5" class="w-20 border rounded px-2 py-1 text-sm" />
+            <input id="nombreStrokeColor" type="color" class="w-12 h-10 border rounded" />
+            <input id="nombreShadow" type="text" placeholder="0 2px 6px" class="flex-1 border rounded px-2 py-1 text-sm" />
+            <input id="nombreShadowColor" type="color" class="w-12 h-10 border rounded" title="Color sombra" />
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-xs text-gray-600">“Menú”</label>
+            <input id="menuStrokeWidth" type="number" min="0" max="8" step="0.5" class="w-20 border rounded px-2 py-1 text-sm" />
+            <input id="menuStrokeColor" type="color" class="w-12 h-10 border rounded" />
+            <input id="menuShadow" type="text" placeholder="0 2px 6px" class="flex-1 border rounded px-2 py-1 text-sm" />
+            <input id="menuShadowColor" type="color" class="w-12 h-10 border rounded" title="Color sombra" />
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-gray-50 border rounded p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-semibold text-gray-700">Sección 2: Títulos + Botón</p>
+          <span class="text-xs text-gray-500">Vista previa</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-gray-700">Fuente Títulos</label>
+            <select id="fontTitleSelect" class="w-full border rounded px-3 py-2 text-sm fuente-preview"></select>
+            <input id="fontTitleSize" type="number" min="10" max="48" class="w-24 border rounded px-2 py-1 text-sm" placeholder="px" />
+            <p id="previewFontTitle" class="text-xs text-gray-500">Texto de ejemplo Título</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <label class="flex items-center justify-between gap-2">
+            <span class="text-gray-700">Color botón</span>
+            <input id="colorBoton" type="color" class="w-14 h-10 border rounded" />
+          </label>
+          <label class="flex items-center justify-between gap-2">
+            <span class="text-gray-700">Color título</span>
+            <input id="colorBotonTexto" type="color" class="w-14 h-10 border rounded" />
+          </label>
+        </div>
+        <div id="previewTitulos" class="rounded-lg border bg-white p-4 space-y-2 text-center relative overflow-hidden">
+          <p id="previewTituloDemo" class="text-xl font-bold inline-block px-3 py-2 rounded">Aperitivos</p>
+        </div>
+        <div class="space-y-2 text-sm">
+          <h3 class="font-semibold text-gray-700">Stroke & sombra</h3>
+          <div class="flex items-center gap-3">
+            <label class="text-xs text-gray-600">Títulos</label>
+            <input id="titulosStrokeWidth" type="number" min="0" max="8" step="0.5" class="w-20 border rounded px-2 py-1 text-sm" />
+            <input id="titulosStrokeColor" type="color" class="w-12 h-10 border rounded" />
+            <input id="titulosShadow" type="text" placeholder="0 2px 6px rgba(...)" class="flex-1 border rounded px-2 py-1 text-sm" />
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-xs text-gray-600">Botón</label>
+            <input id="botonStrokeWidth" type="number" min="0" max="8" step="0.5" class="w-20 border rounded px-2 py-1 text-sm" />
+            <input id="botonStrokeColor" type="color" class="w-12 h-10 border rounded" />
+            <input id="botonShadow" type="text" placeholder="0 2px 6px rgba(...)" class="flex-1 border rounded px-2 py-1 text-sm" />
+          </div>
+        </div>
+
+        <div class="border-t border-gray-200 pt-4 mt-4 space-y-3">
+          <h3 class="font-semibold text-gray-700 text-sm">Descripción de la sección</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+            <div class="space-y-1 sm:col-span-2">
+              <label class="text-xs font-semibold text-gray-700">Fuente descripción</label>
+              <select id="fontSeccionDescSelect" class="w-full border rounded px-3 py-2 text-sm fuente-preview"></select>
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-semibold text-gray-700">Tamaño (px)</label>
+              <input id="fontSeccionDescSize" type="number" min="8" max="48" class="w-full border rounded px-2 py-1 text-sm" />
+            </div>
+            <div class="space-y-1 sm:col-span-3">
+              <label class="text-xs font-semibold text-gray-700">Color descripción</label>
+              <input id="colorSeccionDesc" type="color" class="w-20 h-10 border rounded" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-gray-50 border rounded p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-semibold text-gray-700">Sección 3: Item / Producto</p>
+          <span class="text-xs text-gray-500">Preview en vivo</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-gray-700">Fuente Body</label>
+            <select id="fontBodySelect" class="w-full border rounded px-3 py-2 text-sm fuente-preview"></select>
+            <input id="fontBodySize" type="number" min="10" max="48" class="w-24 border rounded px-2 py-1 text-sm" placeholder="px" />
+            <p id="previewFontBody" class="text-xs text-gray-500">Texto de ejemplo Body</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+          <label class="flex items-center justify-between gap-2">
+            <span class="text-gray-700">Color título</span>
+            <input id="colorTitulo" type="color" class="w-14 h-10 border rounded" />
+          </label>
+          <label class="flex items-center justify-between gap-2">
+            <span class="text-gray-700">Color texto</span>
+            <input id="colorTexto" type="color" class="w-14 h-10 border rounded" />
+          </label>
+          <label class="flex items-center justify-between gap-2">
+            <span class="text-gray-700">Color precio</span>
+            <input id="colorPrecio" type="color" class="w-14 h-10 border rounded" />
+          </label>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div class="flex items-center gap-3">
+            <span class="text-gray-700 text-xs sm:text-sm">Alineación texto</span>
+            <label class="flex items-center gap-1 text-xs sm:text-sm">
+              <input type="radio" name="itemAlign" id="itemAlignLeft" value="left" class="accent-blue-600" checked />
+              <span>Izquierda</span>
+            </label>
+            <label class="flex items-center gap-1 text-xs sm:text-sm">
+              <input type="radio" name="itemAlign" id="itemAlignCenter" value="center" class="accent-blue-600" />
+              <span>Centro</span>
+            </label>
+          </div>
+        </div>
+        <div id="previewItemCard" class="rounded-lg border overflow-hidden relative p-4 space-y-2 bg-white">
+          <div id="previewItemOverlay" class="absolute inset-0 bg-black/0 pointer-events-none"></div>
+          <div class="relative space-y-1">
+            <h4 id="previewItemNombre" class="text-lg font-semibold">Producto Demo</h4>
+            <p id="previewItemTexto" class="text-sm">Descripción breve del producto.</p>
+            <p id="previewItemPrecio" class="text-lg font-bold">$12.99</p>
+          </div>
+        </div>
+        <div class="space-y-2 text-sm">
+          <label class="flex items-center gap-3">
+            <span class="text-xs text-gray-600">Fondo del item</span>
+            <input id="itemBgColor" type="color" class="w-14 h-10 border rounded" />
+          </label>
+          <label class="block text-xs text-gray-600">Overlay del item (0-80)</label>
+          <input id="itemOverlay" type="range" min="0" max="80" step="2" class="w-full" />
+          <p class="text-xs text-gray-500">Controla la opacidad del overlay en los items.</p>
+        </div>
+      </div>
+    </div>
+    </details>
+  </section>
+
+  <section class="py-6 px-4 mb-16">
+    <div class="max-w-6xl mx-auto bg-white shadow rounded-lg p-4 space-y-3">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">Secciones y productos</h2>
+          <p class="text-sm text-gray-500">Abre la sección que quieras editar, añade o ajusta productos desde el mismo panel.</p>
+        </div>
+        <button id="btnAgregarSeccion" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition text-sm">
+          + Nueva Sección
+        </button>
+      </div>
+      <div id="seccionesMenu" class="flex flex-col gap-3">
+        <!-- Secciones del menú -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal de imagen -->
+  <div id="modalImagen" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden">
+    <img id="imgAmpliada" src="" class="max-h-[90%] max-w-[90%] rounded shadow-lg" />
+  </div>
+
+  <!-- Modal Sección -->
+  <div id="modalSeccion" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-[90%] max-w-md relative">
+      <h2 class="text-xl font-bold mb-4">Editar Sección</h2>
+      <label class="block mb-2 text-sm font-medium">Nombre de la sección</label>
+      <input id="inputTitulo" type="text" class="w-full border border-gray-300 rounded px-3 py-2 mb-4" />
+      <label class="flex items-center gap-2 mb-4 text-sm font-medium">
+        <input id="menuNoTraducirTitulo" type="checkbox" class="h-4 w-4 text-blue-600">
+        <span>No traducir título</span>
+      </label>
+      <label class="block mb-2 text-sm font-medium">Subtítulo (opcional)</label>
+      <input id="inputSubtitulo" type="text" class="w-full border border-gray-300 rounded px-3 py-2 mb-4" placeholder="Ej. Solo lunes" />
+      <label class="block mb-2 text-sm font-medium">Descripción (se muestra antes de los productos)</label>
+      <textarea id="menuDescripcion" class="w-full border border-gray-300 rounded px-3 py-2 mb-4" rows="3" placeholder="Texto breve antes de los productos"></textarea>
+      <label class="block mb-2 text-sm font-medium">Orden</label>
+      <input id="inputOrden" type="number" class="w-full border border-gray-300 rounded px-3 py-2 mb-4" />
+      <div class="flex items-center gap-2 mb-4">
+        <input id="inputActivo" type="checkbox" class="form-checkbox h-4 w-4 text-blue-600" />
+        <label for="inputActivo" class="text-sm">Activo</label>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button id="btnCancelarSeccion" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Cancelar</button>
+        <button id="btnGuardarSeccion" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Producto -->
+<div id="modalProducto" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-lg p-6 w-[90%] max-w-md relative">
+    <h2 class="text-xl font-bold mb-4">Editar Producto</h2>
+
+    <label class="block mb-2 text-sm font-medium">Nombre del Producto</label>
+    <input id="inputNombreProducto" type="text" class="w-full border border-gray-300 rounded px-3 py-2 mb-3" />
+
+    <label class="flex items-center gap-2 mb-3 text-sm font-medium">
+      <input id="productoNoTraducirNombre" type="checkbox" class="h-4 w-4 text-blue-600">
+      <span>No traducir nombre</span>
+    </label>
+
+    <label class="block mb-2 text-sm font-medium">Descripción</label>
+    <textarea id="inputDescripcionProducto" class="w-full border border-gray-300 rounded px-3 py-2 mb-3"></textarea>
+
+    <label class="block mb-2 text-sm font-medium">Precio</label>
+    <input id="inputPrecioProducto" type="number" step="0.01" class="w-full border border-gray-300 rounded px-3 py-2 mb-3" />
+
+    <label class="block mb-2 text-sm font-medium">Orden</label>
+    <input id="inputOrdenProducto" type="number" class="w-full border border-gray-300 rounded px-3 py-2 mb-3" />
+
+    <label class="block mb-2 text-sm font-medium">Imagen (opcional)</label>
+    <img id="previewImagenProducto" src="" alt="Preview Imagen" class="w-24 h-24 object-cover rounded mt-2 hidden" />
+    <input id="inputImagenProducto" type="file" accept="image/*" class="w-full mb-4" />
+
+    <div class="flex justify-end gap-2">
+      <button id="btnCancelarProducto" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Cancelar</button>
+      <button id="btnGuardarProducto" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Guardar</button>
+    </div>
+  </div>
+</div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded shadow-lg text-white bg-black/80 hidden z-50"></div>
+
+  <footer class="fixed bottom-0 w-full bg-[#231F20] text-white py-4 px-4 text-center text-sm">
+    <a id="linkPerfil" href="#" class="block">
+      <img id="footerLogo" src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo_fondo%20oscuro.png" alt="Logo" class="mx-auto h-5 mb-1" />
+      <p class="text-xs font-extralight opacity-80">Diseño y Creación por <a href="https://www.enpe-erre.com">www.EnPe-Erre.com</a><br>Copyright © 2026. Todos los derechos reservados.</p>
+    </a>
+  </footer>
+
+  <script type="module" src="../shared/supabaseClient.js"></script>
+  <script type="module" src="./adminMenuComercio.js"></script>
+</body>
+</html>

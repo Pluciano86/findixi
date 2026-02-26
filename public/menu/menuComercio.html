@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Menú del Comercio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+
+    .menuHeaderBtn{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:100%;
+      position:relative;
+      padding: 14px 14px;
+      transition: padding .2s ease, min-height .2s ease;
+    }
+
+    .menu-open .menuHeaderBtn{
+      padding: 22px 14px;
+    }
+
+    .menuHeaderDesc{
+      display:none;
+      margin-top: 6px;
+      line-height: 1.25;
+      opacity: .95;
+    }
+
+    .menu-open .menuHeaderDesc{
+      display:block;
+    }
+
+    .cart-bar-fixed{
+      position:fixed;
+      top:0;
+      left:50%;
+      transform:translateX(-50%);
+      z-index:60;
+      margin-top:0;
+    }
+  </style>
+</head>
+<body class="text-gray-800 pb-20">
+  <header>
+    <div id="heroPortada" class="relative w-full aspect-[16/9] max-h-64 sm:max-h-72 lg:max-h-80 overflow-hidden">
+      <img id="heroImg" src="" alt="Portada" class="absolute inset-0 w-full h-full object-cover" />
+      <div id="heroOverlay" class="absolute inset-0 bg-black/40"></div>
+    </div>
+  </header>
+
+  <section class="text-center py-4 px-4">
+    <div class="space-y-1">
+      <p id="heroNombre" class="pb-1 font-bold">Nombre Comercio</p>
+      <p id="heroMenuWord" class="text-lg font-semibold">Menú</p>
+    </div>
+    <div class="mt-0 flex justify-end">
+      <div id="langSwitcherMenu"></div>
+    </div>
+    <div class="mt-0">
+      <a id="btnMenuPdf" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition text-sm">
+        <i class="fas fa-file-pdf"></i> Ver menú PDF
+      </a>
+    </div>
+  </section>
+
+  <main id="seccionesMenu" class="flex flex-col gap-3 py-6 px-4 mb-28">
+      <!-- Botones con títulos del menú -->
+  </main>
+
+  <!-- Modal de imagen -->
+  <div id="modalImagen" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden">
+    <img id="imgAmpliada" src="" class="max-h-[90%] max-w-[90%] rounded shadow-lg" />
+  </div>
+
+  
+  <!-- Footer fijo -->
+  <footer class="fixed bottom-0 w-full bg-[#231F20] text-white text-sm" data-footer-fixed style="transform: translateY(var(--footer-offset, 0px));">
+    <div class="bg-[#4a4a4a] py-2 px-4">
+      <div class="max-w-5xl mx-auto flex flex-row flex-wrap items-center justify-center sm:justify-between gap-3 text-center sm:text-left">
+        <div class="flex items-center gap-3 justify-center sm:justify-start">
+          <a id="linkPerfilComercio" href="#" class="flex items-center gap-3">
+            <span class="w-12 h-12 sm:w-20 sm:h-20 bg-white rounded-full overflow-hidden flex items-center justify-center">
+              <img id="footerLogoComercio" src="" alt="Logo comercio" class="w-full h-full object-cover" />
+            </span>
+            <span id="footerNombreComercio" class="text-lg sm:text-lg font-medium tracking-wide whitespace-nowrap"></span>
+          </a>
+        </div>
+        <div class="flex items-center gap-2 justify-center sm:justify-end">
+          <a id="footerTelefono" href="#" aria-label="Llamar al comercio" class="hidden inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#3a3a3a] border border-white/10 shadow hover:bg-[#444] transition">
+            <i class="fa-solid fa-phone text-sm sm:text-base"></i>
+          </a>
+          <a id="footerFacebook" href="#" target="_blank" rel="noopener noreferrer" aria-label="Facebook del comercio" class="hidden inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#3a3a3a] border border-white/10 shadow hover:bg-[#444] transition">
+            <i class="fa-brands fa-facebook-f text-sm sm:text-base"></i>
+          </a>
+          <a id="footerInstagram" href="#" target="_blank" rel="noopener noreferrer" aria-label="Instagram del comercio" class="hidden inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#3a3a3a] border border-white/10 shadow hover:bg-[#444] transition">
+            <i class="fa-brands fa-instagram text-sm sm:text-base"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="py-3 px-4 text-center">
+      <a id="linkPerfil" href="../index.html" class="inline-flex flex-col items-center gap-1">
+        <img id="footerLogo" src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/logoFindixi.png" alt="Logo" class="h-7 mx-auto" />
+        <span class="text-[10px] font-extralight opacity-80 leading-tight">Diseño y Creación por www.findixi.com<br>Copyright © 2026. Todos los derechos reservados.</span>
+      </a>
+    </div>
+    <div class="flex flex-wrap justify-center gap-x-3 gap-y-1 px-4 pb-3 text-[11px] text-white/80 border-t border-white/10">
+      <a href="../privacy-policy.html" class="hover:text-white underline-offset-2 hover:underline">Privacy Policy</a>
+      <span class="opacity-60">•</span>
+      <a href="../terms-of-service.html" class="hover:text-white underline-offset-2 hover:underline">Terms of Service</a>
+      <span class="opacity-60">•</span>
+      <a href="mailto:info@findixi.com" class="hover:text-white underline-offset-2 hover:underline">info@findixi.com</a>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script type="module" src="../shared/supabaseClient.js"></script>
+  <script type="module" src="./menuComercio.js"></script>
+  <script type="module" src="../js/footerViewportFix.js"></script>
+  <script src="../js/bloquearPantalla.js"></script>
+</body>
+</html>

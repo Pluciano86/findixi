@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registra tu Comercio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script type="module" src="./js/i18n.js"></script>
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+    .glass {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+    }
+    #mapPicker {
+      width: 100%;
+      height: 220px;
+      border-radius: 14px;
+    }
+    /* Evita zoom automático en iOS y mejora legibilidad móvil en esta vista */
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+    #formModal .text-xs,
+    #formModal .text-sm,
+    #formModal .text-base,
+    #brandingSetupModal .text-xs,
+    #brandingSetupModal .text-sm,
+    #brandingSetupModal .text-base,
+    #loginModal .text-xs,
+    #loginModal .text-sm,
+    #planNextModal .text-xs,
+    #planNextModal .text-sm {
+      font-size: 16px !important;
+      line-height: 1.45 !important;
+    }
+  </style>
+</head>
+<body class="bg-[#121212] text-gray-800 pb-24">
+  <div class="min-h-screen flex justify-center bg-[#121212]">
+    <div class="w-full max-w-md bg-white pb-24">
+      <div id="headerContainer"></div>
+      <script type="module" src="./js/header.js"></script>
+
+      <div class="relative overflow-hidden">
+        <div class="absolute -top-20 -right-20 w-64 h-64 bg-amber-200/50 rounded-full blur-3xl"></div>
+        <div class="absolute top-40 -left-24 w-72 h-72 bg-sky-200/40 rounded-full blur-3xl"></div>
+
+        <header class="relative px-4 pt-6 pb-8 text-center">
+          <div class="max-w-6xl mx-auto mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr] items-center">
+        <div class="flex flex-col items-center">
+          <h1 class="text-3xl sm:text-4xl font-semibold text-gray-900 mt-2">
+            Crea tu cuenta de comercio y elige el paquete ideal
+          </h1>
+          <p class="text-gray-600 mt-3 max-w-xl">
+            Activa tu presencia en Findixi y empieza a conectar con nuevos clientes desde hoy mismo.
+          </p>
+          <div class="mt-6 flex flex-wrap gap-3 justify-center">
+            <div class="glass border border-white/60 rounded-full px-4 py-2 text-xs text-gray-700 shadow-sm">
+              <i class="fa-solid fa-bolt text-amber-500 mr-2"></i>Activación rápida
+            </div>
+            <div class="glass border border-white/60 rounded-full px-4 py-2 text-xs text-gray-700 shadow-sm">
+              <i class="fa-solid fa-shield-check text-emerald-500 mr-2"></i>Soporte personalizado
+            </div>
+            <div class="glass border border-white/60 rounded-full px-4 py-2 text-xs text-gray-700 shadow-sm">
+              <i class="fa-solid fa-chart-line text-sky-500 mr-2"></i>Más visibilidad local
+            </div>
+          </div>
+        </div>
+        <div class="glass border border-white/70 rounded-3xl p-6 shadow-lg text-center">
+          <h2 class="text-lg font-semibold">Sé parte de la comunidad Findixi</h2>
+          <p class="mt-3 text-sm text-gray-700 leading-relaxed">
+            Desde hoy puedes formar parte de la familia Findixi. Elige el paquete que mejor describe tu
+            comercio y nosotros te ayudamos a activar tu perfil para que más personas te descubran.
+          </p>
+        </div>
+          </div>
+        </header>
+      </div>
+
+      <main class="px-4 pb-12">
+        <div class="max-w-3xl mx-auto">
+          <section class="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 sm:p-8">
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div class="text-center w-full">
+                <h2 class="text-xl font-semibold">Selecciona tu paquete</h2>
+                <p class="text-sm text-gray-500 mt-1">Elige la opción que mejor se adapte a tu comercio.</p>
+              </div>
+              <span id="planActualLabel" class="hidden text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-600"></span>
+            </div>
+
+            <div id="planesGrid" class="mt-4 grid gap-4"></div>
+
+          </section>
+
+          <div id="loginModal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/50 px-4">
+            <div class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl border border-gray-100 relative">
+              <button id="loginModalClose" type="button" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+                  <i class="fa-solid fa-lock"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-semibold text-gray-900">Para elegir un paquete debes iniciar sesión.</p>
+                  <p class="text-xs text-gray-600 mt-1">Usaremos tu información de contacto registrada en tu cuenta.</p>
+                  <a href="./logearse.html?redirect=registroComercio.html" class="inline-flex items-center gap-2 mt-4 text-xs font-semibold text-amber-700 underline">
+                    Iniciar sesión o crear cuenta
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <section id="comercioFormSection" class="hidden"></section>
+
+          <div id="formModal" class="fixed inset-0 z-[9999] hidden items-start justify-center overflow-y-auto bg-black/50 px-4 py-5">
+            <div class="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl border border-gray-100 relative my-2 max-h-[92vh] overflow-y-auto">
+              <button id="formModalClose" type="button" class="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <div class="text-center">
+                <h2 class="text-lg font-semibold">Completa la información del comercio</h2>
+                <p class="text-xs text-gray-500 mt-1" id="planSeleccionadoLabel">Plan seleccionado</p>
+              </div>
+
+              <form id="comercioForm" class="mt-5 grid grid-cols-1 gap-4">
+                <div>
+                  <label class="text-sm font-semibold text-gray-700">Nombre del comercio *</label>
+                  <input type="text" id="inputNombreComercio" class="mt-1 w-full border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-200" placeholder="Ej: Café Jardín" required>
+                </div>
+                <div>
+                  <label class="text-sm font-semibold text-gray-700">Municipio *</label>
+                  <select id="selectMunicipio" class="mt-1 w-full border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-200" required>
+                    <option value="">Selecciona un municipio</option>
+                  </select>
+                </div>
+                <div>
+                  <p class="text-sm font-semibold text-gray-700">Ubicación en el mapa *</p>
+                  <p class="text-xs text-gray-500 mt-1">Selecciona el pin exacto de tu comercio para mejorar la precisión.</p>
+                  <div class="mt-2 grid grid-cols-2 gap-2">
+                    <input type="number" step="any" id="inputLatitud" class="w-full border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-200" placeholder="Latitud">
+                    <input type="number" step="any" id="inputLongitud" class="w-full border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-200" placeholder="Longitud">
+                  </div>
+                  <button id="btnToggleMapPicker" type="button" class="mt-2 w-full border border-sky-200 text-sky-700 bg-sky-50 rounded-xl px-3 py-2 text-sm font-semibold">
+                    Marcar ubicación en el mapa
+                  </button>
+                  <div id="mapPickerPanel" class="hidden mt-3 rounded-2xl border border-gray-200 bg-gray-50 p-3">
+                    <div class="grid grid-cols-[1fr_auto] gap-2">
+                      <input type="text" id="mapAddressSearch" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" placeholder="Buscar dirección">
+                      <button id="btnMapSearchAddress" type="button" class="rounded-xl px-3 py-2 text-sm font-semibold bg-gray-900 text-white">Buscar</button>
+                    </div>
+                    <button id="btnMapUseMyLocation" type="button" class="mt-2 w-full rounded-xl px-3 py-2 text-sm font-semibold border border-emerald-200 bg-emerald-50 text-emerald-700">
+                      Usar mi ubicación actual
+                    </button>
+                    <p id="mapPickerHint" class="text-[11px] text-gray-500 mt-2">
+                      Mueve el pin para ubicar tu negocio con precisión.
+                    </p>
+                    <div id="mapPicker" class="mt-2 border border-gray-200"></div>
+                  </div>
+                </div>
+
+                <p id="formFeedback" class="hidden text-xs rounded-lg px-3 py-2"></p>
+                <input type="hidden" id="planSeleccionado" value="">
+
+                <section id="googleMatchConfirmBox" class="hidden rounded-2xl border border-sky-200 bg-sky-50/70 p-3">
+                  <p class="text-sm font-semibold text-sky-900 text-center">¿Es este tu comercio?</p>
+                  <div id="googleMatchCard" class="mt-2 rounded-xl border border-sky-100 bg-white p-3"></div>
+
+                  <div class="mt-3 grid grid-cols-1 gap-2">
+                    <button id="btnMatchConfirmYes" type="button" class="w-full rounded-xl bg-emerald-600 text-white py-2 text-sm font-semibold">
+                      Correcto, es mi comercio
+                    </button>
+                    <button id="btnMatchConfirmNo" type="button" class="w-full rounded-xl border border-gray-300 bg-white text-gray-700 py-2 text-sm font-semibold">
+                      No es mi comercio
+                    </button>
+                  </div>
+
+                  <button id="btnVerOtrosMatches" type="button" class="hidden mt-2 w-full rounded-xl border border-sky-200 bg-white text-sky-700 py-2 text-sm font-semibold">
+                    Ver otros resultados
+                  </button>
+
+                  <div id="googleOtherMatches" class="hidden mt-2 space-y-2"></div>
+
+                  <section id="noEsMiComercioBox" class="hidden mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <p class="text-sm font-semibold text-amber-900 text-center">Ayúdanos a encontrarlo mejor</p>
+                    <p id="noEsMiComercioHint" class="text-xs text-amber-900 mt-1 text-center">
+                      Puedes ver otros resultados o ajustar el pin para mejorar la coincidencia.
+                    </p>
+                    <div class="mt-3 grid gap-2">
+                      <button id="btnNoFlowVerOtros" type="button" class="w-full rounded-xl border border-sky-200 bg-white text-sky-700 py-2 text-sm font-semibold">
+                        Ver otros resultados
+                      </button>
+                      <button id="btnNoFlowAjustarPin" type="button" class="w-full rounded-xl border border-sky-200 bg-white text-sky-700 py-2 text-sm font-semibold">
+                        Ajustar ubicación
+                      </button>
+                      <button id="btnNoFlowBuscarDeNuevo" type="button" class="w-full rounded-xl border border-sky-200 bg-sky-50 text-sky-700 py-2 text-sm font-semibold">
+                        Buscar de nuevo
+                      </button>
+                      <button id="btnNoFlowNoAparece" type="button" class="w-full rounded-xl border border-gray-300 bg-white text-gray-700 py-2 text-sm font-semibold">
+                        Mi comercio no aparece en Google
+                      </button>
+                    </div>
+
+                    <div id="nuevoComercioFlowBox" class="hidden mt-3 rounded-xl border border-sky-200 bg-white p-3">
+                      <p class="text-xs text-gray-600 text-center">Continuaremos como comercio nuevo con verificación por tu teléfono.</p>
+                      <label for="inputNuevoComercioPhone" class="mt-2 block text-xs font-semibold text-gray-700">Teléfono para OTP *</label>
+                      <input
+                        id="inputNuevoComercioPhone"
+                        type="tel"
+                        placeholder="Ej: 7875551234"
+                        class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200"
+                      />
+                      <button id="btnNoFlowCrearNuevo" type="button" class="mt-2 w-full rounded-xl bg-sky-600 text-white py-2 text-sm font-semibold">
+                        Continuar como comercio nuevo
+                      </button>
+                    </div>
+                  </section>
+
+                  <section id="modoProteccionBox" class="hidden mt-3 rounded-xl border border-amber-300 bg-amber-100 p-3">
+                    <p class="text-sm font-semibold text-amber-900 text-center">Protección anti-duplicados</p>
+                    <p class="text-xs text-amber-900 mt-1 text-center">
+                      Encontramos un negocio muy parecido en esa ubicación. Para proteger comercios reales, necesitamos una verificación adicional antes de activar el perfil.
+                    </p>
+                    <div class="mt-3 grid gap-2">
+                      <button id="btnProteccionVerificarTelefono" type="button" class="w-full rounded-xl bg-sky-600 text-white py-2 text-sm font-semibold">
+                        Verificar con el teléfono del negocio (recomendado)
+                      </button>
+                      <button id="btnProteccionManual" type="button" class="w-full rounded-xl border border-gray-300 bg-white text-gray-700 py-2 text-sm font-semibold">
+                        Solicitar revisión manual
+                      </button>
+                      <button id="btnProteccionVolver" type="button" class="w-full rounded-xl border border-sky-200 bg-white text-sky-700 py-2 text-sm font-semibold">
+                        Volver y ajustar búsqueda
+                      </button>
+                    </div>
+                  </section>
+
+                </section>
+
+                <section id="otpVerificationBox" class="hidden rounded-2xl border border-sky-200 bg-sky-50/70 p-3">
+                  <p class="text-sm font-semibold text-sky-900 text-center">Verificación por código</p>
+                  <p id="otpIntroText" class="text-xs text-sky-800 mt-1">
+                    Enviamos un código al teléfono verificado de este negocio.
+                  </p>
+
+                  <div class="mt-2 flex gap-2">
+                    <input
+                      id="otpCodeInput"
+                      type="text"
+                      inputmode="numeric"
+                      maxlength="6"
+                      placeholder="123456"
+                      class="w-full border border-sky-200 rounded-xl px-3 py-2 text-sm tracking-[0.3em] text-center focus:outline-none focus:ring-2 focus:ring-sky-200"
+                    />
+                    <button id="btnOtpVerify" type="button" class="shrink-0 rounded-xl bg-[#3ea6c4] text-white px-4 py-2 text-sm font-semibold">
+                      Verificar
+                    </button>
+                  </div>
+
+                  <p id="otpMetaText" class="text-[11px] text-sky-800 mt-2">Código expira en 10 minutos.</p>
+
+                  <div id="otpActionsRow" class="mt-2 grid grid-cols-2 gap-2">
+                    <button id="btnOtpResend" type="button" disabled class="rounded-xl border border-sky-300 bg-white text-sky-700 py-2 text-xs font-semibold disabled:opacity-60 disabled:cursor-not-allowed">
+                      Reenviar
+                    </button>
+                    <button id="btnOtpVoice" type="button" class="rounded-xl border border-gray-300 bg-white text-gray-700 py-2 text-xs font-semibold">
+                      Probar llamada
+                    </button>
+                  </div>
+
+                  <button id="btnOtpNoRecibi" type="button" class="mt-2 text-xs text-sky-800 underline">
+                    No lo recibí
+                  </button>
+                  <p id="otpFeedback" class="hidden text-xs rounded-lg px-2 py-2 mt-2"></p>
+
+                  <div id="otpVerifiedSummary" class="hidden mt-3 rounded-xl border border-sky-300 bg-sky-100 px-3 py-3">
+                    <p id="otpVerifiedMessage" class="text-sm text-sky-900 font-semibold text-center">
+                      ¡Listo! Comercio verificado correctamente.
+                    </p>
+                    <p id="otpVerifiedHint" class="mt-2 text-xs text-sky-800 text-center">
+                      Para completar tu comercio, presiona Siguiente e inicia sesión en comercio.enpe-erre.com con tu usuario y contraseña de Findixi.
+                    </p>
+                    <button id="btnOtpContinue" type="button" class="mt-3 w-full rounded-xl bg-[#3ea6c4] text-white py-2 text-sm font-semibold">
+                      Siguiente
+                    </button>
+                  </div>
+                </section>
+
+                <button id="submitRegistroBtn" type="submit" disabled class="mt-2 bg-gray-900 text-white px-6 py-2 rounded-full font-semibold hover:bg-black transition disabled:opacity-60 disabled:cursor-not-allowed">
+                  Siguiente
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div id="planNextModal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/50 px-4">
+            <div class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl border border-gray-100 relative">
+              <button id="planNextModalClose" type="button" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <p id="planNextModalTitle" class="text-base font-semibold text-gray-900 text-center">Siguiente paso</p>
+              <p id="planNextModalText" class="text-sm text-gray-600 mt-2 text-center"></p>
+              <button id="planNextModalContinue" type="button" class="mt-4 w-full rounded-xl bg-gray-900 text-white py-2 text-sm font-semibold">
+                Continuar
+              </button>
+            </div>
+          </div>
+
+          <div id="brandingSetupModal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/50 px-4">
+            <div class="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl border border-gray-100 relative">
+              <button id="brandingSetupClose" type="button" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <p class="text-base font-semibold text-gray-900 text-center">Branding inicial del comercio</p>
+              <p class="text-xs text-gray-600 mt-1 text-center">
+                Para publicar en Findixi, logo y portada deben estar aprobados.
+              </p>
+
+              <p id="brandingSetupStatus" class="hidden text-xs rounded-lg px-3 py-2 mt-3"></p>
+
+              <section class="mt-3 rounded-xl border border-cyan-200 bg-cyan-50 p-3">
+                <p class="text-sm font-semibold text-cyan-800">Logo</p>
+                <p class="text-xs text-cyan-700 mt-1">Formato PNG/JPG/WEBP, mínimo 512x512.</p>
+                <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input id="brandingLogoInput" type="file" accept="image/png,image/jpeg,image/webp" class="w-full text-sm" />
+                  <button id="brandingLogoValidateBtn" type="button" class="rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 text-sm font-semibold whitespace-nowrap">
+                    Validar logo
+                  </button>
+                </div>
+                <div id="brandingLogoUpgradeBox" class="hidden rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 mt-2">
+                  <p id="brandingLogoUpgradeText" class="text-xs text-amber-700">
+                    Puedes subir otro archivo o usar Logo Upgrade.
+                  </p>
+                  <div class="mt-2 flex flex-col gap-2 sm:flex-row">
+                    <button id="brandingLogoRetryBtn" type="button" class="rounded-lg border border-amber-300 bg-white text-amber-800 px-3 py-2 text-xs font-semibold">
+                      Subir otro archivo
+                    </button>
+                    <button id="brandingLogoUpgradeBtn" type="button" class="rounded-lg bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 text-xs font-semibold">
+                      Logo Upgrade
+                    </button>
+                  </div>
+                </div>
+                <p id="brandingLogoFeedback" class="hidden text-xs rounded-lg px-3 py-2 mt-2"></p>
+              </section>
+
+              <section class="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3">
+                <p class="text-sm font-semibold text-indigo-800">Portada</p>
+                <p class="text-xs text-indigo-700 mt-1">Formato PNG/JPG/WEBP, mínimo 1200x630.</p>
+                <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input id="brandingPortadaInput" type="file" accept="image/png,image/jpeg,image/webp" class="w-full text-sm" />
+                  <button id="brandingPortadaValidateBtn" type="button" class="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 text-sm font-semibold whitespace-nowrap">
+                    Validar portada
+                  </button>
+                </div>
+                <p id="brandingPortadaFeedback" class="hidden text-xs rounded-lg px-3 py-2 mt-2"></p>
+              </section>
+
+              <button id="brandingContinueBtn" type="button" class="mt-4 w-full rounded-xl bg-gray-900 text-white py-2 text-sm font-semibold">
+                Continuar al panel comercio
+              </button>
+            </div>
+          </div>
+
+          <div id="comercioActivoModal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/50 px-2">
+            <div class="relative w-[74vw] max-w-sm max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl border border-gray-100">
+              <button id="comercioActivoModalClose" type="button" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+
+              <article id="comercioActivoCard" class="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                <div class="h-28 bg-gray-100"></div>
+              </article>
+
+              <p id="comercioActivoTitulo" class="mt-4 text-base font-semibold text-gray-900 text-center">
+                Este comercio ya está activo en Findixi.
+              </p>
+              <p class="mt-2 text-sm text-gray-600 text-center">
+                Si entiendes que esto es un error, para proteger el comercio y la plataforma, debes abrir una disputa para revisión manual.
+              </p>
+
+              <button id="btnAbrirDisputaDesdeActivo" type="button" class="mt-4 w-full rounded-xl bg-[#3ea6c4] text-white py-2 text-sm font-semibold">
+                Abrir disputa con Findixi
+              </button>
+            </div>
+          </div>
+
+          <div id="disputaModal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/50 px-4">
+            <div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl border border-gray-100 relative">
+              <button id="disputaModalClose" type="button" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <p class="text-base font-semibold text-gray-900 text-center">Abrir disputa de propiedad</p>
+              <p class="text-xs text-gray-600 text-center mt-1">
+                Déjanos tu contacto y te escribimos para validar la titularidad del comercio.
+              </p>
+
+              <form id="disputaForm" class="mt-4 grid gap-2">
+                <input id="disputaComercioInfo" type="text" readonly class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 text-gray-700" />
+                <input id="disputaNombre" type="text" placeholder="Tu nombre" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" required />
+                <input id="disputaEmail" type="email" placeholder="Tu email" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" required />
+                <input id="disputaTelefono" type="tel" placeholder="Tu teléfono" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" required />
+                <textarea id="disputaMensaje" rows="3" placeholder="Cuéntanos brevemente tu relación con el comercio." class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200"></textarea>
+                <p id="disputaFeedback" class="hidden text-xs rounded-lg px-2 py-2"></p>
+                <button id="disputaSubmitBtn" type="submit" class="w-full rounded-xl bg-[#3ea6c4] text-white py-2 text-sm font-semibold">
+                  Enviar disputa
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <div id="footerContainer"></div>
+      <script type="module" src="./js/footer.js"></script>
+      <script type="module" src="./js/registroComercio.js"></script>
+    </div>
+  </div>
+</body>
+</html>

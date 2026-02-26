@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Findixi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <script type="module" src="./js/i18n.js"></script>
+  
+  <style>
+  video::-webkit-media-controls {
+  display: none !important;
+}
+
+video::-webkit-media-controls-enclosure {
+  display: none !important;
+}
+
+video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+}</style>
+
+</head>
+<body class="bg-[#121212]">
+        <style>
+          body {font-family: 'Kanit', sans-serif;}
+        </style>
+
+<div class="min-h-screen flex justify-center bg-[#121212]">
+  <div class="w-full max-w-md bg-white text-gray-800 pb-24">
+
+<div id="headerContainer"></div>
+<script type="module" src="js/header.js"></script>
+
+
+<div id="bannerHomeTop" class="w-full my-4 px-4 md:px-6 max-w-6xl mx-auto"></div>
+
+
+
+<section id="categoriasSection" class="text-center">
+  <h2 class="text-2xl font-medium mb-4" data-i18n="home.categoriasTitulo">Categorías más Buscadas</h2>
+  <div id="categoriasContainer" class="grid grid-cols-3 gap-4 px-4"></div>
+  <p id="toggleCategorias" class="mt-4 text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+  <span data-i18n="home.verTodasCategorias">Ver todas las Categorías...</span>
+</p>
+</section>
+
+<section id="bannerEspeciales" class="my-8 text-center mx-auto w-[90%] max-w-3xl">
+  <a id="bannerLink" href="#">
+    <div id="bannerContenido"
+         class="w-full max-h-56">
+    </div>
+  </a>
+</section>
+
+<script>
+  const videoEspeciales = document.getElementById("videoEspeciales");
+  let intentoReproducir = false;
+
+  function reproducirVideoEspeciales() {
+    if (!intentoReproducir && videoEspeciales) {
+      intentoReproducir = true;
+      videoEspeciales.play().catch((e) => 
+        console.warn("Intento de reproducción fallido en videoEspeciales:", e)
+      );
+    }
+  }
+
+  // Detecta interacción del usuario para habilitar autoplay
+  document.addEventListener("touchstart", reproducirVideoEspeciales, { once: true });
+  document.addEventListener("scroll", reproducirVideoEspeciales, { once: true });
+</script>
+
+<section class="text-center my-6 px-4">
+  <h2 class="text-2xl font-medium mb-4" data-i18n="home.comidaTitulo">¡Aquí sí, se come Brutal!</h2>
+  <div id="comidaCarousel"></div>
+</section>
+
+<section class="text-center my-6 px-4">
+  <h2 class="text-2xl font-medium mb-4" data-i18n="home.jangueoTitulo">¿Nos Fuimos pal Jangueo?</h2>
+  <div id="jangueoCarousel"></div>
+</section>
+
+<section class="text-center my-6 px-4">
+  <h2 class="text-2xl font-medium mb-4" data-i18n="home.eventosTitulo">Chequea los próximos Eventos</h2>
+  <div id="eventosCarousel"></div>
+</section>
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+<script type="module">
+  import { renderComidaCarousel } from "./js/comidaCarousel.js";
+  import { renderEventosCarousel } from "./js/eventosCarousel.js";
+
+  document.addEventListener("DOMContentLoaded", () => {
+    renderComidaCarousel("comidaCarousel");
+    renderEventosCarousel("eventosCarousel");
+  });
+</script>
+
+
+
+<section class="relative h-[260px] overflow-hidden">
+  <video
+    id="videoHero"
+    muted
+    loop
+    playsinline
+    preload="auto"
+    class="absolute top-0 left-0 w-full h-full object-cover z-0"
+  >
+    <source src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/videos/index_video.mp4" type="video/mp4">
+  </video>
+
+  <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-red-400 opacity-40 z-10"></div>
+
+  <div class="relative z-20 flex items-center justify-center h-full">
+    <a href="listadoPlayas.html" class="text-white text-3xl font-medium text-center" data-i18n="home.vamosPlaya">Vamos Pa' la Playa</a>
+  </div>
+</section>
+
+<script>
+  const video = document.getElementById("videoHero");
+  let intentado = false;
+
+  function reproducirVideo() {
+    if (!intentado && video) {
+      intentado = true;
+      video.play().catch(e => console.warn("Intento de reproducción fallido:", e));
+    }
+  }
+
+  document.addEventListener("touchstart", reproducirVideo, { once: true });
+  document.addEventListener("scroll", reproducirVideo, { once: true });
+</script>
+
+ <a href="listadoLugares.html" class="text-center my-6 px-4">
+ <h2 class="text-2xl font-medium mb-4" data-i18n="home.descubreArea">Descubre lo que hay en tu Área</h2> </a>
+
+  <div id="areasGrid" class="grid grid-cols-2 gap-4 px-4 pb-4"></div>
+
+  <section class="px-4 pb-6">
+    <a
+      href="registroComercio.html"
+      class="block rounded-2xl border border-cyan-200 bg-gradient-to-r from-cyan-50 to-sky-100 shadow-sm px-4 py-4"
+    >
+      <p class="text-[11px] uppercase tracking-[0.18em] text-cyan-700 font-semibold">Para Negocios</p>
+      <p class="text-base font-semibold text-gray-900 mt-1">
+        ¿Eres dueño de negocio?
+      </p>
+      <p class="text-sm text-gray-700 mt-1 leading-snug">
+        Te interesa más visibilidad en Findixi. Registra tu comercio y activa tu perfil.
+      </p>
+      <p class="text-sm font-semibold text-cyan-700 mt-2">Comenzar ahora</p>
+    </a>
+  </section>
+
+
+<br>
+
+
+
+
+  
+<div id="footerContainer"></div>
+<script type="module" src="js/footer.js"></script>
+
+<script type="module" src="./js/categoriasIndex.js"></script>
+<script type="module" src="./js/areasIndex.js"></script>
+<script type="module" src="./js/especialesBanner.js"></script>
+
+<script type="module" src="./js/bannerCarousel.js"></script>
+<script type="module">
+  import { createGlobalBannerElement } from './js/bannerCarousel.js';
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const container = document.getElementById("bannerHomeTop");
+    if (container) {
+      const bannerElement = await createGlobalBannerElement({
+        slotName: 'banner-home-top',
+        intervalMs: 8000,
+      });
+      if (bannerElement) container.appendChild(bannerElement);
+    }
+  });
+</script>
+
+<script>
+  function getBasePath() {
+  const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+  return isLocal ? '/public/' : '/';
+}
+
+// Aplicar el href correcto al banner Especiales
+document.addEventListener('DOMContentLoaded', () => {
+  const bannerLink = document.querySelector('#bannerEspeciales a');
+  if (bannerLink) {
+    bannerLink.href = `${getBasePath()}especiales/especialesDiarios.html`;
+  }
+});
+</script>
+
+<script type="module">
+  import { renderEventosCarousel } from "./js/eventosCarousel.js";
+
+  document.addEventListener("DOMContentLoaded", () => {
+    renderEventosCarousel("eventosCarousel");
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.initI18n) window.initI18n();
+  });
+</script>
+
+<script type="module">
+  import { renderComidaCarousel } from "./js/comidaCarousel.js";
+  import { renderJangueoCarousel } from "./js/jangueoCarousel.js";
+
+  document.addEventListener("DOMContentLoaded", () => {
+    renderComidaCarousel("comidaCarousel");   // 🍽️ Restaurantes
+    renderJangueoCarousel("jangueoCarousel"); // 🍹 Jangueo
+  });
+</script>
+
+<div id="modalEvento" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[9999] hidden px-4 py-6">
+  <div class="bg-white rounded-lg shadow-lg w-[95%] h-[85vh] 
+              overflow-y-auto relative">
+    <div class="flex items-center justify-between px-4 py-2 bg-[#231F20] text-white rounded-t-lg sticky top-0 z-50">
+      <h2 id="modalTitulo" class="flex-1 text-center text-2xl font-medium"></h2>
+      <button id="cerrarModal" 
+              class="text-white hover:text-gray-300 text-5xl font-extralight leading-none ml-2">&times;</button>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto px-4 pb-6 pt-4 space-y-2 text-center">
+      <div class="w-full overflow-hidden rounded-lg bg-gray-200 aspect-[7/5]">
+        <img id="modalImagen" src="" alt="Imagen evento" class="w-full h-full object-contain" />
+      </div>
+      
+      <p id="modalDescripcion" class="text-sm text-justify text-gray-700 whitespace-pre-line"></p>
+      <div id="modalFechaPrincipal" class="text-2xl text-red-600 font-semibold leading-5 space-y-1"></div>
+      <div id="modalHoraPrincipal" class="text-2xl text-gray-600 font-medium"></div>
+      <button id="modalVerFechas" type="button" class="text-gray-500 text-base font-medium underline hidden"></button>
+      <div id="modalFechasListado" class="hidden text-base text-gray-600 space-y-1"></div>
+      <div id="modalLugar" class="text-2xl font-semibold text-gray-700"></div>
+      <div id="modalDireccion" class="text-medium space-y-0 text-gray-500"></div>
+      <div id="modalCosto" class="text-3xl font-medium text-green-600"></div>
+      <a id="modalBoletos" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-full">Comprar boletos</a>
+    </div>
+  </div>
+</div>
+
+
+<script type="module" src="js/popups.js"></script>
+  <script src="js/bloquearPantalla.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.initI18n) window.initI18n();
+    });
+  </script>
+</div>
+</div>
+  <script type="module" src="js/introSplash.js"></script>
+</body>
+</html>

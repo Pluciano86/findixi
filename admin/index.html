@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Administración</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+  <style>
+  @media (max-width: 768px) {
+    canvas {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+    .chartjs-render-monitor {
+      transform: none !important;
+    }
+    .chart-container {
+      width: 100%;
+      overflow-x: auto;
+    }
+  }
+</style>
+</head>
+<body class="bg-gray-50">
+
+  <!-- Header y Sidebar -->
+  <div id="headerContainer"></div>
+  <script type="module">
+    import { loadAdminHeader } from './js/loadAdminHeader.js';
+    loadAdminHeader();
+  </script>
+  <script type="module">
+    import { supabase } from './shared/supabaseClient.js';
+
+    const avatarEl = document.getElementById('adminAvatar');
+    const nombreEl = document.getElementById('adminNombre');
+    const emailEl = document.getElementById('adminEmail');
+    const logoutBtn = document.getElementById('btnLogout');
+    const profileCard = document.getElementById('adminProfileCard');
+
+    const PLACEHOLDER = 'https://placehold.co/96x96?text=User';
+
+    async function cargarPerfil() {
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      const user = userData?.user;
+      if (userErr || !user) {
+        window.location.href = './login.html';
+        return;
+      }
+
+      emailEl.textContent = user.email || '—';
+
+      const { data: perfil, error } = await supabase
+        .from('usuarios')
+        .select('nombre, apellido, imagen, rol_app')
+        .eq('id', user.id)
+        .single();
+
+      if (error || !perfil) {
+        nombreEl.textContent = 'No autorizado';
+        avatarEl.src = PLACEHOLDER;
+        return;
+      }
+
+      const fullName = `${perfil.nombre || ''} ${perfil.apellido || ''}`.trim() || 'Sin nombre';
+      nombreEl.textContent = fullName;
+      avatarEl.src = perfil.imagen
+        ? (perfil.imagen.startsWith('http')
+            ? perfil.imagen
+            : `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${perfil.imagen}`)
+        : PLACEHOLDER;
+    }
+
+    async function handleLogout() {
+      const confirmar = confirm('¿Seguro que deseas cerrar sesión?');
+      if (!confirmar) return;
+      await supabase.auth.signOut();
+      window.location.href = './login.html';
+    }
+
+    logoutBtn?.addEventListener('click', handleLogout);
+    document.addEventListener('DOMContentLoaded', cargarPerfil);
+  </script>
+
+  <!-- Perfil rápido del admin -->
+  <section class="px-6 lg:px-8 mt-4">
+    <div id="adminProfileCard" class="max-w-6xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100/70 p-4 flex items-center gap-4">
+      <div class="h-14 w-14 rounded-full overflow-hidden border border-gray-200 bg-gray-100">
+        <img id="adminAvatar" src="https://placehold.co/96x96?text=User" alt="Foto de perfil" class="h-full w-full object-cover">
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs uppercase tracking-wide text-gray-500">Administrador</p>
+        <h2 id="adminNombre" class="text-lg font-semibold text-gray-900 truncate">—</h2>
+        <p id="adminEmail" class="text-sm text-gray-500 truncate">—</p>
+      </div>
+      <button id="btnLogout" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-red-50 text-red-700 hover:bg-red-100 border border-red-100">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        Cerrar sesión
+      </button>
+    </div>
+  </section>
+
+  <!-- Header y Sidebar -->
+
+    <!-- Contenido principal -->
+    <main class="flex-1 p-6 lg:p-8">
+      <div class="max-w-6xl mx-auto space-y-6">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h1 class="text-2xl font-semibold text-[#23b4e9]">Dashboard</h1>
+          <p class="text-sm text-gray-500">Última actualización: <span id="trafficUpdatedAt"></span></p>
+        </div>
+
+        <section class="bg-white rounded-xl shadow-sm border border-gray-100/60">
+          <div class="flex flex-wrap justify-between items-center gap-3 px-6 py-5 border-b border-gray-100">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">Tráfico de Visitas</h2>
+              <p class="text-sm text-gray-500">Visitas agregadas según periodo seleccionado</p>
+            </div>
+            <div class="flex flex-wrap gap-2" id="trafficViewSelector">
+              <button type="button" data-view="daily"
+                class="traffic-view-btn px-4 py-2 text-sm font-medium rounded-full border border-[#23b4e9] text-white bg-[#23b4e9] shadow-sm transition duration-150">
+                Diario
+              </button>
+              <button type="button" data-view="weekly"
+                class="traffic-view-btn px-4 py-2 text-sm font-medium rounded-full border border-[#23b4e9]/60 text-[#23b4e9] bg-white hover:bg-[#23b4e9]/10 transition duration-150">
+                Semanal
+              </button>
+              <button type="button" data-view="monthly"
+                class="traffic-view-btn px-4 py-2 text-sm font-medium rounded-full border border-[#23b4e9]/60 text-[#23b4e9] bg-white hover:bg-[#23b4e9]/10 transition duration-150">
+                Mensual
+              </button>
+              <button type="button" data-view="yearly"
+                class="traffic-view-btn px-4 py-2 text-sm font-medium rounded-full border border-[#23b4e9]/60 text-[#23b4e9] bg-white hover:bg-[#23b4e9]/10 transition duration-150">
+                Anual
+              </button>
+            </div>
+          </div>
+          <div class="px-4 sm:px-6 pb-6">
+            <div class="relative">
+              <canvas id="trafficChart" aria-label="Gráfica de tráfico de visitas" role="img" height="380"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm border border-gray-100/60 hover:shadow-md transition-shadow">
+          <div class="flex flex-wrap justify-between items-center gap-3 px-6 py-5 border-b border-gray-100">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">Comercios Registrados</h2>
+              <p class="text-sm text-gray-500">Activos vs no activos agregados por periodo</p>
+            </div>
+            <div class="flex flex-wrap gap-2" id="commerceViewSelector">
+              <button type="button" data-view="weekly"
+                class="commerce-view-btn px-4 py-2 text-sm font-medium rounded-full border border-[#23b4e9] text-white bg-[#23b4e9] shadow-sm transition duration-150">
+                Semanal
+              </button>
+              <button type="button" data-view="monthly"
+                class="commerce-view-btn px-4 py-2 text-sm font-medium rounded-full border border-[#23b4e9]/60 text-[#23b4e9] bg-white hover:bg-[#23b4e9]/10 transition duration-150">
+                Mensual
+              </button>
+              <button type="button" data-view="yearly"
+                class="commerce-view-btn px-4 py-2 text-sm font-medium rounded-full border border-[#23b4e9]/60 text-[#23b4e9] bg-white hover:bg-[#23b4e9]/10 transition duration-150">
+                Anual
+              </button>
+            </div>
+          </div>
+          <div class="px-6 py-6 space-y-5">
+            <div class="flex flex-wrap items-center gap-6">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 flex items-center gap-2">
+                  <span aria-hidden="true">🧾</span> Total actual
+                </p>
+                <p id="commerceTotal" class="text-3xl font-semibold text-gray-900">--</p>
+              </div>
+              <div class="flex flex-wrap gap-4 text-sm font-medium">
+                <span class="inline-flex items-center gap-2 text-[#23b4e9]">
+                  <span class="h-2.5 w-2.5 rounded-full bg-[#23b4e9]"></span>
+                  Activos: <strong id="commerceActive">--</strong>
+                </span>
+                <span class="inline-flex items-center gap-2 text-gray-400">
+                  <span class="h-2.5 w-2.5 rounded-full bg-gray-300"></span>
+                  No activos: <strong id="commerceInactive">--</strong>
+                </span>
+              </div>
+            </div>
+            <div class="relative h-[320px]">
+              <div id="commerceLoader"
+                class="absolute inset-0 flex items-center justify-center text-sm text-gray-500 bg-white/70 backdrop-blur-sm rounded-lg">
+                Cargando estadística de comercios…
+              </div>
+              <div id="commerceError"
+                class="hidden absolute inset-0 flex items-center justify-center text-center text-sm text-red-500 bg-white/80 rounded-lg px-6">
+                No se pudieron cargar los datos de comercios. Intenta más tarde.
+              </div>
+              <canvas id="commerceChart" class="h-full hidden" aria-label="Gráfica de comercios registrados" role="img"></canvas>
+            </div>
+            <div class="grid gap-5 lg:grid-cols-2">
+              <div id="commerceMunicipalitySection"
+                class="bg-white rounded-lg border border-gray-100 p-4 shadow-sm hidden">
+                <div
+                  class="flex flex-col items-center text-center gap-1 mb-3 sm:flex-row sm:items-center sm:justify-between sm:text-left">
+                  <h3 class="text-base font-semibold text-gray-800 sm:text-left">Comercios por municipio</h3>
+                  <span class="text-xs text-gray-400">Activos vs inactivos</span>
+                </div>
+                <div class="relative h-[50vw] sm:h-[320px] min-h-[220px]">
+                  <div id="commerceMunicipalityEmpty"
+                    class="hidden absolute inset-0 flex items-center justify-center text-sm text-gray-400 bg-white/80 rounded-lg">
+                    Sin información disponible.
+                  </div>
+                  <canvas id="commerceMunicipalityChart" class="h-full hidden"
+                    aria-label="Gráfica de comercios por municipio" role="img"></canvas>
+                </div>
+              </div>
+              <div id="commerceCategorySection"
+                class="bg-white rounded-lg border border-gray-100 p-4 shadow-sm hidden">
+                <div
+                  class="flex flex-col items-center text-center gap-1 mb-3 sm:flex-row sm:items-center sm:justify-between sm:text-left">
+                  <h3 class="text-base font-semibold text-gray-800 sm:text-left">Comercios por categoría</h3>
+                  <span class="text-xs text-gray-400">Participación proporcional</span>
+                </div>
+                <div class="relative h-[50vw] sm:h-[320px] min-h-[220px]">
+                  <div id="commerceCategoryEmpty"
+                    class="hidden absolute inset-0 flex items-center justify-center text-sm text-gray-400 bg-white/80 rounded-lg">
+                    Sin información disponible.
+                  </div>
+                  <canvas id="commerceCategoryChart" class="h-full hidden"
+                    aria-label="Distribución de comercios por categoría" role="img"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm border border-gray-100/60 hover:shadow-md transition-shadow">
+          <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-5 border-b border-gray-100">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">Usuarios Registrados — Por Municipio y Edad</h2>
+              <p class="text-sm text-gray-500">Distribución demográfica y evolución de registros</p>
+            </div>
+            <div class="flex items-center gap-3 px-4 py-3 bg-[#23b4e9]/10 rounded-lg">
+              <span aria-hidden="true" class="text-3xl leading-none">👥</span>
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-[#23b4e9]">Total usuarios</p>
+                <p id="usersTotal" class="text-3xl font-semibold text-[#0f5d80]">--</p>
+              </div>
+            </div>
+          </div>
+          <div class="px-6 pt-5">
+            <div class="flex flex-wrap gap-2" id="usersViewSelector">
+              <button type="button" data-view="weekly"
+                class="users-view-btn px-4 py-2 text-sm font-medium rounded-full border border-[#23b4e9] text-white bg-[#23b4e9] shadow-sm transition duration-150">
+                Semanal
+              </button>
+              <button type="button" data-view="monthly"
+                class="users-view-btn px-4 py-2 text-sm font-medium rounded-full border border-[#23b4e9]/60 text-[#23b4e9] bg-white hover:bg-[#23b4e9]/10 transition duration-150">
+                Mensual
+              </button>
+              <button type="button" data-view="yearly"
+                class="users-view-btn px-4 py-2 text-sm font-medium rounded-full border border-[#23b4e9]/60 text-[#23b4e9] bg-white hover:bg-[#23b4e9]/10 transition duration-150">
+                Anual
+              </button>
+            </div>
+          </div>
+          <div class="px-6 pb-6">
+            <div class="relative rounded-lg border border-dashed border-[#23b4e9]/10 bg-slate-50/30">
+              <div id="usersLoader"
+                class="absolute inset-0 flex items-center justify-center text-sm text-gray-500 bg-white/80 backdrop-blur-sm rounded-lg">
+                Cargando información de usuarios…
+              </div>
+              <div id="usersError"
+                class="hidden absolute inset-0 flex items-center justify-center text-center text-sm text-red-500 bg-white/90 rounded-lg px-6">
+                No se pudieron cargar los datos de usuarios. Intenta nuevamente más tarde.
+              </div>
+              <div id="usersContent" class="hidden p-5 space-y-8">
+                <div>
+                  <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <h3 class="text-base font-semibold text-gray-800">Crecimiento de usuarios</h3>
+                    <p class="text-xs text-gray-500">Registros acumulados para el periodo seleccionado</p>
+                  </div>
+                  <div class="relative h-[300px] bg-white rounded-lg shadow-inner">
+                    <canvas id="usersGrowthChart" aria-label="Gráfica de crecimiento de usuarios" role="img"></canvas>
+                  </div>
+                </div>
+                <div class="grid gap-5 lg:grid-cols-2">
+                  <div class="bg-white rounded-lg border border-gray-100 p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                      <h3 class="text-base font-semibold text-gray-800">Usuarios por municipio</h3>
+                      <span class="text-xs text-gray-400">Top municipios</span>
+                    </div>
+                    <div class="relative h-[50vw] sm:h-[320px] min-h-[220px]">
+                      <canvas id="usersMunicipalityChart" aria-label="Gráfica de usuarios por municipio" role="img"></canvas>
+                    </div>
+                  </div>
+                  <div class="bg-white rounded-lg border border-gray-100 p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                      <h3 class="text-base font-semibold text-gray-800">Distribución por edad</h3>
+                      <span class="text-xs text-gray-400">Rangos 18+</span>
+                    </div>
+                    <div class="relative h-[50vw] sm:h-[320px] min-h-[220px]">
+                      <canvas id="usersAgeChart" aria-label="Gráfica de usuarios por rango de edad" role="img"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+  </div>
+
+  <script type="module">
+    import { supabase } from "./shared/supabaseClient.js";
+
+    // Registrar hora actual de actualización
+    const updatedAtTarget = document.getElementById("trafficUpdatedAt");
+    if (updatedAtTarget) {
+      const now = new Date();
+      updatedAtTarget.textContent = now.toLocaleString("es-PR", { dateStyle: "medium", timeStyle: "short" });
+    }
+
+    const trafficData = {
+      daily: {
+        labels: ["07:00", "09:00", "11:00", "13:00", "15:00", "17:00", "19:00", "21:00"],
+        values: [18, 35, 42, 56, 62, 71, 65, 39],
+      },
+      weekly: {
+        labels: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
+        values: [320, 410, 365, 450, 512, 610, 470],
+      },
+      monthly: {
+        labels: ["Semana 1", "Semana 2", "Semana 3", "Semana 4", "Semana 5"],
+        values: [1380, 1495, 1620, 1705, 1580],
+      },
+      yearly: {
+        labels: ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
+        values: [4800, 5200, 6890, 7100, 7650, 8120, 8450, 7990, 7600, 7020, 6685, 6940],
+      },
+    };
+
+    const chartColors = {
+      gradientStart: "#23b4e9",
+      gradientEnd: "#63cef2",
+      border: "#23b4e9",
+    };
+
+    const trafficViewButtons = document.querySelectorAll(".traffic-view-btn");
+    const usersViewButtons = document.querySelectorAll(".users-view-btn");
+    const usersLoader = document.getElementById("usersLoader");
+    const usersError = document.getElementById("usersError");
+    const usersContent = document.getElementById("usersContent");
+    const usersTotalEl = document.getElementById("usersTotal");
+    const usersGrowthCanvas = document.getElementById("usersGrowthChart");
+    const usersMunicipalityCanvas = document.getElementById("usersMunicipalityChart");
+    const usersAgeCanvas = document.getElementById("usersAgeChart");
+
+    let trafficChartInstance = null;
+
+    function buildTrafficGradient(ctx) {
+      const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+      gradient.addColorStop(0, chartColors.gradientStart + "DD");
+      gradient.addColorStop(1, chartColors.gradientEnd + "00");
+      return gradient;
+    }
+
+    function updateButtonGroup(buttons, activeView) {
+      buttons.forEach((btn) => {
+        const isActive = btn.dataset.view === activeView;
+        btn.classList.toggle("bg-[#23b4e9]", isActive);
+        btn.classList.toggle("text-white", isActive);
+        btn.classList.toggle("border-[#23b4e9]", isActive);
+        btn.classList.toggle("shadow-sm", isActive);
+        btn.classList.toggle("bg-white", !isActive);
+        btn.classList.toggle("text-[#23b4e9]", !isActive);
+        btn.classList.toggle("border-[#23b4e9]/60", !isActive);
+      });
+    }
+
+    function setVisibility(element, { show, hiddenClass = "hidden" } = {}) {
+      if (!element) return;
+      const shouldShow = Boolean(show);
+      element.classList.toggle(hiddenClass, !shouldShow);
+    }
+
+    function setText(element, text) {
+      if (!element) return;
+      element.textContent = text;
+    }
+
+    function parseDelimitedList(value) {
+      if (typeof value !== "string") return [];
+      return value
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0);
+    }
+
+    function toNonEmptyString(value) {
+      if (typeof value === "string") return value.trim();
+      if (value === null || value === undefined) return "";
+      return String(value).trim();
+    }
+
+    function buildIdNameMap(records) {
+      const map = new Map();
+      (records || []).forEach(({ id, nombre }) => {
+        if (id === undefined || id === null) return;
+        const label = toNonEmptyString(nombre);
+        if (label) {
+          map.set(String(id), label);
+        }
+      });
+      return map;
+    }
+
+    async function getCategoryMap() {
+      if (categoryNameById) return categoryNameById;
+      if (!categoryMapPromise) {
+        categoryMapPromise = supabase
+          .from("Categorias")
+          .select("id, nombre")
+          .then(({ data, error }) => {
+            if (error) throw error;
+            categoryNameById = buildIdNameMap(data);
+            return categoryNameById;
+          })
+          .catch((err) => {
+            categoryNameById = null;
+            throw err;
+          })
+          .finally(() => {
+            categoryMapPromise = null;
+          });
+      }
+      return categoryMapPromise;
+    }
+
+    async function getSubcategoryMap() {
+      if (subcategoryNameById) return subcategoryNameById;
+      if (!subcategoryMapPromise) {
+        subcategoryMapPromise = supabase
+          .from("subCategoria")
+          .select("id, nombre")
+          .then(({ data, error }) => {
+            if (error) throw error;
+            subcategoryNameById = buildIdNameMap(data);
+            return subcategoryNameById;
+          })
+          .catch((err) => {
+            subcategoryNameById = null;
+            throw err;
+          })
+          .finally(() => {
+            subcategoryMapPromise = null;
+          });
+      }
+      return subcategoryMapPromise;
+    }
+
+    function getRelationLabel(entry, nestedKeyCandidates, idKey, fallbackMap) {
+      if (!entry || typeof entry !== "object") return "";
+      for (const key of nestedKeyCandidates) {
+        const nested = entry[key];
+        const label = toNonEmptyString(nested?.nombre);
+        if (label) return label;
+      }
+      const relationId = entry[idKey];
+      if (relationId !== undefined && relationId !== null && fallbackMap instanceof Map) {
+        const label = fallbackMap.get(String(relationId));
+        if (label) return label;
+      }
+      return "";
+    }
+
+    function extractCommerceCategories(commerce, categoryMap, subcategoryMap) {
+      const categories = new Set();
+
+      const categoryRelations = Array.isArray(commerce?.ComercioCategorias) ? commerce.ComercioCategorias : [];
+      categoryRelations.forEach((relation) => {
+        const label = getRelationLabel(relation, ["categoria", "Categoria", "Categorias"], "idCategoria", categoryMap);
+        if (label) categories.add(label);
+      });
+
+      const subcategoryRelations = Array.isArray(commerce?.ComercioSubcategorias)
+        ? commerce.ComercioSubcategorias
+        : [];
+      subcategoryRelations.forEach((relation) => {
+        const label = getRelationLabel(
+          relation,
+          ["subcategoria", "Subcategoria", "subCategoria"],
+          "idSubcategoria",
+          subcategoryMap
+        );
+        if (label) categories.add(label);
+      });
+
+      parseDelimitedList(commerce?.categoria).forEach((entry) => categories.add(entry));
+      parseDelimitedList(commerce?.subCategorias).forEach((entry) => categories.add(entry));
+
+      if (categories.size === 0) {
+        categories.add(UNKNOWN_CATEGORY_LABEL);
+      }
+      return Array.from(categories);
+    }
+
+    function renderTrafficChart(view) {
+      const ctx = document.getElementById("trafficChart").getContext("2d");
+      const { labels, values } = trafficData[view];
+      const gradientFill = buildTrafficGradient(ctx);
+
+      if (trafficChartInstance) {
+        trafficChartInstance.data.labels = labels;
+        trafficChartInstance.data.datasets[0].data = values;
+        trafficChartInstance.update();
+        return;
+      }
+
+      trafficChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Visitas",
+              data: values,
+              fill: true,
+              tension: 0.35,
+              backgroundColor: gradientFill,
+              borderColor: chartColors.border,
+              borderWidth: 3,
+              pointRadius: 0,
+              pointHoverRadius: 5,
+              pointHoverBackgroundColor: "#fff",
+              pointHoverBorderColor: chartColors.border,
+              pointHoverBorderWidth: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              ticks: { color: "#6B7280", font: { family: "Kanit" } },
+              grid: { display: false },
+            },
+            y: {
+              ticks: { color: "#6B7280", font: { family: "Kanit" }, beginAtZero: false },
+              grid: { color: "#E5E7EB" },
+            },
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: "index",
+              intersect: false,
+              backgroundColor: "#111827",
+              titleFont: { family: "Kanit", weight: "600" },
+              bodyFont: { family: "Kanit" },
+              callbacks: {
+                label: (context) => ` ${context.parsed.y.toLocaleString()} visitas`,
+              },
+            },
+          },
+          interaction: { intersect: false, mode: "nearest" },
+        },
+      });
+    }
+
+    function setActiveTrafficView(view) {
+      updateButtonGroup(trafficViewButtons, view);
+      renderTrafficChart(view);
+    }
+
+    trafficViewButtons.forEach((button) => {
+      button.addEventListener("click", () => setActiveTrafficView(button.dataset.view));
+    });
+
+    // ----------------------------
+    // Comercios Registrados
+    // ----------------------------
+    const commerceViewButtons = document.querySelectorAll(".commerce-view-btn");
+    const commerceChartCanvas = document.getElementById("commerceChart");
+    const commerceLoader = document.getElementById("commerceLoader");
+    const commerceError = document.getElementById("commerceError");
+    const commerceTotalEl = document.getElementById("commerceTotal");
+    const commerceActiveEl = document.getElementById("commerceActive");
+    const commerceInactiveEl = document.getElementById("commerceInactive");
+    const commerceMunicipalitySection = document.getElementById("commerceMunicipalitySection");
+    const commerceCategorySection = document.getElementById("commerceCategorySection");
+    const commerceMunicipalityCanvas = document.getElementById("commerceMunicipalityChart");
+    const commerceCategoryCanvas = document.getElementById("commerceCategoryChart");
+    const commerceMunicipalityEmpty = document.getElementById("commerceMunicipalityEmpty");
+    const commerceCategoryEmpty = document.getElementById("commerceCategoryEmpty");
+
+    let commerceChartInstance = null;
+    let commerceMunicipalityChartInstance = null;
+    let commerceCategoryChartInstance = null;
+    let commerceRecords = [];
+    let userGrowthChartInstance = null;
+    let userMunicipalityChartInstance = null;
+    let userAgeChartInstance = null;
+    let userRecords = [];
+    let categoryNameById = null;
+    let subcategoryNameById = null;
+    let categoryMapPromise = null;
+    let subcategoryMapPromise = null;
+
+    const LOCALE = "es-PR";
+    const weekdayFormatter = new Intl.DateTimeFormat(LOCALE, { weekday: "short" });
+    const monthFormatter = new Intl.DateTimeFormat(LOCALE, { month: "short" });
+
+    const AGE_BUCKETS = [
+      { label: "18-24", min: 18, max: 24 },
+      { label: "25-34", min: 25, max: 34 },
+      { label: "35-44", min: 35, max: 44 },
+      { label: "45-54", min: 45, max: 54 },
+      { label: "55-64", min: 55, max: 64 },
+      { label: "65+", min: 65, max: Number.POSITIVE_INFINITY },
+    ];
+
+    const commercePalette = {
+      active: "#23b4e9",
+      inactive: "#c5d3e6",
+      grid: "#E5E7EB",
+      ticks: "#6B7280",
+    };
+
+    const usersPalette = {
+      growthLine: "#23b4e9",
+      growthGradientFrom: "rgba(35, 180, 233, 0.35)",
+      growthGradientTo: "rgba(35, 180, 233, 0.05)",
+      municipalityBars: [
+        "#23b4e9",
+        "#2fb3eb",
+        "#3bc1f0",
+        "#4acdf3",
+        "#5bd9f6",
+        "#6be3f8",
+        "#7beefb",
+        "#8bf6fd",
+      ],
+      ageBars: ["#1c83c7", "#2399d8", "#23b4e9", "#3ac3f0", "#63d1f4", "#8de3fa"],
+      ticks: "#6B7280",
+      grid: "#E5E7EB",
+    };
+
+    const UNKNOWN_MUNICIPALITY_LABEL = "Desconocido";
+    const UNKNOWN_CATEGORY_LABEL = "Sin categoría";
+    const categoryPalette = [
+      "#134b6f",
+      "#1c83c7",
+      "#23b4e9",
+      "#3ac3f0",
+      "#63d1f4",
+      "#8de3fa",
+      "#b7f2ff",
+      "#d4f7ff",
+    ];
+
+    function startOfDay(date) {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+
+    function addDays(date, amount) {
+      const result = new Date(date);
+      result.setDate(result.getDate() + amount);
+      return result;
+    }
+
+    function startOfMonth(date) {
+      return new Date(date.getFullYear(), date.getMonth(), 1);
+    }
+
+    function addMonths(date, amount) {
+      const result = new Date(date);
+      result.setMonth(result.getMonth() + amount);
+      return result;
+    }
+
+    function startOfYear(date) {
+      return new Date(date.getFullYear(), 0, 1);
+    }
+
+    function addYears(date, amount) {
+      const result = new Date(date);
+      result.setFullYear(result.getFullYear() + amount);
+      return result;
+    }
+
+    function createTemporalBuckets(period, initializer = () => ({})) {
+      const analysisStart = new Date("2025-05-01T00:00:00Z");
+      const analysisEnd = new Date();
+      const buckets = [];
+      const now = new Date();
+
+      if (period === "weekly") {
+        for (let i = 6; i >= 0; i--) {
+          const tentativeStart = startOfDay(addDays(now, -i));
+          const start = tentativeStart < analysisStart ? startOfDay(analysisStart) : tentativeStart;
+          const tentativeEnd = addDays(start, 1);
+          const end = tentativeEnd > analysisEnd ? analysisEnd : tentativeEnd;
+          if (start >= analysisStart) {
+            const label = `${weekdayFormatter.format(start)} ${start.getDate()}`;
+            buckets.push({ label, start, end, ...initializer() });
+          }
+        }
+      } else if (period === "monthly") {
+        for (let i = 5; i >= 0; i--) {
+          const tentativeStart = startOfMonth(addMonths(now, -i));
+          const start = tentativeStart < analysisStart ? startOfMonth(analysisStart) : tentativeStart;
+          const tentativeEnd = startOfMonth(addMonths(start, 1));
+          const end = tentativeEnd > analysisEnd ? analysisEnd : tentativeEnd;
+          if (start >= analysisStart) {
+            const label = `${monthFormatter.format(start)} ${start.getFullYear()}`;
+            buckets.push({ label, start, end, ...initializer() });
+          }
+        }
+      } else if (period === "yearly") {
+        const startYear = analysisStart.getFullYear();
+        const endYear = analysisEnd.getFullYear();
+        for (let year = startYear; year <= endYear; year++) {
+          const start = new Date(year, 0, 1);
+          const end = new Date(year + 1, 0, 1);
+          buckets.push({
+            label: `${year}`,
+            start: start < analysisStart ? analysisStart : start,
+            end: end > analysisEnd ? analysisEnd : end,
+            ...initializer(),
+          });
+        }
+      }
+
+      console.log("📅 Buckets generados:", buckets);
+      return buckets;
+    }
+
+    function aggregateCommerceData(records, period) {
+      const buckets = createTemporalBuckets(period, () => ({ active: 0, inactive: 0 }));
+      const analysisStart = new Date("2025-05-01T00:00:00Z");
+      const analysisEnd = new Date();
+
+      records.forEach(({ activo, createdAt }) => {
+        if (!createdAt || createdAt < analysisStart || createdAt > analysisEnd) return;
+        for (const bucket of buckets) {
+          if (createdAt >= bucket.start && createdAt < bucket.end) {
+            if (activo) bucket.active += 1;
+            else bucket.inactive += 1;
+            break;
+          }
+        }
+      });
+
+      const range =
+        buckets.length > 0
+          ? { start: buckets[0].start, end: buckets[buckets.length - 1].end }
+          : null;
+
+      console.log("📊 aggregateCommerceData buckets:", buckets);
+      console.log("📅 aggregateCommerceData range:", range);
+
+      return {
+        labels: buckets.map((bucket) => bucket.label),
+        active: buckets.map((bucket) => bucket.active),
+        inactive: buckets.map((bucket) => bucket.inactive),
+        range,
+      };
+    }
+
+    function filterRecordsByRange(records, range) {
+      if (!range?.start || !range?.end) return records;
+      return records.filter(({ createdAt }) => {
+        if (!(createdAt instanceof Date) || Number.isNaN(createdAt.getTime())) return false;
+        return createdAt >= range.start && createdAt < range.end;
+      });
+    }
+
+    function renderCommerceChart(period) {
+      updateButtonGroup(commerceViewButtons, period);
+
+
+      if (!commerceChartCanvas) return;
+
+      const { labels, active, inactive, range } = aggregateCommerceData(commerceRecords, period);
+      console.log("🧩 Datos recibidos de aggregateCommerceData:", aggregateCommerceData(commerceRecords, period));
+console.log("🪄 labels:", labels);
+console.log("📊 active:", active);
+console.log("📉 inactive:", inactive);
+console.log("📅 range:", range);
+      const ctx = commerceChartCanvas.getContext("2d");
+      if (!ctx) return;
+
+      if (!commerceChartInstance) {
+        commerceChartInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Activos",
+                data: active,
+                backgroundColor: commercePalette.active,
+                borderRadius: 6,
+                maxBarThickness: 32,
+              },
+              {
+                label: "No activos",
+                data: inactive,
+                backgroundColor: commercePalette.inactive,
+                borderRadius: 6,
+                maxBarThickness: 32,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                stacked: true,
+                ticks: { color: commercePalette.ticks, font: { family: "Kanit" } },
+                grid: { display: false },
+              },
+              y: {
+                stacked: true,
+                ticks: { color: commercePalette.ticks, font: { family: "Kanit" }, precision: 0 },
+                grid: { color: commercePalette.grid },
+              },
+            },
+            plugins: {
+              legend: {
+                position: "top",
+                labels: { font: { family: "Kanit" } },
+              },
+              tooltip: {
+                backgroundColor: "#111827",
+                titleFont: { family: "Kanit", weight: "600" },
+                bodyFont: { family: "Kanit" },
+                callbacks: {
+                  label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}`,
+                },
+              },
+            },
+          },
+        });
+      } else {
+        commerceChartInstance.data.labels = labels;
+        commerceChartInstance.data.datasets[0].data = active;
+        commerceChartInstance.data.datasets[1].data = inactive;
+        commerceChartInstance.update();
+      }
+
+      const filteredRecords = filterRecordsByRange(commerceRecords, range);
+      renderCommerceMunicipalityChart(filteredRecords);
+      renderCommerceCategoryChart(filteredRecords);
+    }
+
+   function renderCommerceMunicipalityChart(records) { 
+      if (!commerceMunicipalityCanvas || !commerceMunicipalitySection) return;
+
+      const grouped = records.reduce((map, { municipioName, activo }) => {
+        const key = (municipioName || UNKNOWN_MUNICIPALITY_LABEL).trim() || UNKNOWN_MUNICIPALITY_LABEL;
+        const entry = map.get(key) || { active: 0, inactive: 0 };
+        if (activo) entry.active += 1;
+        else entry.inactive += 1;
+        map.set(key, entry);
+        return map;
+      }, new Map());
+
+      const sorted = Array.from(grouped.entries()).sort((a, b) => {
+        const totalA = a[1].active + a[1].inactive;
+        const totalB = b[1].active + b[1].inactive;
+        return totalB - totalA;
+      });
+
+      const MAX_MUNICIPALITIES = 10;
+      const items = sorted.slice(0, MAX_MUNICIPALITIES);
+
+      if (!items.length) {
+        if (commerceMunicipalityChartInstance) {
+          commerceMunicipalityChartInstance.destroy();
+          commerceMunicipalityChartInstance = null;
+        }
+        setVisibility(commerceMunicipalitySection, { show: true });
+        setVisibility(commerceMunicipalityCanvas, { show: false });
+        setVisibility(commerceMunicipalityEmpty, { show: true });
+        return;
+      }
+
+      const labels = items.map(([label]) => label);
+      const activeData = items.map(([, value]) => value.active);
+      const inactiveData = items.map(([, value]) => value.inactive);
+
+      setVisibility(commerceMunicipalitySection, { show: true });
+      setVisibility(commerceMunicipalityCanvas, { show: true });
+      setVisibility(commerceMunicipalityEmpty, { show: false });
+
+      const ctx = commerceMunicipalityCanvas.getContext("2d");
+      if (!ctx) return;
+
+      if (!commerceMunicipalityChartInstance) {
+        commerceMunicipalityChartInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Activos",
+                data: activeData,
+                backgroundColor: commercePalette.active,
+                borderRadius: 6,
+                borderSkipped: false,
+                barPercentage: 0.7,
+                categoryPercentage: 0.7,
+              },
+              {
+                label: "No activos",
+                data: inactiveData,
+                backgroundColor: commercePalette.inactive,
+                borderRadius: 6,
+                borderSkipped: false,
+                barPercentage: 0.7,
+                categoryPercentage: 0.7,
+              },
+            ],
+          },
+          options: {
+            indexAxis: "y",
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                stacked: true,
+                beginAtZero: true,
+                ticks: { color: commercePalette.ticks, font: { family: "Kanit" } },
+                grid: { color: commercePalette.grid },
+              },
+              y: {
+                stacked: true,
+                ticks: { color: commercePalette.ticks, font: { family: "Kanit" } },
+                grid: { display: false },
+              },
+            },
+            plugins: {
+              legend: {
+                position: "top",
+                labels: { font: { family: "Kanit" } },
+              },
+              tooltip: {
+                backgroundColor: "#111827",
+                titleFont: { family: "Kanit", weight: "600" },
+                bodyFont: { family: "Kanit" },
+                callbacks: {
+                  label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.x.toLocaleString()}`,
+                },
+              },
+            },
+          },
+        });
+      } else {
+        commerceMunicipalityChartInstance.data.labels = labels;
+        commerceMunicipalityChartInstance.data.datasets[0].data = activeData;
+        commerceMunicipalityChartInstance.data.datasets[1].data = inactiveData;
+        commerceMunicipalityChartInstance.update();
+      }
+    }
+
+    function renderCommerceCategoryChart(records) {
+      if (!commerceCategoryCanvas || !commerceCategorySection) return;
+
+      const grouped = records.reduce((map, { categories }) => {
+        const categoryList = Array.isArray(categories) && categories.length ? categories : [UNKNOWN_CATEGORY_LABEL];
+        categoryList.forEach((name) => {
+          const key = (name || UNKNOWN_CATEGORY_LABEL).trim() || UNKNOWN_CATEGORY_LABEL;
+          map.set(key, (map.get(key) || 0) + 1);
+        });
+        return map;
+      }, new Map());
+
+      const sorted = Array.from(grouped.entries()).sort((a, b) => b[1] - a[1]);
+      const MAX_CATEGORIES = Math.max(categoryPalette.length - 1, 1);
+      const items = sorted.slice(0, MAX_CATEGORIES);
+
+      if (sorted.length > MAX_CATEGORIES) {
+        const others = sorted.slice(MAX_CATEGORIES).reduce((acc, [, value]) => acc + value, 0);
+        items.push(["Otros", others]);
+      }
+
+      if (!items.length) {
+        if (commerceCategoryChartInstance) {
+          commerceCategoryChartInstance.destroy();
+          commerceCategoryChartInstance = null;
+        }
+        setVisibility(commerceCategorySection, { show: true });
+        setVisibility(commerceCategoryCanvas, { show: false });
+        setVisibility(commerceCategoryEmpty, { show: true });
+        return;
+      }
+
+      const labels = items.map(([label]) => label);
+      const values = items.map(([, value]) => value);
+      const colors = labels.map((_, index) => categoryPalette[index % categoryPalette.length]);
+
+      setVisibility(commerceCategorySection, { show: true });
+      setVisibility(commerceCategoryCanvas, { show: true });
+      setVisibility(commerceCategoryEmpty, { show: false });
+
+      const ctx = commerceCategoryCanvas.getContext("2d");
+      if (!ctx) return;
+
+      if (!commerceCategoryChartInstance) {
+        commerceCategoryChartInstance = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels,
+            datasets: [
+              {
+                data: values,
+                backgroundColor: colors,
+                borderWidth: 1,
+                borderColor: "#ffffff",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "55%",
+            plugins: {
+              legend: {
+                position: "bottom",
+                labels: { font: { family: "Kanit" } },
+              },
+              tooltip: {
+                backgroundColor: "#111827",
+                titleFont: { family: "Kanit", weight: "600" },
+                bodyFont: { family: "Kanit" },
+                callbacks: {
+                  label: (ctx) => {
+                    const value = ctx.parsed;
+                    const total = ctx.dataset.data.reduce((acc, curr) => acc + curr, 0) || 1;
+                    const percentage = ((value / total) * 100).toFixed(1);
+                    return ` ${ctx.label}: ${value.toLocaleString()} (${percentage}%)`;
+                  },
+                },
+              },
+            },
+          },
+        });
+      } else {
+        commerceCategoryChartInstance.data.labels = labels;
+        commerceCategoryChartInstance.data.datasets[0].data = values;
+        commerceCategoryChartInstance.data.datasets[0].backgroundColor = colors;
+        commerceCategoryChartInstance.update();
+      }
+    }
+
+    commerceViewButtons.forEach((button) => {
+      button.addEventListener("click", () => renderCommerceChart(button.dataset.view));
+    });
+
+    // ----------------------------
+    // Usuarios Registrados
+    // ----------------------------
+    function buildUserGrowthGradient(ctx) {
+      const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+      gradient.addColorStop(0, usersPalette.growthGradientFrom);
+      gradient.addColorStop(1, usersPalette.growthGradientTo);
+      return gradient;
+    }
+
+    function aggregateUserGrowth(records, period) {
+      const buckets = createTemporalBuckets(period, () => ({ count: 0 }));
+      records.forEach(({ createdAt }) => {
+        if (!createdAt) return;
+        for (const bucket of buckets) {
+          if (createdAt >= bucket.start && createdAt < bucket.end) {
+            bucket.count += 1;
+            break;
+          }
+        }
+      });
+
+      return {
+        labels: buckets.map((bucket) => bucket.label),
+        values: buckets.map((bucket) => bucket.count),
+      };
+    }
+
+    function aggregateUsersByMunicipio(records) {
+      const counter = new Map();
+      records.forEach(({ municipioName }) => {
+        const name = (municipioName || "").toString().trim();
+        const label = name.length ? name : UNKNOWN_MUNICIPALITY_LABEL;
+        counter.set(label, (counter.get(label) || 0) + 1);
+      });
+
+      const sorted = Array.from(counter.entries()).sort((a, b) => b[1] - a[1]);
+      if (!sorted.length) {
+        return { labels: [UNKNOWN_MUNICIPALITY_LABEL], values: [0] };
+      }
+
+      const top = sorted.slice(0, 8);
+      const others = sorted.slice(8);
+      if (others.length) {
+        const sum = others.reduce((acc, [, value]) => acc + value, 0);
+        top.push(["Otros", sum]);
+      }
+
+      return {
+        labels: top.map(([name]) => name),
+        values: top.map(([, value]) => value),
+      };
+    }
+
+    function calculateAge(birthDate, referenceDate = new Date()) {
+      if (!(birthDate instanceof Date) || Number.isNaN(birthDate.getTime())) return null;
+      let age = referenceDate.getFullYear() - birthDate.getFullYear();
+      const monthDiff = referenceDate.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && referenceDate.getDate() < birthDate.getDate())) {
+        age -= 1;
+      }
+      return age >= 0 ? age : null;
+    }
+
+    function aggregateUsersByAge(records) {
+      const buckets = AGE_BUCKETS.map((bucket) => ({ ...bucket, count: 0 }));
+      records.forEach(({ birthDate }) => {
+        if (!(birthDate instanceof Date) || Number.isNaN(birthDate.getTime())) return;
+        const age = calculateAge(birthDate);
+        if (age === null) return;
+
+        const match = buckets.find((bucket) => age >= bucket.min && age <= bucket.max);
+        if (match) {
+          match.count += 1;
+        }
+      });
+
+      return {
+        labels: buckets.map((bucket) => bucket.label),
+        values: buckets.map((bucket) => bucket.count),
+      };
+    }
+
+    function renderUserGrowthChart(period) {
+      updateButtonGroup(usersViewButtons, period);
+      if (!usersGrowthCanvas) return;
+      const { labels, values } = aggregateUserGrowth(userRecords, period);
+      const ctx = usersGrowthCanvas.getContext("2d");
+      if (!ctx) return;
+      const gradientFill = buildUserGrowthGradient(ctx);
+
+      if (!userGrowthChartInstance) {
+        userGrowthChartInstance = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Nuevos usuarios",
+                data: values,
+                fill: true,
+                tension: 0.35,
+                backgroundColor: gradientFill,
+                borderColor: usersPalette.growthLine,
+                borderWidth: 3,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: "#fff",
+                pointHoverBorderColor: usersPalette.growthLine,
+                pointHoverBorderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                ticks: { color: usersPalette.ticks, font: { family: "Kanit" } },
+                grid: { color: "rgba(99, 102, 241, 0)", drawBorder: false },
+              },
+              y: {
+                beginAtZero: true,
+                ticks: { color: usersPalette.ticks, font: { family: "Kanit" }, precision: 0 },
+                grid: { color: usersPalette.grid },
+              },
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: "#111827",
+                titleFont: { family: "Kanit", weight: "600" },
+                bodyFont: { family: "Kanit" },
+                callbacks: {
+                  label: (ctx) => ` ${ctx.parsed.y.toLocaleString()} usuarios`,
+                },
+              },
+            },
+            interaction: { intersect: false, mode: "nearest" },
+          },
+        });
+        return;
+      }
+
+      userGrowthChartInstance.data.labels = labels;
+      userGrowthChartInstance.data.datasets[0].data = values;
+      userGrowthChartInstance.update();
+    }
+
+    function renderUsersMunicipalityChart() {
+      if (!usersMunicipalityCanvas) return;
+      const { labels, values } = aggregateUsersByMunicipio(userRecords);
+      const ctx = usersMunicipalityCanvas.getContext("2d");
+      if (!ctx) return;
+      const colors = labels.map((_, index) => usersPalette.municipalityBars[index % usersPalette.municipalityBars.length]);
+
+      if (!userMunicipalityChartInstance) {
+        userMunicipalityChartInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Usuarios",
+                data: values,
+                backgroundColor: colors,
+                borderRadius: 8,
+                borderSkipped: false,
+                barPercentage: 0.7,
+                categoryPercentage: 0.7,
+              },
+            ],
+          },
+          options: {
+            indexAxis: "y",
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                beginAtZero: true,
+                ticks: { color: usersPalette.ticks, font: { family: "Kanit" } },
+                grid: { color: usersPalette.grid },
+              },
+              y: {
+                ticks: { color: usersPalette.ticks, font: { family: "Kanit" } },
+                grid: { display: false },
+              },
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: "#111827",
+                titleFont: { family: "Kanit", weight: "600" },
+                bodyFont: { family: "Kanit" },
+                callbacks: {
+                  label: (ctx) => ` ${ctx.parsed.x.toLocaleString()} usuarios`,
+                },
+              },
+            },
+          },
+        });
+        return;
+      }
+
+      userMunicipalityChartInstance.data.labels = labels;
+      userMunicipalityChartInstance.data.datasets[0].data = values;
+      userMunicipalityChartInstance.data.datasets[0].backgroundColor = colors;
+      userMunicipalityChartInstance.update();
+    }
+
+    function renderUsersAgeChart() {
+      if (!usersAgeCanvas) return;
+      const { labels, values } = aggregateUsersByAge(userRecords);
+      const ctx = usersAgeCanvas.getContext("2d");
+      if (!ctx) return;
+      const colors = labels.map((_, index) => usersPalette.ageBars[index % usersPalette.ageBars.length]);
+
+      if (!userAgeChartInstance) {
+        userAgeChartInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Usuarios",
+                data: values,
+                backgroundColor: colors,
+                borderRadius: 8,
+                borderSkipped: false,
+                barPercentage: 0.75,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                ticks: { color: usersPalette.ticks, font: { family: "Kanit" } },
+                grid: { display: false },
+              },
+              y: {
+                beginAtZero: true,
+                ticks: { color: usersPalette.ticks, font: { family: "Kanit" }, precision: 0 },
+                grid: { color: usersPalette.grid },
+              },
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: "#111827",
+                titleFont: { family: "Kanit", weight: "600" },
+                bodyFont: { family: "Kanit" },
+                callbacks: {
+                  label: (ctx) => ` ${ctx.parsed.y.toLocaleString()} usuarios`,
+                },
+              },
+            },
+          },
+        });
+        return;
+      }
+
+      userAgeChartInstance.data.labels = labels;
+      userAgeChartInstance.data.datasets[0].data = values;
+      userAgeChartInstance.data.datasets[0].backgroundColor = colors;
+      userAgeChartInstance.update();
+    }
+
+    usersViewButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        renderUserGrowthChart(button.dataset.view);
+      });
+    });
+
+    async function initializeCommerceCard() {
+      try {
+        const [categoryMap, subcategoryMap, commerceResponse] = await Promise.all([
+          getCategoryMap(),
+          getSubcategoryMap(),
+          supabase
+            .from("Comercios")
+            .select(
+              `
+              id,
+              nombre,
+              activo,
+              municipio,
+              idMunicipio,
+              categoria,
+              subCategorias,
+              created_at,
+              ComercioCategorias (
+                idCategoria,
+                categoria:Categorias (
+                  id,
+                  nombre
+                )
+              ),
+              ComercioSubcategorias (
+  idSubcategoria,
+  subcategoria:subCategoria (
+    id,
+    nombre
+  )
+)
+            `
+            ),
+        ]);
+
+        const { data: commerceData, error: commerceError } = commerceResponse;
+        if (commerceError) throw commerceError;
+
+        commerceRecords = (commerceData || [])
+          .map((item) => {
+            const municipioTexto = toNonEmptyString(item?.municipio);
+            const municipioName = municipioTexto.length ? municipioTexto : UNKNOWN_MUNICIPALITY_LABEL;
+
+            const createdAt = item?.created_at ? new Date(item.created_at) : null;
+
+            return {
+              activo: Boolean(item?.activo),
+              createdAt,
+              municipioName,
+              categories: extractCommerceCategories(item, categoryMap, subcategoryMap),
+            };
+          })
+          .filter((item) => item.createdAt instanceof Date && !Number.isNaN(item.createdAt.getTime()));
+
+        const activeCount = commerceRecords.filter((item) => item.activo).length;
+        const total = commerceRecords.length;
+        const inactiveCount = total - activeCount;
+
+        setText(commerceTotalEl, total.toLocaleString());
+        setText(commerceActiveEl, activeCount.toLocaleString());
+        setText(commerceInactiveEl, inactiveCount.toLocaleString());
+
+        setVisibility(commerceLoader, { show: false });
+        setVisibility(commerceError, { show: false });
+        setVisibility(commerceChartCanvas, { show: true });
+        setVisibility(commerceMunicipalitySection, { show: true });
+        setVisibility(commerceCategorySection, { show: true });
+        setVisibility(commerceMunicipalityCanvas, { show: true });
+        setVisibility(commerceCategoryCanvas, { show: true });
+
+        renderCommerceChart("weekly");
+      } catch (err) {
+        console.error("Error cargando comercios:", err);
+        setVisibility(commerceLoader, { show: false });
+        setVisibility(commerceError, { show: true });
+        setVisibility(commerceChartCanvas, { show: false });
+        setVisibility(commerceMunicipalitySection, { show: false });
+        setVisibility(commerceCategorySection, { show: false });
+        setVisibility(commerceMunicipalityCanvas, { show: false });
+        setVisibility(commerceCategoryCanvas, { show: false });
+        setVisibility(commerceMunicipalityEmpty, { show: false });
+        setVisibility(commerceCategoryEmpty, { show: false });
+      }
+    }
+
+    async function initializeUsersCard() {
+      try {
+        const { data: usersData, error: usersError } = await supabase
+          .from("usuarios")
+          .select("id, creado_en, municipio, fechaNacimiento");
+
+        if (usersError) {
+          throw usersError;
+        }
+
+        const { data: municipiosData, error: municipiosError } = await supabase
+          .from("Municipios")
+          .select("id, nombre");
+
+        if (municipiosError) {
+          throw municipiosError;
+        }
+
+        const municipioNameById = new Map();
+        (municipiosData || []).forEach(({ id, nombre }) => {
+          if (id === undefined || id === null) return;
+          const label = (nombre || "").toString().trim();
+          municipioNameById.set(String(id), label.length ? label : UNKNOWN_MUNICIPALITY_LABEL);
+        });
+
+        userRecords = (usersData || []).map((item) => {
+          const municipioId = item.municipio;
+          const municipioKey =
+            municipioId === null || municipioId === undefined ? null : String(municipioId);
+          const municipioName =
+            (municipioKey && municipioNameById.get(municipioKey)) || UNKNOWN_MUNICIPALITY_LABEL;
+
+          return {
+            createdAt: item.creado_en ? new Date(item.creado_en) : null,
+            municipioId: municipioId ?? null,
+            municipioName,
+            birthDate: item.fechaNacimiento ? new Date(item.fechaNacimiento) : null,
+          };
+        });
+
+        const totalUsers = userRecords.length;
+        setText(usersTotalEl, totalUsers.toLocaleString());
+
+        setVisibility(usersLoader, { show: false });
+        setVisibility(usersError, { show: false });
+        setVisibility(usersContent, { show: true });
+
+        renderUserGrowthChart("weekly");
+        renderUsersMunicipalityChart();
+        renderUsersAgeChart();
+      } catch (err) {
+        console.error("Error cargando usuarios:", err);
+        setVisibility(usersLoader, { show: false });
+        setVisibility(usersError, { show: true });
+        setVisibility(usersContent, { show: false });
+      }
+    }
+
+    window.addEventListener("load", () => {
+      setActiveTrafficView("daily");
+      initializeCommerceCard();
+      initializeUsersCard();
+    });
+  </script>
+</body>
+</html>

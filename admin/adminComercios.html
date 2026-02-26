@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Comercios</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+  <!-- Header y Sidebar -->
+  <div id="headerContainer"></div>
+
+  <script type="module">
+    import { loadAdminHeader } from './js/loadAdminHeader.js';
+    loadAdminHeader();
+  </script>
+
+  <main class="px-4 py-6">
+    <h2 class="text-2xl text-center font-medium mb-4">Listado de Comercios</h2>
+    <div class="flex justify-center items-center mb-4">
+      <a href="crearComercio.html"
+         data-resolve-path="crearComercio.html"
+         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow inline-flex items-center gap-2">
+        <i class="fas fa-plus"></i>
+        Nuevo Comercio
+      </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input id="search-nombre" type="text" placeholder="Buscar por nombre..." class="border px-3 py-2 rounded w-full" />
+        <select id="search-orden" class="border px-3 py-2 rounded w-full">
+          <option value="fecha">Más recientes</option>
+          <option value="az">Orden alfabético</option>
+        </select>
+      </div>
+
+      <div class="flex flex-col md:flex-row md:items-center gap-4">
+        <select id="search-categoria" class="border px-3 py-2 rounded bg-white w-full md:w-1/3">
+          <option value="">Todas las categorías</option>
+        </select>
+
+        <select id="search-municipio" class="border px-3 py-2 rounded bg-white w-full md:w-1/3">
+          <option value="">Todos los municipios</option>
+        </select>
+
+        <label class="w-full md:w-1/3 flex items-center justify-between rounded border border-gray-200 bg-white px-4 py-2">
+          <span class="text-sm font-medium text-gray-700">Mostrar solo activos</span>
+          <div class="relative inline-flex items-center">
+            <input type="checkbox" id="filter-activo" class="sr-only peer" checked>
+            <div class="w-11 h-6 rounded-full bg-gray-300 transition-colors peer-checked:bg-emerald-500 peer-focus:ring-2 peer-focus:ring-emerald-300"></div>
+            <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div id="contador-comercios" class="text-sm text-gray-600 mb-3">Mostrando 0 comercios</div>
+
+    <!-- Tabla responsive -->
+    <div class="overflow-x-auto bg-white rounded shadow hidden lg:block">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-100">
+          <tr class="text-left text-xs font-medium text-gray-700">
+            <th class="px-4 py-3">Nombre</th>
+            <th class="px-4 py-3">Categoría(s)</th>
+            <th class="px-4 py-3">Municipio</th>
+            <th class="px-4 py-3">Área</th>
+            <th class="px-4 py-3">Plan</th>
+            <th class="px-4 py-3 text-center">Activo</th>
+            <th class="px-4 py-3">Creado</th>
+            <th class="px-4 py-3 text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-comercios" class="divide-y divide-gray-100 text-sm">
+          <!-- Dinámico -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Vista mobile: tarjetas -->
+    <div id="tabla-mobile" class="space-y-4 lg:hidden mt-6">
+      <!-- Comercios en formato tarjeta se insertan desde JS -->
+    </div>
+  </main>
+
+  <!-- Lógica para cargar datos -->
+  <script type="module">
+    import {
+      cargarCategorias,
+      cargarMunicipios,
+      cargarComercios,
+      filtrarYMostrarComercios,
+      actualizarFiltroSoloActivos
+    } from './js/mainAdmin.js';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const toggleActivos = document.getElementById('filter-activo');
+      if (toggleActivos) toggleActivos.checked = true;
+
+      await cargarCategorias();
+      await cargarMunicipios();
+      await cargarComercios();
+
+      const listeners = [
+        { id: 'search-nombre', event: 'input' },
+        { id: 'search-categoria', event: 'change' },
+        { id: 'search-municipio', event: 'change' },
+        { id: 'search-orden', event: 'change' }
+      ];
+
+      listeners.forEach(({ id, event }) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, filtrarYMostrarComercios);
+      });
+
+      if (toggleActivos) {
+        toggleActivos.addEventListener('change', async (event) => {
+          const control = event.currentTarget;
+          control.disabled = true;
+          try {
+            await actualizarFiltroSoloActivos(control.checked);
+          } finally {
+            control.disabled = false;
+          }
+        });
+      }
+    });
+  </script>
+
+</body>
+</html>
