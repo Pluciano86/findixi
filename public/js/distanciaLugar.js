@@ -1,4 +1,8 @@
 import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
+import {
+  calcularDistanciaHaversineKm,
+  calcularTiempoEnVehiculo,
+} from '../shared/pkg/utils/distance.js';
 
 function formatearMinutosConversacional(min) {
   if (!Number.isFinite(min)) return null;
@@ -28,7 +32,7 @@ export async function calcularTiemposParaLugares(lista, origenCoords = {}) {
     const destinoLon = Number(lugar.longitud);
     if (!Number.isFinite(destinoLat) || !Number.isFinite(destinoLon)) return;
 
-    const distanciaHaversine = calcularDistancia(origenLat, origenLon, destinoLat, destinoLon);
+    const distanciaHaversine = calcularDistanciaHaversineKm(origenLat, origenLon, destinoLat, destinoLon);
 
     const resultado = await getDrivingDistance(
       { lat: origenLat, lng: origenLon },
@@ -42,14 +46,8 @@ export async function calcularTiemposParaLugares(lista, origenCoords = {}) {
       : distanciaHaversine;
 
     if (minutos === null && Number.isFinite(distanciaHaversine)) {
-      const velocidad = distanciaHaversine < 5
-        ? 30
-        : distanciaHaversine < 15
-          ? 45
-          : distanciaHaversine < 40
-            ? 60
-            : 75;
-      minutos = Math.round((distanciaHaversine / velocidad) * 60);
+      const fallback = calcularTiempoEnVehiculo(distanciaHaversine);
+      minutos = fallback.minutos;
       texto = formatTiempo(minutos * 60);
     }
 
@@ -66,13 +64,5 @@ export async function calcularTiemposParaLugares(lista, origenCoords = {}) {
 }
 
 export function calcularDistancia(lat1, lon1, lat2, lon2) {
-  const rad = Math.PI / 180;
-  const R = 6371;
-  const dLat = (lat2 - lat1) * rad;
-  const dLon = (lon2 - lon1) * rad;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return calcularDistanciaHaversineKm(lat1, lon1, lat2, lon2);
 }

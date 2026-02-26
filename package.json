@@ -1,5 +1,8 @@
 {
   "type": "module",
+  "scripts": {
+    "sync:shared": "node tools/sync-shared-package.mjs"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.0",
     "node-fetch": "^3.3.2",
