@@ -3,6 +3,17 @@ import { getEventoI18n } from "../shared/eventoI18n.js";
 import { t } from "./i18n.js";
 
 let eventoOriginal = null;
+const MODAL_TRANSLATING_LABELS = {
+  es: "Traduciendo...",
+  en: "Translating...",
+  fr: "Traduction...",
+  de: "Wird ubersetzt...",
+  pt: "Traduzindo...",
+  it: "Traduzione in corso...",
+  zh: "正在翻译...",
+  ko: "번역 중...",
+  ja: "翻訳中...",
+};
 
 function obtenerLightboxImagenEvento() {
   let lightbox = document.getElementById("eventoImagenLightbox");
@@ -104,6 +115,34 @@ function ajustarImagenModalSegunProporcion(imagen) {
   if (imagen.complete) evaluar();
 }
 
+function getModalTranslatingLabel(lang = "es") {
+  const norm = (lang || "es").toLowerCase().split("-")[0];
+  return MODAL_TRANSLATING_LABELS[norm] || MODAL_TRANSLATING_LABELS.es;
+}
+
+function ensureTraduccionStatusNode() {
+  const descripcion = document.getElementById("modalDescripcion");
+  if (!descripcion) return null;
+
+  let status = document.getElementById("modalTraduciendoEstado");
+  if (status) return status;
+
+  status = document.createElement("p");
+  status.id = "modalTraduciendoEstado";
+  status.className = "hidden text-sm text-gray-500 text-center animate-pulse";
+  descripcion.parentNode?.insertBefore(status, descripcion);
+  return status;
+}
+
+function skeletonLines(widths = [], centered = false) {
+  return widths
+    .map(
+      (width) =>
+        `<span class="block h-3 rounded-full bg-gray-300 animate-pulse ${centered ? "mx-auto" : ""}" style="width:${width};"></span>`
+    )
+    .join("");
+}
+
 async function renderModal(evento) {
   const modal = document.getElementById("modalEvento");
   if (!modal) return;
@@ -112,33 +151,93 @@ async function renderModal(evento) {
     localStorage.getItem("lang") ||
     document.documentElement.lang ||
     "es";
-  const locale = lang === "es" ? "es-PR" : lang;
-  const ev = await getEventoI18n(evento, lang).catch(() => evento);
+  const langNorm = (lang || "es").toLowerCase().split("-")[0];
+  const locale = langNorm === "es" ? "es-PR" : langNorm;
+  const shouldTranslate = langNorm !== "es";
+  const renderToken = `${evento?.id || "evento"}:${Date.now()}`;
+  modal.dataset.renderToken = renderToken;
 
   const fallback = (key, def) => {
     const val = t(key);
     return val === key ? def : val;
   };
 
+  // 🔹 Mostrar modal de inmediato para que se vea el estado de traducción
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+
+  const cerrarModal = document.getElementById("cerrarModal");
+  if (cerrarModal) {
+    cerrarModal.onclick = () => cerrarModalEvento();
+  }
+  modal.onclick = (e) => {
+    if (e.target === modal) cerrarModalEvento();
+  };
+
   // 🟢 Imagen principal y título
   const titulo = document.getElementById("modalTitulo");
   const imagen = document.getElementById("modalImagen");
-  titulo.textContent = ev.nombre || fallback("modal.sinTitulo", "Evento sin título");
-  imagen.src = ev.imagen || ev.img_principal || "https://placehold.co/560x400?text=Evento";
-  imagen.alt = ev.nombre || fallback("modal.sinTitulo", "Evento sin título");
-  ajustarImagenModalSegunProporcion(imagen);
-  imagen.style.cursor = "zoom-in";
-  imagen.onclick = () => abrirLightboxImagenEvento(imagen.src, imagen.alt);
-
-  // 🟢 Descripción
   const descripcion = document.getElementById("modalDescripcion");
-  descripcion.textContent = ev.descripcion?.trim()
-    ? ev.descripcion
-    : fallback("evento.sinDescripcion", "Sin descripción disponible");
-
-  // 🟢 Lugar y dirección (manejo multi-municipio)
   const lugar = document.getElementById("modalLugar");
   const direccion = document.getElementById("modalDireccion");
+  const costo = document.getElementById("modalCosto");
+  const fechaElem = document.getElementById("modalFechaPrincipal");
+  const horaElem = document.getElementById("modalHoraPrincipal");
+  const verFechasBtn = document.getElementById("modalVerFechas");
+  const fechasListado = document.getElementById("modalFechasListado");
+  const enlaceBoletos = document.getElementById("modalBoletos");
+  const traduccionStatus = ensureTraduccionStatusNode();
+
+  titulo.textContent = evento.nombre || fallback("modal.sinTitulo", "Evento sin título");
+  imagen.src = evento.imagen || evento.img_principal || "https://placehold.co/560x400?text=Evento";
+  imagen.alt = evento.nombre || fallback("modal.sinTitulo", "Evento sin título");
+  ajustarImagenModalSegunProporcion(imagen);
+  imagen.style.cursor = "zoom-in";
+  imagen.style.touchAction = "manipulation";
+  imagen.onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    abrirLightboxImagenEvento(imagen.src, imagen.alt);
+  };
+  imagen.ontouchend = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    abrirLightboxImagenEvento(imagen.src, imagen.alt);
+  };
+
+  if (shouldTranslate) {
+    if (traduccionStatus) {
+      traduccionStatus.textContent = getModalTranslatingLabel(langNorm);
+      traduccionStatus.classList.remove("hidden");
+    }
+    if (descripcion) {
+      descripcion.innerHTML = skeletonLines(["100%", "100%", "84%"]);
+    }
+    if (fechaElem) fechaElem.innerHTML = skeletonLines(["64%"], true);
+    if (horaElem) horaElem.innerHTML = skeletonLines(["44%"], true);
+    if (lugar) lugar.innerHTML = skeletonLines(["72%"], true);
+    if (direccion) direccion.innerHTML = skeletonLines(["58%"], true);
+    if (costo) costo.innerHTML = skeletonLines(["40%"], true);
+    if (verFechasBtn) verFechasBtn.classList.add("hidden");
+    if (fechasListado) fechasListado.classList.add("hidden");
+    if (enlaceBoletos) enlaceBoletos.classList.add("hidden");
+  } else if (traduccionStatus) {
+    traduccionStatus.classList.add("hidden");
+  }
+
+  const ev = shouldTranslate
+    ? await getEventoI18n(evento, langNorm).catch(() => evento)
+    : evento;
+  if (modal.dataset.renderToken !== renderToken) return;
+  if (traduccionStatus) traduccionStatus.classList.add("hidden");
+
+  if (descripcion) {
+    descripcion.textContent = ev.descripcion?.trim()
+      ? ev.descripcion
+      : fallback("evento.sinDescripcion", "Sin descripción disponible");
+  }
+
+  // 🟢 Lugar y dirección (manejo multi-municipio)
   if (direccion) {
     direccion.removeAttribute("href");
     direccion.removeAttribute("target");
@@ -174,7 +273,6 @@ async function renderModal(evento) {
   }
 
   // 🟢 Costo o Entrada Gratis
-  const costo = document.getElementById("modalCosto");
   if (ev.gratis || ev.entrada_gratis) {
     costo.textContent = t("area.gratis");
   } else if (ev.costo || ev.precio) {
@@ -200,7 +298,6 @@ async function renderModal(evento) {
   }
 
   // 🟢 Enlace de boletos
-  const enlaceBoletos = document.getElementById("modalBoletos");
   const enlaceGlobal = ev.enlaceboletos || ev.enlace_boleto || ev.link_boletos || "";
   const hayLinksPorLocalidad = fechasDisponibles.some((f) => f.enlaceboletos);
   const usarLinkPorLocalidad = ev.boletos_por_localidad === true || (!enlaceGlobal && hayLinksPorLocalidad);
@@ -217,11 +314,6 @@ async function renderModal(evento) {
     texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
 
 // 🗓️ FECHAS DEL EVENTO
-const fechaElem = document.getElementById("modalFechaPrincipal");
-const horaElem = document.getElementById("modalHoraPrincipal");
-const verFechasBtn = document.getElementById("modalVerFechas");
-const fechasListado = document.getElementById("modalFechasListado");
-
 if (fechasDisponibles.length > 0) {
   // Ordenar por fecha
   const fechasOrdenadas = [...fechasDisponibles].sort(
@@ -331,19 +423,6 @@ if (fechasDisponibles.length > 0) {
   fechasListado.classList.add("hidden");
 }
 
-  // 🔹 Mostrar modal
-  modal.classList.remove("hidden");
-  document.body.style.overflow = "hidden";
-
-  // 🔹 Cerrar modal
-  const cerrarModal = document.getElementById("cerrarModal");
-  if (cerrarModal) {
-    cerrarModal.onclick = () => cerrarModalEvento();
-  }
-
-  modal.onclick = (e) => {
-    if (e.target === modal) cerrarModalEvento();
-  };
 }
 
 // 🔹 Función para cerrar el modal con animación y scroll restore

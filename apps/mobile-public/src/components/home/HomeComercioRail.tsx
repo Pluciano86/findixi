@@ -121,6 +121,11 @@ export function HomeComercioRail({
       onScrollToIndexFailed={({ index }) => {
         listRef.current?.scrollToOffset({ offset: CARD_STEP * index, animated: false });
       }}
+      initialNumToRender={4}
+      maxToRenderPerBatch={4}
+      updateCellsBatchingPeriod={40}
+      windowSize={4}
+      removeClippedSubviews
       renderItem={({ item }) => (
         <Pressable
           style={[styles.card, shadows.card]}

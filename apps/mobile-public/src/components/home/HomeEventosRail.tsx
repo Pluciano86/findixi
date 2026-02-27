@@ -17,6 +17,7 @@ import { borderRadius, fonts, shadows, spacing } from '../../theme/tokens';
 
 type HomeEventosRailProps = {
   items: HomeEventoCard[];
+  onPressEvent?: (item: HomeEventoCard) => void;
 };
 
 type EventImageCardProps = {
@@ -28,20 +29,30 @@ const EVENT_CARD_GAP = spacing.sm;
 const EVENT_CARD_STEP = EVENT_CARD_WIDTH + EVENT_CARD_GAP;
 const AUTO_SCROLL_MS = 2500;
 const LOOP_COPIES = 3;
+const imageOrientationCache = new Map<string, boolean>();
 
 function EventImageCard({ imageUrl }: EventImageCardProps) {
   const [isLandscape, setIsLandscape] = useState(false);
 
   useEffect(() => {
+    const cached = imageOrientationCache.get(imageUrl);
+    if (typeof cached === 'boolean') {
+      setIsLandscape(cached);
+      return;
+    }
+
     let active = true;
     Image.getSize(
       imageUrl,
       (width, height) => {
         if (!active) return;
-        setIsLandscape(width > height);
+        const next = width > height;
+        imageOrientationCache.set(imageUrl, next);
+        setIsLandscape(next);
       },
       () => {
         if (!active) return;
+        imageOrientationCache.set(imageUrl, false);
         setIsLandscape(false);
       }
     );
@@ -64,7 +75,7 @@ function EventImageCard({ imageUrl }: EventImageCardProps) {
   );
 }
 
-export function HomeEventosRail({ items }: HomeEventosRailProps) {
+export function HomeEventosRail({ items, onPressEvent }: HomeEventosRailProps) {
   const router = useRouter();
   const { t } = useI18n();
   const listRef = useRef<FlatList<HomeEventoCard>>(null);
@@ -148,8 +159,22 @@ export function HomeEventosRail({ items }: HomeEventosRailProps) {
         onScrollToIndexFailed={({ index }) => {
           listRef.current?.scrollToOffset({ offset: EVENT_CARD_STEP * index, animated: false });
         }}
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        updateCellsBatchingPeriod={40}
+        windowSize={4}
+        removeClippedSubviews
         renderItem={({ item }) => (
-          <Pressable style={[styles.card, shadows.card]} onPress={() => router.push('/eventos')}>
+          <Pressable
+            style={[styles.card, shadows.card]}
+            onPress={() => {
+              if (onPressEvent) {
+                onPressEvent(item);
+                return;
+              }
+              router.push('/eventos');
+            }}
+          >
             <EventImageCard imageUrl={item.imageUrl} />
           </Pressable>
         )}

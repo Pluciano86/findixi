@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ResizeMode, Video } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,28 +18,16 @@ type HomeHeroPlayaProps = {
 export function HomeHeroPlaya({ canPlay }: HomeHeroPlayaProps) {
   const router = useRouter();
   const { t } = useI18n();
-  const videoRef = useRef<Video>(null);
   const [hasPlaybackError, setHasPlaybackError] = useState(false);
-  const [hasTriedPlay, setHasTriedPlay] = useState(false);
-
-  useEffect(() => {
-    if (!canPlay || hasTriedPlay) return;
-    setHasTriedPlay(true);
-    void videoRef.current?.playAsync().catch(() => {
-      setHasPlaybackError(true);
-    });
-  }, [canPlay, hasTriedPlay]);
+  const shouldRenderVideo = canPlay && !hasPlaybackError;
 
   return (
     <Pressable style={styles.wrap} onPress={() => router.push('/comercios')}>
-      {hasPlaybackError ? (
-        <Image source={{ uri: HERO_IMAGE }} style={styles.image} resizeMode="cover" />
-      ) : (
+      {shouldRenderVideo ? (
         <Video
-          ref={videoRef}
           source={{ uri: HERO_VIDEO }}
           style={styles.video}
-          shouldPlay={false}
+          shouldPlay
           isLooping
           isMuted
           resizeMode={ResizeMode.COVER}
@@ -48,6 +36,8 @@ export function HomeHeroPlaya({ canPlay }: HomeHeroPlayaProps) {
             setHasPlaybackError(true);
           }}
         />
+      ) : (
+        <Image source={{ uri: HERO_IMAGE }} style={styles.image} resizeMode="cover" />
       )}
 
       <LinearGradient

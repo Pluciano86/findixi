@@ -10,6 +10,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { PublicAppChrome } from '../../src/components/layout/PublicAppChrome';
 import { ScreenState } from '../../src/components/ScreenState';
 import { fetchComercioById } from '../../src/features/comercios/api';
 import type { ComercioRow } from '../../src/features/comercios/types';
@@ -75,54 +76,94 @@ export default function ComercioDetailScreen() {
 
   const phoneHref = formatearTelefonoHref(item?.telefono ?? '');
 
-  if (loading) return <ScreenState loading message="Cargando perfil comercio..." />;
-  if (error) return <ScreenState message={`Error: ${error}`} />;
-  if (!item) return <ScreenState message="Comercio no encontrado." />;
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{item.nombre}</Text>
-      <Text style={styles.meta}>Municipio: {item.municipio || 'No disponible'}</Text>
-      <Text style={styles.meta}>Direccion: {item.direccion || 'No disponible'}</Text>
-      <Text style={styles.meta}>Plan: {plan.nombre}</Text>
-      <Text style={styles.meta}>Precio plan: {formatearMonedaUSD(plan.precio, { fallback: 'Gratis' })}</Text>
-      <Text style={styles.meta}>Distancia: {distanceText}</Text>
-
-      {item.descripcion ? <Text style={styles.description}>{item.descripcion}</Text> : null}
-
-      {phoneHref ? (
-        <Pressable style={styles.button} onPress={() => void Linking.openURL(phoneHref)}>
-          <Text style={styles.buttonText}>Llamar: {formatearTelefonoDisplay(item.telefono ?? '')}</Text>
-        </Pressable>
-      ) : null}
-
-      <Pressable
-        style={styles.secondaryButton}
-        onPress={() =>
-          void requestUserLocation()
-            .then(setLocation)
-            .catch(() => setLocation(null))
+    <PublicAppChrome>
+      {({ onScroll, scrollEventThrottle, contentPaddingStyle }) => {
+        if (loading) {
+          return (
+            <View style={[styles.stateWrap, contentPaddingStyle]}>
+              <ScreenState loading message="Cargando perfil comercio..." />
+            </View>
+          );
         }
-      >
-        <Text style={styles.secondaryButtonText}>Actualizar ubicacion</Text>
-      </Pressable>
 
-      <View style={styles.flagsWrap}>
-        <Text style={styles.flagsTitle}>Flags de plan (shared/rules)</Text>
-        <Text style={styles.flag}>Perfil: {plan.permite_perfil ? 'si' : 'no'}</Text>
-        <Text style={styles.flag}>Menu: {plan.permite_menu ? 'si' : 'no'}</Text>
-        <Text style={styles.flag}>Especiales: {plan.permite_especiales ? 'si' : 'no'}</Text>
-        <Text style={styles.flag}>Ordenes: {plan.permite_ordenes ? 'si' : 'no'}</Text>
-      </View>
-    </ScrollView>
+        if (error) {
+          return (
+            <View style={[styles.stateWrap, contentPaddingStyle]}>
+              <ScreenState message={`Error: ${error}`} />
+            </View>
+          );
+        }
+
+        if (!item) {
+          return (
+            <View style={[styles.stateWrap, contentPaddingStyle]}>
+              <ScreenState message="Comercio no encontrado." />
+            </View>
+          );
+        }
+
+        return (
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={[styles.container, contentPaddingStyle]}
+            onScroll={onScroll}
+            scrollEventThrottle={scrollEventThrottle}
+          >
+            <Text style={styles.title}>{item.nombre}</Text>
+            <Text style={styles.meta}>Municipio: {item.municipio || 'No disponible'}</Text>
+            <Text style={styles.meta}>Direccion: {item.direccion || 'No disponible'}</Text>
+            <Text style={styles.meta}>Plan: {plan.nombre}</Text>
+            <Text style={styles.meta}>Precio plan: {formatearMonedaUSD(plan.precio, { fallback: 'Gratis' })}</Text>
+            <Text style={styles.meta}>Distancia: {distanceText}</Text>
+
+            {item.descripcion ? <Text style={styles.description}>{item.descripcion}</Text> : null}
+
+            {phoneHref ? (
+              <Pressable style={styles.button} onPress={() => void Linking.openURL(phoneHref)}>
+                <Text style={styles.buttonText}>Llamar: {formatearTelefonoDisplay(item.telefono ?? '')}</Text>
+              </Pressable>
+            ) : null}
+
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={() =>
+                void requestUserLocation()
+                  .then(setLocation)
+                  .catch(() => setLocation(null))
+              }
+            >
+              <Text style={styles.secondaryButtonText}>Actualizar ubicacion</Text>
+            </Pressable>
+
+            <View style={styles.flagsWrap}>
+              <Text style={styles.flagsTitle}>Flags de plan (shared/rules)</Text>
+              <Text style={styles.flag}>Perfil: {plan.permite_perfil ? 'si' : 'no'}</Text>
+              <Text style={styles.flag}>Menu: {plan.permite_menu ? 'si' : 'no'}</Text>
+              <Text style={styles.flag}>Especiales: {plan.permite_especiales ? 'si' : 'no'}</Text>
+              <Text style={styles.flag}>Ordenes: {plan.permite_ordenes ? 'si' : 'no'}</Text>
+            </View>
+          </ScrollView>
+        );
+      }}
+    </PublicAppChrome>
   );
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   container: {
     padding: 16,
     backgroundColor: '#f8fafc',
     gap: 8,
+    minHeight: '100%',
+  },
+  stateWrap: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
   },
   title: {
     fontSize: 24,

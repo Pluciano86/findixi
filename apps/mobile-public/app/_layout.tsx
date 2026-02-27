@@ -40,13 +40,7 @@ export default function RootLayout() {
           <Stack.Screen name="comercios" options={{ headerShown: false }} />
           <Stack.Screen name="eventos" options={{ headerShown: false }} />
           <Stack.Screen name="cuenta" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="comercio/[id]"
-            options={{
-              title: 'Perfil comercio',
-              headerBackTitle: 'Atras',
-            }}
-          />
+          <Stack.Screen name="comercio/[id]" options={{ headerShown: false }} />
         </Stack>
       </I18nProvider>
     </SafeAreaProvider>

@@ -23,6 +23,15 @@ const ES_TRANSLATIONS = {
   'home.loadingEvents': 'Cargando eventos...',
   'home.emptyEvents': 'No hay eventos disponibles.',
   'home.moreEvents': 'Ver más eventos',
+  'area.gratis': 'Gratis',
+  'area.municipio': 'Municipio',
+  'area.costo': 'Costo:',
+  'evento.comprarBoletos': 'Comprar Boletos',
+  'evento.sinDescripcion': 'Sin descripción disponible',
+  'evento.verFechas': 'Ver las {count} fechas disponibles',
+  'evento.ocultarFechas': 'Ocultar las fechas',
+  'evento.variosMunicipios': 'Varias Localidades',
+  'evento.desde': 'Desde:',
 
   'home.beachTitle': "Vamos Pa' la Playa",
   'home.areaTitle': 'Descubre lo que hay en tu Área',
@@ -70,6 +79,15 @@ const EN_TRANSLATIONS: TranslationDictionary = {
   'home.loadingEvents': 'Loading events...',
   'home.emptyEvents': 'No events available.',
   'home.moreEvents': 'See more events',
+  'area.gratis': 'Free',
+  'area.municipio': 'Town',
+  'area.costo': 'Cost:',
+  'evento.comprarBoletos': 'Buy Tickets',
+  'evento.sinDescripcion': 'No description available',
+  'evento.verFechas': 'View {count} available dates',
+  'evento.ocultarFechas': 'Hide dates',
+  'evento.variosMunicipios': 'Multiple Venues',
+  'evento.desde': 'From:',
 
   'home.beachTitle': "Let's hit the Beach",
   'home.areaTitle': 'Discover what’s in your Area',
@@ -114,6 +132,15 @@ const ZH_TRANSLATIONS: TranslationDictionary = {
   'home.loadingEvents': '加载活动中...',
   'home.emptyEvents': '暂无活动。',
   'home.moreEvents': '查看更多活动',
+  'area.gratis': '免费',
+  'area.municipio': '市镇',
+  'area.costo': '费用：',
+  'evento.comprarBoletos': '购买门票',
+  'evento.sinDescripcion': '暂无描述',
+  'evento.verFechas': '查看 {count} 个可用日期',
+  'evento.ocultarFechas': '隐藏日期',
+  'evento.variosMunicipios': '多个场地',
+  'evento.desde': '起价：',
 
   'home.beachTitle': '去海滩吧',
   'home.areaTitle': '探索你所在的区域',
@@ -158,6 +185,15 @@ const FR_TRANSLATIONS: TranslationDictionary = {
   'home.loadingEvents': 'Chargement des événements...',
   'home.emptyEvents': 'Aucun événement disponible.',
   'home.moreEvents': 'Voir plus d’événements',
+  'area.gratis': 'Gratuit',
+  'area.municipio': 'Municipalité',
+  'area.costo': 'Coût :',
+  'evento.comprarBoletos': 'Acheter des billets',
+  'evento.sinDescripcion': 'Aucune description disponible',
+  'evento.verFechas': 'Voir {count} dates disponibles',
+  'evento.ocultarFechas': 'Masquer les dates',
+  'evento.variosMunicipios': 'Plusieurs lieux',
+  'evento.desde': 'À partir de :',
 
   'home.beachTitle': 'Allons à la plage',
   'home.areaTitle': 'Découvrez ce qu’il y a dans votre zone',
@@ -202,6 +238,15 @@ const PT_TRANSLATIONS: TranslationDictionary = {
   'home.loadingEvents': 'Carregando eventos...',
   'home.emptyEvents': 'Nenhum evento disponível.',
   'home.moreEvents': 'Ver mais eventos',
+  'area.gratis': 'Grátis',
+  'area.municipio': 'Município',
+  'area.costo': 'Custo:',
+  'evento.comprarBoletos': 'Comprar ingressos',
+  'evento.sinDescripcion': 'Descrição não disponível',
+  'evento.verFechas': 'Ver {count} datas disponíveis',
+  'evento.ocultarFechas': 'Ocultar as datas',
+  'evento.variosMunicipios': 'Várias localidades',
+  'evento.desde': 'A partir de:',
 
   'home.beachTitle': 'Vamos à praia',
   'home.areaTitle': 'Descubra o que há na sua área',
@@ -246,6 +291,15 @@ const DE_TRANSLATIONS: TranslationDictionary = {
   'home.loadingEvents': 'Events werden geladen...',
   'home.emptyEvents': 'Keine Events verfügbar.',
   'home.moreEvents': 'Mehr Events ansehen',
+  'area.gratis': 'Gratis',
+  'area.municipio': 'Gemeinde',
+  'area.costo': 'Kosten:',
+  'evento.comprarBoletos': 'Tickets kaufen',
+  'evento.sinDescripcion': 'Keine Beschreibung verfügbar',
+  'evento.verFechas': '{count} verfügbare Termine ansehen',
+  'evento.ocultarFechas': 'Termine ausblenden',
+  'evento.variosMunicipios': 'Mehrere Orte',
+  'evento.desde': 'Ab:',
 
   'home.beachTitle': 'Ab zum Strand',
   'home.areaTitle': 'Entdecke, was es in deiner Gegend gibt',
@@ -290,6 +344,15 @@ const IT_TRANSLATIONS: TranslationDictionary = {
   'home.loadingEvents': 'Caricamento eventi...',
   'home.emptyEvents': 'Nessun evento disponibile.',
   'home.moreEvents': 'Vedi più eventi',
+  'area.gratis': 'Gratis',
+  'area.municipio': 'Comune',
+  'area.costo': 'Costo:',
+  'evento.comprarBoletos': 'Acquista biglietti',
+  'evento.sinDescripcion': 'Descrizione non disponibile',
+  'evento.verFechas': 'Vedi le {count} date disponibili',
+  'evento.ocultarFechas': 'Nascondi le date',
+  'evento.variosMunicipios': 'Più sedi',
+  'evento.desde': 'Da:',
 
   'home.beachTitle': 'Andiamo in spiaggia',
   'home.areaTitle': 'Scopri cosa c’è nella tua zona',
@@ -334,6 +397,15 @@ const KO_TRANSLATIONS: TranslationDictionary = {
   'home.loadingEvents': '이벤트 불러오는 중...',
   'home.emptyEvents': '이용 가능한 이벤트가 없습니다.',
   'home.moreEvents': '더 많은 이벤트 보기',
+  'area.gratis': '무료',
+  'area.municipio': '시·군',
+  'area.costo': '비용:',
+  'evento.comprarBoletos': '티켓 구매',
+  'evento.sinDescripcion': '설명이 없습니다',
+  'evento.verFechas': '{count}개의 이용 가능한 날짜 보기',
+  'evento.ocultarFechas': '날짜 숨기기',
+  'evento.variosMunicipios': '여러 장소',
+  'evento.desde': '부터:',
 
   'home.beachTitle': '해변으로 가요',
   'home.areaTitle': '내 주변을 둘러보기',
@@ -378,6 +450,15 @@ const JA_TRANSLATIONS: TranslationDictionary = {
   'home.loadingEvents': 'イベントを読み込み中...',
   'home.emptyEvents': '利用できるイベントがありません。',
   'home.moreEvents': 'さらにイベントを見る',
+  'area.gratis': '無料',
+  'area.municipio': '市町村',
+  'area.costo': '費用：',
+  'evento.comprarBoletos': 'チケットを購入',
+  'evento.sinDescripcion': '説明がありません',
+  'evento.verFechas': '{count} 件の利用可能な日付を見る',
+  'evento.ocultarFechas': '日付を非表示',
+  'evento.variosMunicipios': '複数の会場',
+  'evento.desde': 'から:',
 
   'home.beachTitle': 'ビーチへ行こう',
   'home.areaTitle': '近くを探索',
@@ -413,6 +494,16 @@ const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
 
 export type I18nKey = TranslationKey;
 
-export function translate(lang: LanguageCode, key: I18nKey): string {
-  return TRANSLATIONS[lang][key] ?? ES_TRANSLATIONS[key];
+type TranslationParams = Record<string, string | number>;
+
+function applyParams(template: string, params?: TranslationParams): string {
+  if (!params) return template;
+  return Object.entries(params).reduce((out, [name, value]) => {
+    return out.replaceAll(`{${name}}`, String(value));
+  }, template);
+}
+
+export function translate(lang: LanguageCode, key: I18nKey, params?: TranslationParams): string {
+  const template = TRANSLATIONS[lang][key] ?? ES_TRANSLATIONS[key];
+  return applyParams(template, params);
 }

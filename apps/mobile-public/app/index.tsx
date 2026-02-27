@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { FooterWebStyle } from '../src/components/home/FooterWebStyle';
-import { HeaderWebStyle } from '../src/components/home/HeaderWebStyle';
+import { PublicAppChrome } from '../src/components/layout/PublicAppChrome';
 import { HomeAreasGrid } from '../src/components/home/HomeAreasGrid';
 import { HomeBusinessCta } from '../src/components/home/HomeBusinessCta';
 import { HomeCarousel } from '../src/components/home/HomeCarousel';
@@ -10,12 +9,14 @@ import { HomeCategoriesGrid } from '../src/components/home/HomeCategoriesGrid';
 import { HomeComercioRail } from '../src/components/home/HomeComercioRail';
 import { HomeEspecialesCard } from '../src/components/home/HomeEspecialesCard';
 import { HomeEventosRail } from '../src/components/home/HomeEventosRail';
+import { HomeEventoModal } from '../src/components/home/HomeEventoModal';
 import { HomeHeroPlaya } from '../src/components/home/HomeHeroPlaya';
 import { HomeLoadingBlock } from '../src/components/home/HomeLoadingBlock';
 import { HomeSectionTitle } from '../src/components/home/HomeSectionTitle';
 import { fetchHomeIndexData } from '../src/features/home/api';
+import { preloadEventoTraducciones } from '../src/features/home/eventoI18n';
 import { useI18n } from '../src/i18n/provider';
-import type { HomeIndexData } from '../src/features/home/types';
+import type { HomeEventoCard, HomeIndexData } from '../src/features/home/types';
 import { backgroundGray, fonts, spacing } from '../src/theme/tokens';
 
 const EMPTY_HOME_DATA: HomeIndexData = {
@@ -28,12 +29,13 @@ const EMPTY_HOME_DATA: HomeIndexData = {
 };
 
 export default function HomeScreen() {
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
   const [data, setData] = useState<HomeIndexData>(EMPTY_HOME_DATA);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [heroPlaybackUnlocked, setHeroPlaybackUnlocked] = useState(false);
+  const [selectedEvento, setSelectedEvento] = useState<HomeEventoCard | null>(null);
 
   const loadHomeData = useCallback(async () => {
     setError('');
@@ -53,6 +55,14 @@ export default function HomeScreen() {
     void loadHomeData();
   }, [loadHomeData]);
 
+  useEffect(() => {
+    if (!data.eventos.length) return;
+    void preloadEventoTraducciones(
+      data.eventos.map((item) => item.id).filter((id) => Number.isFinite(id) && id > 0),
+      lang
+    );
+  }, [data.eventos, lang]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadHomeData();
@@ -63,14 +73,14 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <View style={styles.screenRoot}>
-      <View style={styles.deviceFrame}>
-        <HeaderWebStyle />
-
+    <PublicAppChrome>
+      {({ onScroll, scrollEventThrottle, contentPaddingStyle }) => (
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, contentPaddingStyle]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}
+          onScroll={onScroll}
+          scrollEventThrottle={scrollEventThrottle}
           onScrollBeginDrag={unlockHeroPlayback}
           onTouchStart={unlockHeroPlayback}
         >
@@ -107,7 +117,11 @@ export default function HomeScreen() {
           <View style={styles.separatorSpace} />
 
           <HomeSectionTitle title={t('home.eventsTitle')} />
-          {loading ? <HomeLoadingBlock text={t('home.loadingEvents')} /> : <HomeEventosRail items={data.eventos} />}
+          {loading ? (
+            <HomeLoadingBlock text={t('home.loadingEvents')} />
+          ) : (
+            <HomeEventosRail items={data.eventos} onPressEvent={setSelectedEvento} />
+          )}
 
           <HomeHeroPlaya canPlay={heroPlaybackUnlocked} />
 
@@ -119,32 +133,25 @@ export default function HomeScreen() {
           <HomeBusinessCta />
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        </ScrollView>
 
-        <FooterWebStyle />
-      </View>
-    </View>
+          <HomeEventoModal
+            visible={Boolean(selectedEvento)}
+            event={selectedEvento}
+            onClose={() => setSelectedEvento(null)}
+          />
+        </ScrollView>
+      )}
+    </PublicAppChrome>
   );
 }
 
 const styles = StyleSheet.create({
-  screenRoot: {
-    flex: 1,
-    backgroundColor: '#121212',
-    alignItems: 'center',
-  },
-  deviceFrame: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 448,
-    backgroundColor: '#ffffff',
-  },
   scroll: {
     flex: 1,
     backgroundColor: backgroundGray,
   },
   scrollContent: {
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.xl + spacing.md,
   },
   separatorSpace: {
     height: spacing.xl,

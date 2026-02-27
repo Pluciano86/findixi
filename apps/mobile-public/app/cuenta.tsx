@@ -1,7 +1,8 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { PublicAppChrome } from '../src/components/layout/PublicAppChrome';
 import { ScreenState } from '../src/components/ScreenState';
 import { getFavoriteComercioIds, toggleFavoriteComercioId } from '../src/lib/favorites';
 import { supabase } from '../src/lib/supabase';
@@ -95,63 +96,88 @@ export default function CuentaScreen() {
     setFavoritesCount(ids.length);
   }, []);
 
-  if (loading) return <ScreenState loading message="Cargando cuenta..." />;
-
   return (
-    <View style={styles.screen}>
-      {session ? (
-        <View style={styles.card}>
-          <Text style={styles.title}>Sesion activa</Text>
-          <Text style={styles.line}>Email: {session.email || 'sin email'}</Text>
-          <Text style={styles.line}>User ID: {session.userId}</Text>
-          <Pressable style={styles.button} disabled={busy} onPress={() => void signOut()}>
-            <Text style={styles.buttonText}>{busy ? 'Procesando...' : 'Cerrar sesion'}</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.card}>
-          <Text style={styles.title}>Login (opcional)</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholder="correo@ejemplo.com"
-          />
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            placeholder="password"
-          />
-          <Pressable style={styles.button} disabled={busy} onPress={() => void signIn()}>
-            <Text style={styles.buttonText}>{busy ? 'Procesando...' : 'Iniciar sesion'}</Text>
-          </Pressable>
-        </View>
-      )}
+    <PublicAppChrome>
+      {({ onScroll, scrollEventThrottle, contentPaddingStyle }) => {
+        if (loading) {
+          return (
+            <View style={[styles.stateWrap, contentPaddingStyle]}>
+              <ScreenState loading message="Cargando cuenta..." />
+            </View>
+          );
+        }
 
-      <View style={styles.card}>
-        <Text style={styles.title}>Storage adapter</Text>
-        <Text style={styles.line}>Favoritos guardados localmente: {favoritesCount}</Text>
-        <Pressable style={styles.secondaryButton} onPress={() => void toggleDemoFavorite()}>
-          <Text style={styles.secondaryButtonText}>Toggle favorito demo (ID 1)</Text>
-        </Pressable>
-      </View>
+        return (
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={[styles.screen, contentPaddingStyle]}
+            onScroll={onScroll}
+            scrollEventThrottle={scrollEventThrottle}
+          >
+            {session ? (
+              <View style={styles.card}>
+                <Text style={styles.title}>Sesion activa</Text>
+                <Text style={styles.line}>Email: {session.email || 'sin email'}</Text>
+                <Text style={styles.line}>User ID: {session.userId}</Text>
+                <Pressable style={styles.button} disabled={busy} onPress={() => void signOut()}>
+                  <Text style={styles.buttonText}>{busy ? 'Procesando...' : 'Cerrar sesion'}</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.card}>
+                <Text style={styles.title}>Login (opcional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  placeholder="correo@ejemplo.com"
+                />
+                <TextInput
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  placeholder="password"
+                />
+                <Pressable style={styles.button} disabled={busy} onPress={() => void signIn()}>
+                  <Text style={styles.buttonText}>{busy ? 'Procesando...' : 'Iniciar sesion'}</Text>
+                </Pressable>
+              </View>
+            )}
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-    </View>
+            <View style={styles.card}>
+              <Text style={styles.title}>Storage adapter</Text>
+              <Text style={styles.line}>Favoritos guardados localmente: {favoritesCount}</Text>
+              <Pressable style={styles.secondaryButton} onPress={() => void toggleDemoFavorite()}>
+                <Text style={styles.secondaryButtonText}>Toggle favorito demo (ID 1)</Text>
+              </Pressable>
+            </View>
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+          </ScrollView>
+        );
+      }}
+    </PublicAppChrome>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  scroll: {
     flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  screen: {
     backgroundColor: '#f8fafc',
     padding: 16,
     gap: 10,
+    minHeight: '100%',
+  },
+  stateWrap: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
   },
   card: {
     backgroundColor: '#ffffff',

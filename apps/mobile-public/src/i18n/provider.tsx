@@ -19,7 +19,7 @@ type I18nContextValue = {
   currentLanguage: LanguageOption;
   languages: readonly LanguageOption[];
   ready: boolean;
-  t: (key: I18nKey) => string;
+  t: (key: I18nKey, params?: Record<string, string | number>) => string;
   setLang: (lang: LanguageCode) => Promise<void>;
 };
 
@@ -68,8 +68,8 @@ export function I18nProvider({ children }: I18nProviderProps) {
   }, []);
 
   const t = useCallback(
-    (key: I18nKey) => {
-      return translate(lang, key);
+    (key: I18nKey, params?: Record<string, string | number>) => {
+      return translate(lang, key, params);
     },
     [lang]
   );

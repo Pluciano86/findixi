@@ -28,12 +28,29 @@ export type HomeComercioCard = {
   logoUrl: string;
 };
 
+export type HomeEventoFechaItem = {
+  fecha: string;
+  horainicio: string;
+  mismahora: boolean;
+  municipioId: number | null;
+  municipioNombre: string;
+  lugar: string;
+  direccion: string;
+  enlaceboletos: string | null;
+};
+
 export type HomeEventoCard = {
   id: number;
   nombre: string;
   descripcion: string;
   imageUrl: string;
   lugar: string;
+  direccion: string;
+  costo: string;
+  gratis: boolean;
+  boletosPorLocalidad: boolean;
+  enlaceBoletosGlobal: string | null;
+  eventoFechas: HomeEventoFechaItem[];
 };
 
 export type HomeAreaCard = {

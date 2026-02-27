@@ -12,6 +12,7 @@ import type {
   HomeBannerItem,
   HomeCategoryItem,
   HomeComercioCard,
+  HomeEventoFechaItem,
   HomeEventoCard,
   HomeIndexData,
 } from './types';
@@ -181,8 +182,26 @@ async function fetchComercioImages(ids: number[]): Promise<Map<number, { cover: 
   return output;
 }
 
-async function fetchComerciosByCategoria(categoriaId: number, limit = 24): Promise<HomeComercioCard[]> {
-  const maxQueryRows = Math.max(limit * 6, 120);
+function hasCategoria(record: Record<string, unknown>, categoriaId: number): boolean {
+  const rel = Array.isArray(record.ComercioCategorias) ? record.ComercioCategorias : [];
+  return rel.some((entry) => toSafeNumber((entry as Record<string, unknown>).idCategoria) === categoriaId);
+}
+
+function toHomeComercioCard(record: Record<string, unknown>, imagesByComercio: Map<number, { cover: string; logo: string }>): HomeComercioCard {
+  const id = toSafeNumber(record.id);
+  const imageSet = imagesByComercio.get(id);
+
+  return {
+    id,
+    nombre: normalizeString(record.nombre) || 'Comercio',
+    municipio: normalizeString(record.municipio) || 'Puerto Rico',
+    coverUrl: imageSet?.cover || toStorageUrl(record.portada, PLACEHOLDER_IMAGE),
+    logoUrl: imageSet?.logo || toStorageUrl(record.logo, PLACEHOLDER_LOGO),
+  } satisfies HomeComercioCard;
+}
+
+async function fetchComercioRails(limit = 24): Promise<{ comidaCards: HomeComercioCard[]; jangueoCards: HomeComercioCard[] }> {
+  const maxQueryRows = Math.max(limit * 10, 200);
 
   const { data, error } = await supabase
     .from('Comercios')
@@ -192,59 +211,114 @@ async function fetchComerciosByCategoria(categoriaId: number, limit = 24): Promi
     .eq('activo', true)
     .limit(maxQueryRows);
 
-  if (error || !Array.isArray(data)) return [];
+  if (error || !Array.isArray(data)) {
+    return { comidaCards: [], jangueoCards: [] };
+  }
 
-  const filtered = data
-    .filter((row) => {
-      const record = row as Record<string, unknown>;
-      const rel = Array.isArray(record.ComercioCategorias) ? record.ComercioCategorias : [];
-      const hasCategoria = rel.some((entry) => toSafeNumber((entry as Record<string, unknown>).idCategoria) === categoriaId);
-      if (!hasCategoria) return false;
+  const visibles = data
+    .map((row) => row as Record<string, unknown>)
+    .filter((record) => resolverPlanComercio(record).aparece_en_cercanos);
 
-      const plan = resolverPlanComercio(record);
-      return plan.aparece_en_cercanos;
-    });
-  const randomized = pickRandomItems(filtered, limit);
+  const comidaSeleccionados = pickRandomItems(
+    visibles.filter((record) => hasCategoria(record, CATEGORIA_RESTAURANTES_ID)),
+    limit
+  );
+  const jangueoSeleccionados = pickRandomItems(
+    visibles.filter((record) => hasCategoria(record, CATEGORIA_JANGUEO_ID)),
+    limit
+  );
 
-  const ids = randomized.map((row) => toSafeNumber((row as Record<string, unknown>).id)).filter((id) => id > 0);
+  const ids = Array.from(
+    new Set(
+      [...comidaSeleccionados, ...jangueoSeleccionados]
+        .map((record) => toSafeNumber(record.id))
+        .filter((id) => id > 0)
+    )
+  );
+
   const imagesByComercio = await fetchComercioImages(ids);
 
-  return randomized.map((row) => {
-    const record = row as Record<string, unknown>;
-    const id = toSafeNumber(record.id);
-    const imageSet = imagesByComercio.get(id);
-
-    return {
-      id,
-      nombre: normalizeString(record.nombre) || 'Comercio',
-      municipio: normalizeString(record.municipio) || 'Puerto Rico',
-      coverUrl: imageSet?.cover || toStorageUrl(record.portada, PLACEHOLDER_IMAGE),
-      logoUrl: imageSet?.logo || toStorageUrl(record.logo, PLACEHOLDER_LOGO),
-    } satisfies HomeComercioCard;
-  });
+  return {
+    comidaCards: comidaSeleccionados.map((record) => toHomeComercioCard(record, imagesByComercio)),
+    jangueoCards: jangueoSeleccionados.map((record) => toHomeComercioCard(record, imagesByComercio)),
+  };
 }
 
 async function fetchEventos(limit = 20): Promise<HomeEventoCard[]> {
   const todayISO = new Date().toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from('eventos')
-    .select('id, nombre, descripcion, imagen, activo, eventos_municipios ( lugar, eventoFechas ( fecha ) )')
+    .select(
+      'id, nombre, descripcion, imagen, activo, costo, gratis, boletos_por_localidad, enlaceboletos, eventos_municipios ( municipio_id, lugar, direccion, enlaceboletos, eventoFechas ( fecha, horainicio, mismahora ) )'
+    )
     .eq('activo', true)
     .order('creado', { ascending: false })
     .limit(30);
 
   if (error || !Array.isArray(data)) return [];
 
+  const municipioIds = Array.from(
+    new Set(
+      data.flatMap((row) => {
+        const sedes = Array.isArray((row as Record<string, unknown>).eventos_municipios)
+          ? ((row as Record<string, unknown>).eventos_municipios as Record<string, unknown>[])
+          : [];
+        return sedes
+          .map((sede) => toSafeNumber(sede.municipio_id, -1))
+          .filter((id) => id > 0);
+      })
+    )
+  );
+
+  const municipioNombreById = new Map<number, string>();
+  if (municipioIds.length > 0) {
+    const { data: municipios } = await supabase
+      .from('Municipios')
+      .select('id, nombre')
+      .in('id', municipioIds);
+
+    (municipios || []).forEach((municipio) => {
+      const record = municipio as Record<string, unknown>;
+      const id = toSafeNumber(record.id, -1);
+      if (id > 0) {
+        municipioNombreById.set(id, normalizeString(record.nombre));
+      }
+    });
+  }
+
   const normalized = data
     .map((row) => {
       const record = row as Record<string, unknown>;
       const sedes = Array.isArray(record.eventos_municipios) ? record.eventos_municipios : [];
-      const firstSede = sedes[0] as Record<string, unknown> | undefined;
-      const dateValues = sedes.flatMap((sede) => {
-        const fechaList = (sede as Record<string, unknown>).eventoFechas;
+      const eventoFechas: HomeEventoFechaItem[] = sedes.flatMap((sede) => {
+        const sedeRecord = sede as Record<string, unknown>;
+        const municipioIdRaw = toSafeNumber(sedeRecord.municipio_id, 0);
+        const municipioId = municipioIdRaw > 0 ? municipioIdRaw : null;
+        const municipioNombre = municipioId ? municipioNombreById.get(municipioId) || '' : '';
+        const lugar = normalizeString(sedeRecord.lugar);
+        const direccion = normalizeString(sedeRecord.direccion);
+        const enlaceboletos = normalizeString(sedeRecord.enlaceboletos) || null;
+        const fechaList = sedeRecord.eventoFechas;
         if (!Array.isArray(fechaList)) return [];
-        return fechaList.map((item) => normalizeString((item as Record<string, unknown>).fecha)).filter(Boolean);
+
+        return fechaList
+          .map((item) => {
+            const fechaRecord = item as Record<string, unknown>;
+            return {
+              fecha: normalizeString(fechaRecord.fecha),
+              horainicio: normalizeString(fechaRecord.horainicio),
+              mismahora: Boolean(fechaRecord.mismahora),
+              municipioId,
+              municipioNombre,
+              lugar,
+              direccion,
+              enlaceboletos,
+            } satisfies HomeEventoFechaItem;
+          })
+          .filter((item) => Boolean(item.fecha));
       });
+      const firstFecha = eventoFechas[0];
+      const dateValues = eventoFechas.map((item) => item.fecha);
       const ultimaFecha = getLatestISODate(dateValues);
 
       return {
@@ -253,7 +327,13 @@ async function fetchEventos(limit = 20): Promise<HomeEventoCard[]> {
           nombre: normalizeString(record.nombre) || 'Evento',
           descripcion: normalizeString(record.descripcion),
           imageUrl: toStorageUrl(record.imagen, PLACEHOLDER_IMAGE),
-          lugar: normalizeString(firstSede?.lugar) || 'Puerto Rico',
+          lugar: firstFecha?.lugar || 'Puerto Rico',
+          direccion: firstFecha?.direccion || '',
+          costo: normalizeString(record.costo),
+          gratis: Boolean(record.gratis),
+          boletosPorLocalidad: Boolean(record.boletos_por_localidad),
+          enlaceBoletosGlobal: normalizeString(record.enlaceboletos) || null,
+          eventoFechas,
         } satisfies HomeEventoCard,
         dateValues,
         ultimaFecha,
@@ -302,11 +382,10 @@ async function fetchAreas(limit = 6): Promise<HomeAreaCard[]> {
 }
 
 export async function fetchHomeIndexData(): Promise<HomeIndexData> {
-  const [topBanners, categories, comidaCards, jangueoCards, eventos, areas] = await Promise.all([
+  const [topBanners, categories, comercioRails, eventos, areas] = await Promise.all([
     fetchTopBanners(),
     fetchCategories(),
-    fetchComerciosByCategoria(CATEGORIA_RESTAURANTES_ID),
-    fetchComerciosByCategoria(CATEGORIA_JANGUEO_ID),
+    fetchComercioRails(),
     fetchEventos(),
     fetchAreas(),
   ]);
@@ -314,8 +393,8 @@ export async function fetchHomeIndexData(): Promise<HomeIndexData> {
   return {
     topBanners,
     categories,
-    comidaCards,
-    jangueoCards,
+    comidaCards: comercioRails.comidaCards,
+    jangueoCards: comercioRails.jangueoCards,
     eventos,
     areas,
   };

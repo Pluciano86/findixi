@@ -17,6 +17,7 @@ import {
   View,
 } from 'react-native';
 
+import { PublicAppChrome } from '../src/components/layout/PublicAppChrome';
 import { ScreenState } from '../src/components/ScreenState';
 import { fetchComercios } from '../src/features/comercios/api';
 import type { ComercioListItem } from '../src/features/comercios/types';
@@ -83,66 +84,84 @@ export default function ComerciosScreen() {
     await load();
   }, [load]);
 
-  if (loading) return <ScreenState loading message="Cargando comercios..." />;
-
-  if (error) {
-    return (
-      <View style={styles.screen}>
-        <ScreenState message={`Error: ${error}`} />
-        <Pressable style={styles.retryButton} onPress={() => void load()}>
-          <Text style={styles.retryButtonText}>Reintentar</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.screen}>
-      <View style={styles.headerRow}>
-        <Text style={styles.summary}>{summary}</Text>
-        <Pressable style={styles.geoButton} onPress={requestLocation}>
-          <Text style={styles.geoButtonText}>{location ? 'Ubicacion activa' : 'Usar ubicacion'}</Text>
-        </Pressable>
-      </View>
-
-      <FlatList
-        data={items}
-        keyExtractor={(item) => String(item.id)}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => {
-          const plan = resolverPlanComercio(item);
-          const phoneText = formatearTelefonoDisplay(item.telefono ?? '');
-          const phoneHref = formatearTelefonoHref(item.telefono ?? '');
-
+    <PublicAppChrome>
+      {({ onScroll, scrollEventThrottle, contentPaddingStyle }) => {
+        if (loading) {
           return (
-            <Pressable
-              style={styles.card}
-              onPress={() => {
-                router.push({ pathname: '/comercio/[id]', params: { id: String(item.id) } });
-              }}
-            >
-              <Text style={styles.name}>{item.nombre}</Text>
-              <Text style={styles.meta}>{item.municipio || 'Municipio no disponible'}</Text>
-              <Text style={styles.meta}>Plan: {plan.nombre}</Text>
-              <Text style={styles.meta}>{formatDistanceText(item, location)}</Text>
-
-              {phoneHref ? (
-                <Pressable style={styles.phonePill} onPress={() => void Linking.openURL(phoneHref)}>
-                  <Text style={styles.phonePillText}>{phoneText || 'Llamar'}</Text>
-                </Pressable>
-              ) : null}
-            </Pressable>
+            <View style={[styles.stateWrap, contentPaddingStyle]}>
+              <ScreenState loading message="Cargando comercios..." />
+            </View>
           );
-        }}
-        ListEmptyComponent={<ScreenState message="No hay comercios para mostrar." />}
-      />
-    </View>
+        }
+
+        if (error) {
+          return (
+            <View style={[styles.stateWrap, contentPaddingStyle]}>
+              <ScreenState message={`Error: ${error}`} />
+              <Pressable style={styles.retryButton} onPress={() => void load()}>
+                <Text style={styles.retryButtonText}>Reintentar</Text>
+              </Pressable>
+            </View>
+          );
+        }
+
+        return (
+          <View style={[styles.screen, contentPaddingStyle]}>
+            <View style={styles.headerRow}>
+              <Text style={styles.summary}>{summary}</Text>
+              <Pressable style={styles.geoButton} onPress={requestLocation}>
+                <Text style={styles.geoButtonText}>{location ? 'Ubicacion activa' : 'Usar ubicacion'}</Text>
+              </Pressable>
+            </View>
+
+            <FlatList
+              data={items}
+              keyExtractor={(item) => String(item.id)}
+              onScroll={onScroll}
+              scrollEventThrottle={scrollEventThrottle}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}
+              contentContainerStyle={styles.list}
+              renderItem={({ item }) => {
+                const plan = resolverPlanComercio(item);
+                const phoneText = formatearTelefonoDisplay(item.telefono ?? '');
+                const phoneHref = formatearTelefonoHref(item.telefono ?? '');
+
+                return (
+                  <Pressable
+                    style={styles.card}
+                    onPress={() => {
+                      router.push({ pathname: '/comercio/[id]', params: { id: String(item.id) } });
+                    }}
+                  >
+                    <Text style={styles.name}>{item.nombre}</Text>
+                    <Text style={styles.meta}>{item.municipio || 'Municipio no disponible'}</Text>
+                    <Text style={styles.meta}>Plan: {plan.nombre}</Text>
+                    <Text style={styles.meta}>{formatDistanceText(item, location)}</Text>
+
+                    {phoneHref ? (
+                      <Pressable style={styles.phonePill} onPress={() => void Linking.openURL(phoneHref)}>
+                        <Text style={styles.phonePillText}>{phoneText || 'Llamar'}</Text>
+                      </Pressable>
+                    ) : null}
+                  </Pressable>
+                );
+              }}
+              ListEmptyComponent={<ScreenState message="No hay comercios para mostrar." />}
+            />
+          </View>
+        );
+      }}
+    </PublicAppChrome>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  stateWrap: {
     flex: 1,
     backgroundColor: '#f8fafc',
   },
