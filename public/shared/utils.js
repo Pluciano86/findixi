@@ -13,3 +13,10 @@ export {
   formatearTelefonoHref,
   formatearMonedaUSD,
 } from './pkg/utils/formatters.js';
+export {
+  pickRandomItems,
+  shuffleArray,
+  getNearestUpcomingISODate,
+  getLatestISODate,
+  compareByNearestUpcomingDate,
+} from './pkg/utils/collections.js';

@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Findixi Public",
+    "slug": "mobile-public",
+    "scheme": "findixi-public",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Findixi usa tu ubicacion para calcular distancia a comercios cercanos."
+        }
+      ],
+      "expo-asset"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.findixi.mobilepublic"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

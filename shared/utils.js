@@ -36,3 +36,11 @@ export {
   formatearTelefonoHref,
   formatearMonedaUSD,
 } from '../packages/shared/src/utils/formatters.js';
+
+export {
+  pickRandomItems,
+  shuffleArray,
+  getNearestUpcomingISODate,
+  getLatestISODate,
+  compareByNearestUpcomingDate,
+} from '../packages/shared/src/utils/collections.js';

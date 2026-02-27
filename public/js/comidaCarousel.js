@@ -1,6 +1,7 @@
 // public/js/comidaCarousel.js
 import { supabase } from "../shared/supabaseClient.js";
 import { resolverPlanComercio } from "../shared/planes.js";
+import { pickRandomItems } from "../shared/utils.js";
 
 /**
  * 🔹 Carrusel de "Aquí en Pe Erre se come bien"
@@ -12,6 +13,7 @@ export async function renderComidaCarousel(containerId) {
 
   // ✅ ID de la categoría “Restaurantes”
   const idRestaurantes = 1; // asegúrate de que coincide con tu tabla Categorias
+  const maxSlides = 24;
 
   try {
     // 🔸 Buscar comercios activos que pertenezcan a Restaurantes
@@ -36,7 +38,7 @@ export async function renderComidaCarousel(containerId) {
         ComercioCategorias ( idCategoria )
       `)
       .eq("activo", true)
-      .limit(50);
+      .limit(200);
 
     if (comerciosError) throw comerciosError;
 
@@ -44,14 +46,15 @@ export async function renderComidaCarousel(containerId) {
     const comerciosFiltrados = comercios
       .filter((c) => c.ComercioCategorias?.some((cc) => cc.idCategoria === idRestaurantes))
       .filter((c) => resolverPlanComercio(c).aparece_en_cercanos);
+    const comerciosAleatorios = pickRandomItems(comerciosFiltrados, maxSlides);
 
-    if (comerciosFiltrados.length === 0) {
+    if (comerciosAleatorios.length === 0) {
       container.innerHTML = `<p class="text-gray-500 text-center">No hay restaurantes disponibles</p>`;
       return;
     }
 
     // 🔸 Obtener imágenes (no logos)
-    const idsComercios = comerciosFiltrados.map((c) => c.id).filter(Boolean);
+    const idsComercios = comerciosAleatorios.map((c) => c.id).filter(Boolean);
     if (idsComercios.length === 0) {
       console.warn("⚠️ Comercios sin IDs válidos.");
       container.innerHTML = `<p class="text-gray-500 text-center">No hay imágenes disponibles.</p>`;
@@ -87,7 +90,7 @@ export async function renderComidaCarousel(containerId) {
         <div class="swiper-wrapper">
           ${await Promise.all(
             imagenesPorComercio.map(async (img) => {
-              const comercio = comerciosFiltrados.find((c) => c.id === img.idComercio);
+              const comercio = comerciosAleatorios.find((c) => c.id === img.idComercio);
               if (!comercio) return "";
 
               // 🔹 Buscar logo del comercio
@@ -126,15 +129,23 @@ export async function renderComidaCarousel(containerId) {
       </div>
     `;
 
-    // 🔸 Inicializar Swiper (mismo estilo que antes)
+    // 🔸 Inicializar Swiper (loop suave, sin salto brusco en reinicio)
+    const totalSlides = imagenesPorComercio.length;
+    const canLoop = totalSlides > 1;
     new Swiper(container.querySelector(".comida-swiper"), {
-      loop: true,
-      autoplay: { delay: 3000, disableOnInteraction: false },
+      loop: canLoop,
+      loopedSlides: canLoop ? totalSlides : 0,
+      loopAdditionalSlides: canLoop ? totalSlides : 0,
+      autoplay: canLoop
+        ? { delay: 3000, disableOnInteraction: false, waitForTransition: false }
+        : false,
       speed: 900,
       slidesPerView: 1.4,
+      slidesPerGroup: 1,
       spaceBetween: 8, // pequeño espacio entre tarjetas
       direction: "horizontal",
       centeredSlides: false,
+      watchSlidesProgress: true,
     });
   } catch (err) {
     console.error("❌ Error cargando carrusel de Restaurantes:", err);

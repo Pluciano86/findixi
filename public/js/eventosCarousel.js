@@ -1,6 +1,11 @@
 import { supabase } from "../shared/supabaseClient.js";
 import { abrirModal } from "./modalEventos.js";
 import { t } from "./i18n.js";
+import {
+  compareByNearestUpcomingDate,
+  getLatestISODate,
+  getNearestUpcomingISODate,
+} from "../shared/utils.js";
 
 const normalizarEventos = (lista = [], municipioNombreById = new Map()) => {
   const hoyISO = new Date().toISOString().slice(0, 10);
@@ -35,7 +40,9 @@ const normalizarEventos = (lista = [], municipioNombreById = new Map()) => {
           : (municipioNombreById.get(municipioIds[0]) || "");
 
       const eventoFechas = sedes.flatMap((sede) => sede.fechas || []).sort((a, b) => a.fecha.localeCompare(b.fecha));
-      const ultimaFecha = eventoFechas.length ? eventoFechas[eventoFechas.length - 1].fecha : null;
+      const fechasISO = eventoFechas.map((item) => item.fecha);
+      const ultimaFecha = getLatestISODate(fechasISO);
+      const proximaFecha = getNearestUpcomingISODate(fechasISO, hoyISO);
 
       return {
         ...evento,
@@ -44,10 +51,18 @@ const normalizarEventos = (lista = [], municipioNombreById = new Map()) => {
         municipioNombre,
         eventoFechas,
         ultimaFecha,
+        proximaFecha,
         boletos_por_localidad: Boolean(evento.boletos_por_localidad)
       };
     })
-    .filter((evento) => !evento.ultimaFecha || evento.ultimaFecha >= hoyISO);
+    .filter((evento) => !evento.ultimaFecha || evento.ultimaFecha >= hoyISO)
+    .sort((a, b) => {
+      const fechasA = a.eventoFechas?.map((item) => item.fecha) || [];
+      const fechasB = b.eventoFechas?.map((item) => item.fecha) || [];
+      const result = compareByNearestUpcomingDate(fechasA, fechasB, hoyISO);
+      if (result !== 0) return result;
+      return Number(b.id || 0) - Number(a.id || 0);
+    });
 };
 
 /**
@@ -241,13 +256,21 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
     const pathname = window.location.pathname || "";
     const esListadoArea = pathname.includes("listadoArea.html");
     const esIndex = pathname.endsWith("/") || pathname.includes("index.html");
+    const totalSlides = eventos.length;
+    const canLoop = totalSlides > 1;
     new Swiper(container.querySelector(".eventosSwiper"), {
-      loop: true,
-      autoplay: { delay: 2500, disableOnInteraction: false },
+      loop: canLoop,
+      loopedSlides: canLoop ? totalSlides : 0,
+      loopAdditionalSlides: canLoop ? totalSlides : 0,
+      autoplay: canLoop
+        ? { delay: 2500, disableOnInteraction: false, waitForTransition: false }
+        : false,
       speed: 900,
       slidesPerView: (esIndex || esListadoArea) ? 2 : 1.2,
+      slidesPerGroup: 1,
       spaceBetween: (esIndex || esListadoArea) ? 10 : 8, // pequeño espacio entre tarjetas
       centeredSlides: false,
+      watchSlidesProgress: true,
     });
 
     // 🔹 Click → abrir modal
