@@ -2,13 +2,26 @@ export type ComercioRow = {
   id: number;
   nombre: string;
   municipio: string | null;
+  pueblo?: string | null;
   direccion: string | null;
   telefono: string | null;
   latitud: number | null;
   longitud: number | null;
+  distanciaKm?: number | null;
+  minutosEstimados?: number | null;
+  minutosCrudos?: number | null;
+  tiempoVehiculo?: string | number | null;
+  tiempoTexto?: string | null;
   logo: string | null;
   portada: string | null;
   descripcion: string | null;
+  facebook?: string | null;
+  instagram?: string | null;
+  tiktok?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  webpage?: string | null;
+  tieneSucursales?: boolean | null;
   plan_id: number | null;
   plan_nivel: number | null;
   plan_nombre: string | null;
@@ -22,6 +35,18 @@ export type ComercioRow = {
   estado_verificacion: string | null;
   propietario_verificado: boolean | null;
   activo: boolean | null;
+  abierto_ahora?: boolean | null;
+  abiertoAhora?: boolean | null;
+  favorito?: boolean | null;
+  subcategoriaIds?: number[] | null;
+  nombreSucursal?: string | null;
+  nombre_sucursal?: string | null;
+  sucursal?: boolean | null;
+  esSucursal?: boolean | null;
+  es_sucursal?: boolean | null;
+  ComercioCategorias?: Array<{
+    idCategoria: number | null;
+  }> | null;
 };
 
 export type ComercioListItem = ComercioRow;

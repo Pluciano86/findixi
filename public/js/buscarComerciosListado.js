@@ -10,6 +10,14 @@ import { detectarMunicipioUsuario } from './detectarMunicipio.js';
 import { mostrarPopupUbicacionDenegada, showPopupFavoritosVacios } from './popups.js';
 import { requireAuthSilent, showAuthModal, ACTION_MESSAGES } from './authGuard.js';
 import { resolverPlanComercio } from '../shared/planes.js';
+import {
+  buildListadoComerciosRpcPayload,
+  calcularDistanciaListadoConFallback,
+  formatearTiempoVehiculoLargo,
+  normalizarComercioListadoDesdeRpc,
+  normalizarTextoListado,
+  ordenarYFiltrarListadoComercios,
+} from '../shared/pkg/listado/comercios.js';
 
 const EMOJIS_CATEGORIA = {
   "Restaurantes": "🍽️",
@@ -32,12 +40,7 @@ let refinamientoEnCurso = false;
 let sugerenciasMostradas = false;
 
 function normalizarTexto(value) {
-  if (value === null || value === undefined) return '';
-  return String(value)
-    .trim()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+  return normalizarTextoListado(value);
 }
 
 function debounce(fn, delay = 300) {
@@ -114,20 +117,7 @@ async function obtenerIdsComerciosPorMenus(textoRaw) {
 }
 
 function formatearTextoLargo(minutosTotales) {
-  if (!Number.isFinite(minutosTotales) || minutosTotales < 0) return 'N/D';
-
-  const horas = Math.floor(minutosTotales / 60);
-  const minutos = minutosTotales % 60;
-
-  if (horas > 0 && minutos > 0) {
-    return `a ${horas} hora${horas > 1 ? 's' : ''} ${minutos} minuto${minutos > 1 ? 's' : ''}`;
-  }
-
-  if (horas > 0) {
-    return `a ${horas} hora${horas > 1 ? 's' : ''}`;
-  }
-
-  return `a ${minutos} minuto${minutos !== 1 ? 's' : ''}`;
+  return formatearTiempoVehiculoLargo(minutosTotales);
 }
 
 function obtenerIdCategoriaDesdeURL() {
@@ -438,44 +428,9 @@ function renderSubcategoriasDropdown(subs = estado.subcategorias) {
 }
 
 function normalizarComercio(record, referencia = obtenerReferenciaUsuarioParaCalculos()) {
-  // 🔥 1. Usar SIEMPRE la ubicación REAL del usuario si existe
   const refUsuario = obtenerReferenciaUsuarioParaCalculos();
-  const ref = refUsuario || referencia; // preferencia a usuario real
-
-  // 🔥 2. Calcular distancia usando SIEMPRE la referencia correcta
-  const distanciaKm = calcularDistanciaConFallback(record, ref);
-
-  const tiempoCalculado =
-    Number.isFinite(distanciaKm) && distanciaKm >= 0
-      ? calcularTiempoEnVehiculo(distanciaKm)
-      : { texto: 'N/D', minutos: null };
-
-  const minutosTotales = Number.isFinite(tiempoCalculado.minutos)
-    ? tiempoCalculado.minutos
-    : null;
-
-  const textoLargo = formatearTextoLargo(minutosTotales);
-  const abiertoDesdeRPC = record.abierto_ahora;
-  const abiertoBool = typeof abiertoDesdeRPC === 'boolean'
-    ? abiertoDesdeRPC
-    : Boolean(abiertoDesdeRPC);
-
-  return {
-    ...record,
-    id: record.id,
-    nombre: record.nombre ?? 'Sin nombre',
-    telefono: record.telefono ?? '',
-    pueblo: record.municipio ?? record.pueblo ?? '',
-    municipio: record.municipio ?? record.pueblo ?? '',
-    latitud: Number(record.latitud),
-    longitud: Number(record.longitud),
-    distanciaKm: Number.isFinite(distanciaKm) ? distanciaKm : null,
-    minutosEstimados: minutosTotales,
-    abierto: abiertoBool,
-    abiertoAhora: abiertoBool,
-    abierto_ahora: abiertoBool,
-    raw: record,
-  };
+  const ref = refUsuario || referencia;
+  return normalizarComercioListadoDesdeRpc(record, { referencia: ref });
 }
 
 async function obtenerFavoritosSet() {
@@ -565,7 +520,7 @@ async function solicitarUbicacionForzada() {
 function recalcularDistancias(lat, lon) {
   if (!Array.isArray(estado.lista) || !Number.isFinite(lat) || !Number.isFinite(lon)) return;
   estado.lista = estado.lista.map((comercio) => {
-    const distanciaKm = calcularDistanciaHaversine(lat, lon, Number(comercio.latitud), Number(comercio.longitud));
+    const distanciaKm = calcularDistanciaListadoConFallback(comercio, { lat, lon });
     const tiempoData =
       Number.isFinite(distanciaKm) && distanciaKm >= 0 ? calcularTiempoEnVehiculo(distanciaKm) : { texto: 'N/D', minutos: null };
     const tiempoTexto = formatearTextoLargo(
@@ -662,32 +617,20 @@ async function asegurarMunicipioInicial() {
 
 function construirPayloadRPC() {
   const filtros = estado.filtros;
-  const textoBusqueda = (filtros.textoBusqueda || '').trim();
-  const usandoBusquedaTexto = textoBusqueda.length > 0;
-  const municipioFiltro =
-    estado.municipioSeleccionadoManualmente && filtros.municipio
-      ? filtros.municipio.trim()
-      : estado.usarMunicipioDetectado && filtros.municipioDetectado
-      ? filtros.municipioDetectado.trim()
-      : null;
-  const coords =
-    !usandoBusquedaTexto && estado.tienePermisoUbicacion && estado.coordsUsuario
-      ? estado.coordsUsuario
-      : { lat: null, lon: null };
-
-  return {
-    p_texto: usandoBusquedaTexto ? textoBusqueda : null,
-    p_municipio: usandoBusquedaTexto ? null : municipioFiltro,
-    p_categoria: filtros.categoria ? Number(filtros.categoria) || null : null,
-    p_subcategoria: filtros.subcategoria ? Number(filtros.subcategoria) || null : null,
-    p_activo: null,
-    p_latitud: usandoBusquedaTexto ? null : Number.isFinite(coords.lat) ? coords.lat : null,
-    p_longitud: usandoBusquedaTexto ? null : Number.isFinite(coords.lon) ? coords.lon : null,
-    p_radio: usandoBusquedaTexto ? null : null,
-    p_limit: LIMITE_POR_PAGINA,
-    p_offset: estado.offset,
-    p_abierto_ahora: filtros.abiertoAhora ? true : null,
-  };
+  return buildListadoComerciosRpcPayload({
+    textoBusqueda: filtros.textoBusqueda,
+    municipio: filtros.municipio,
+    municipioDetectado: filtros.municipioDetectado,
+    municipioSeleccionadoManualmente: estado.municipioSeleccionadoManualmente,
+    usarMunicipioDetectado: estado.usarMunicipioDetectado,
+    categoria: filtros.categoria,
+    subcategoria: filtros.subcategoria,
+    abiertoAhora: filtros.abiertoAhora,
+    coordsUsuario: estado.coordsUsuario,
+    tienePermisoUbicacion: estado.tienePermisoUbicacion,
+    limit: LIMITE_POR_PAGINA,
+    offset: estado.offset,
+  });
 }
 
 async function ejecutarRPC(payload, referenciaDistancia = obtenerReferenciaUsuarioParaCalculos()) {
@@ -756,69 +699,15 @@ async function enriquecerSucursales(lista = []) {
 }
 
 function ordenarLocalmente(lista) {
-  let resultado = Array.isArray(lista) ? [...lista] : [];
-  const { orden, favoritos, destacadosPrimero, abiertoAhora } = estado.filtros;
-
-  if (abiertoAhora) {
-    resultado = resultado.filter((c) => c.abierto_ahora === true);
-  }
-
-  if (favoritos) {
-    resultado = resultado.filter((c) => c.favorito === true);
-  }
-
-  const ordenarGrupo = (grupo) => {
-    const copia = [...grupo];
-    if (orden === 'az') {
-      copia.sort((a, b) => a.nombre.localeCompare(b.nombre));
-    } else if (orden === 'recientes') {
-      copia.sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
-    } else {
-      copia.sort((a, b) => (a.distanciaKm ?? Infinity) - (b.distanciaKm ?? Infinity));
-    }
-    return copia;
-  };
-
-  if (destacadosPrimero) {
-    const activos = ordenarGrupo(resultado.filter((c) => c.activo === true));
-    const inactivos = ordenarGrupo(resultado.filter((c) => c.activo !== true));
-    resultado = [...activos, ...inactivos];
-  } else {
-    resultado = ordenarGrupo(resultado);
-  }
-
-  return resultado;
-}
-
-function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {
-  const rad = Math.PI / 180;
-  const R = 6371;
-  const φ1 = lat1 * rad;
-  const φ2 = lat2 * rad;
-  const Δφ = (lat2 - lat1) * rad;
-  const Δλ = (lon2 - lon1) * rad;
-  const a =
-    Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function calcularDistanciaConFallback(record, referencia) {
-  const latRef = Number(referencia?.lat);
-  const lonRef = Number(referencia?.lon);
-  const latComercio = Number(record.latitud);
-  const lonComercio = Number(record.longitud);
-
-  if (
-    Number.isFinite(latRef) &&
-    Number.isFinite(lonRef) &&
-    Number.isFinite(latComercio) &&
-    Number.isFinite(lonComercio)
-  ) {
-    return calcularDistanciaHaversine(latRef, lonRef, latComercio, lonComercio);
-  }
-
-  return null;
+  const referencia = obtenerReferenciaUsuarioParaCalculos();
+  return ordenarYFiltrarListadoComercios(lista, {
+    orden: estado.filtros.orden,
+    favoritos: estado.filtros.favoritos,
+    destacadosPrimero: estado.filtros.destacadosPrimero,
+    abiertoAhora: estado.filtros.abiertoAhora,
+    favoritosSet: estado.favoritosUsuarioSet,
+    referencia,
+  });
 }
 
 function ensureMensajesContainer() {
@@ -983,7 +872,7 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false, s
       const btnEliminar = document.createElement('button');
       btnEliminar.innerHTML = `✕ ${municipioActivo}`;
       btnEliminar.className =
-        'bg-blue-100 text-blue-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-blue-200 transition-all';
+        'bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-200 transition-all';
       btnEliminar.addEventListener('click', () => {
         estado.filtros.municipio = '';
         estado.municipioSeleccionadoManualmente = false;

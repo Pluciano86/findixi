@@ -33,7 +33,11 @@ export function HomeCategoriesGrid({ items }: HomeCategoriesGridProps) {
             key={String(item.id)}
             style={styles.item}
             onPress={() => {
-              router.push('/comercios');
+              const categoryLabel = resolveLabel(item) || item.fallbackLabel;
+              router.push({
+                pathname: '/comercios',
+                params: { idCategoria: String(item.id), categoria: categoryLabel },
+              });
             }}
           >
             <View style={styles.imageCircleWrap}>

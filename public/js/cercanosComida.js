@@ -21,7 +21,7 @@ function renderizarCercanos(cercanos) {
 
   if (traducidos.length > 0) {
     slider.innerHTML = `
-      <div class="swiper cercanosSwiper w-full overflow-hidden px-1">
+      <div class="swiper cercanosSwiper w-full overflow-hidden px-1 py-[6px]">
         <div class="swiper-wrapper"></div>
       </div>
     `;
@@ -74,6 +74,7 @@ export async function mostrarCercanosComida(comercioOrigen) {
         id,
         nombre,
         municipio,
+        telefono,
         latitud,
         longitud,
         activo,

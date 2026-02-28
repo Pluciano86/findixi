@@ -38,7 +38,7 @@ const footerItems: FooterItem[] = [
 
 function isRouteActive(pathname: string, route: string): boolean {
   if (pathname === route) return true;
-  if (route === '/comercios' && pathname.startsWith('/comercio/')) return true;
+  if (route === '/comercios' && (pathname.startsWith('/comercio/') || pathname === '/playas')) return true;
   return false;
 }
 

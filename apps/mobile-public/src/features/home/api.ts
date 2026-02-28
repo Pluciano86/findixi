@@ -90,7 +90,7 @@ function isCurrentBanner(banner: Record<string, unknown>): boolean {
   return true;
 }
 
-async function fetchTopBanners(): Promise<HomeBannerItem[]> {
+export async function fetchGlobalBanners(): Promise<HomeBannerItem[]> {
   const { data, error } = await supabase
     .from('banners')
     .select('id, titulo, descripcion, tipo, imagenurl, videourl, activo, fechaInicio, fechaFin, urlExterna, idComercio')
@@ -383,7 +383,7 @@ async function fetchAreas(limit = 6): Promise<HomeAreaCard[]> {
 
 export async function fetchHomeIndexData(): Promise<HomeIndexData> {
   const [topBanners, categories, comercioRails, eventos, areas] = await Promise.all([
-    fetchTopBanners(),
+    fetchGlobalBanners(),
     fetchCategories(),
     fetchComercioRails(),
     fetchEventos(),

@@ -22,7 +22,7 @@ export function HomeHeroPlaya({ canPlay }: HomeHeroPlayaProps) {
   const shouldRenderVideo = canPlay && !hasPlaybackError;
 
   return (
-    <Pressable style={styles.wrap} onPress={() => router.push('/comercios')}>
+    <Pressable style={styles.wrap} onPress={() => router.push('/playas')}>
       {shouldRenderVideo ? (
         <Video
           source={{ uri: HERO_VIDEO }}

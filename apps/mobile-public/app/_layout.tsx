@@ -37,6 +37,7 @@ export default function RootLayout() {
         <StatusBar style="dark" />
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="playas" options={{ headerShown: false }} />
           <Stack.Screen name="comercios" options={{ headerShown: false }} />
           <Stack.Screen name="eventos" options={{ headerShown: false }} />
           <Stack.Screen name="cuenta" options={{ headerShown: false }} />

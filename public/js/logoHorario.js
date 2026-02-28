@@ -1,4 +1,10 @@
 import { supabase } from '../shared/supabaseClient.js';
+import {
+  evaluarHorarioActual,
+  formato12Horas,
+  minutosDesdeMedianoche,
+  obtenerProximoDiaAbierto,
+} from '../shared/pkg/perfil/comercio.js';
 import { t } from './i18n.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
@@ -17,36 +23,6 @@ const textoEl = document.querySelector('#estadoHorarioContainer p');
 const subtituloEl = document.createElement('p');
 subtituloEl.className = 'text-xs text-gray-500 font-light';
 textoEl.insertAdjacentElement('afterend', subtituloEl);
-
-function formato12Horas(horaStr) {
-  if (!horaStr) return '--:--';
-  const [h, m] = horaStr.split(':').map(Number);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const hora12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hora12}:${m.toString().padStart(2, '0')} ${ampm}`;
-}
-
-function minutosDesdeMedianoche(horaStr) {
-  if (!horaStr) return null;
-  const [hora, minuto] = horaStr.split(':').map(Number);
-  return hora * 60 + minuto;
-}
-
-function obtenerProximoDiaAbierto(horarios, diaActual) {
-  for (let i = 1; i <= 7; i++) {
-    const diaSiguiente = (diaActual + i) % 7;
-    const horario = horarios.find(h => h.diaSemana === diaSiguiente);
-    if (horario && !horario.cerrado) {
-      const diasSemana = getDiasSemana();
-      return {
-        dia: diasSemana[diaSiguiente],
-        apertura: formato12Horas(horario.apertura?.slice(0, 5)),
-        esManana: i === 1
-      };
-    }
-  }
-  return null;
-}
 
 async function verificarHorario() {
   const hoy = new Date();
@@ -75,35 +51,10 @@ async function verificarHorario() {
     return;
   }
 
-  const hoyHorario = horariosValidos.find(h => h.diaSemana === diaSemana);
-  const ayerHorario = horariosValidos.find(h => h.diaSemana === (diaSemana + 6) % 7); // día anterior
-
-  let abierto = false;
-  let cierre = null;
-
-  if (hoyHorario && !hoyHorario.cerrado && hoyHorario.apertura && hoyHorario.cierre) {
-    const aperturaMin = minutosDesdeMedianoche(hoyHorario.apertura.slice(0, 5));
-    const cierreMin = minutosDesdeMedianoche(hoyHorario.cierre.slice(0, 5));
-
-    if (aperturaMin < cierreMin) {
-      abierto = horaMinutos >= aperturaMin && horaMinutos < cierreMin;
-    } else {
-      abierto = horaMinutos >= aperturaMin || horaMinutos < cierreMin;
-    }
-
-    if (abierto) cierre = hoyHorario.cierre;
-  }
-
-  // Verifica si sigue abierto desde ayer (pasó medianoche)
-  if (!abierto && ayerHorario && !ayerHorario.cerrado && ayerHorario.apertura && ayerHorario.cierre) {
-    const aperturaMin = minutosDesdeMedianoche(ayerHorario.apertura.slice(0, 5));
-    const cierreMin = minutosDesdeMedianoche(ayerHorario.cierre.slice(0, 5));
-
-    if (aperturaMin > cierreMin && horaMinutos < cierreMin) {
-      abierto = true;
-      cierre = ayerHorario.cierre;
-    }
-  }
+  const hoyHorario = horariosValidos.find((h) => h.diaSemana === diaSemana);
+  const estado = evaluarHorarioActual(horariosValidos, diaSemana, horaActual);
+  const abierto = estado.abierto;
+  const cierre = estado.cierreHoy;
 
   // Resultado visual
   if (abierto) {
@@ -132,10 +83,11 @@ async function verificarHorario() {
     if (hoyHorario && !hoyHorario.cerrado && hoyHorario.apertura && horaMinutos < minutosDesdeMedianoche(hoyHorario.apertura.slice(0, 5))) {
       subtituloEl.innerHTML = `${t('perfilComercio.abreHoyLabel')}<br><span class="text-sm ">${formato12Horas(hoyHorario.apertura.slice(0, 5))}</span>`;
     } else {
-      const proximo = obtenerProximoDiaAbierto(horarios, diaSemana);
+      const proximo = obtenerProximoDiaAbierto(horariosValidos, diaSemana);
       if (proximo) {
-        const cuando = proximo.esManana ? t('perfilComercio.manana') : proximo.dia;
-        subtituloEl.innerHTML = `${t('perfilComercio.abreDiaLabel', { dia: cuando })}<br><span class="text-sm">${proximo.apertura}</span>`;
+        const diaTexto = getDiasSemana()[proximo.diaSemana] || '';
+        const cuando = proximo.esManana ? t('perfilComercio.manana') : diaTexto;
+        subtituloEl.innerHTML = `${t('perfilComercio.abreDiaLabel', { dia: cuando })}<br><span class="text-sm">${formato12Horas(proximo.apertura)}</span>`;
       } else {
         subtituloEl.textContent = '';
       }

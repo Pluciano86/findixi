@@ -17,7 +17,8 @@ export function cardLugarSlide(lugar, opciones = {}) {
   const card = document.createElement("a");
   card.href = `perfilLugar.html?id=${id}`;
   card.className = `
-    block w-80 sm:w-96 shrink-0 rounded-lg overflow-hidden bg-white relative
+    block w-80 sm:w-96 shrink-0 rounded-lg overflow-hidden bg-white relative my-[1px]
+    shadow-[0_2px_5px_rgba(15,23,42,0.13)]
     hover:scale-[1.02] transition-transform
   `.trim();
 

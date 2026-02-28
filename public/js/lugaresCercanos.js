@@ -27,7 +27,7 @@ function renderizarLugaresCercanos(cercanos, comercioOrigen) {
 
   if (traducidos.length > 0) {
     slider.innerHTML = `
-      <div class="swiper lugaresSwiper w-full overflow-hidden px-1">
+      <div class="swiper lugaresSwiper w-full overflow-hidden px-1 py-[6px]">
         <div class="swiper-wrapper"></div>
       </div>
     `;

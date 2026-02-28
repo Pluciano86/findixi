@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 
@@ -239,7 +240,6 @@ export function HomeEventoModal({ visible, event, onClose }: HomeEventoModalProp
     : '';
 
   const openZoom = () => {
-    if (!resolvedEvent.imageUrl) return;
     setZoomVisible(true);
   };
 
@@ -362,26 +362,30 @@ export function HomeEventoModal({ visible, event, onClose }: HomeEventoModalProp
       </Modal>
 
       <Modal transparent visible={zoomVisible} animationType="fade" onRequestClose={() => setZoomVisible(false)}>
-        <Pressable style={styles.zoomBackdrop} onPress={() => setZoomVisible(false)}>
-          <Pressable style={styles.zoomCard} onPress={(evt) => evt.stopPropagation()}>
-            <Pressable style={styles.zoomCloseBtn} onPress={() => setZoomVisible(false)}>
-              <Text style={styles.zoomCloseText}>×</Text>
-            </Pressable>
-            <ScrollView
-              style={styles.zoomScroll}
-              contentContainerStyle={styles.zoomScrollContent}
-              minimumZoomScale={1}
-              maximumZoomScale={4}
-              centerContent
-            >
-              <Image
-                source={{ uri: resolvedEvent.imageUrl || 'https://placehold.co/560x400?text=Evento' }}
-                style={styles.zoomImage}
-                resizeMode="contain"
-              />
-            </ScrollView>
-          </Pressable>
-        </Pressable>
+        <TouchableWithoutFeedback onPress={() => setZoomVisible(false)}>
+          <View style={styles.zoomOverlay}>
+            <TouchableWithoutFeedback onPress={() => undefined}>
+              <View style={styles.zoomCard}>
+                <Pressable style={styles.zoomCloseBtn} onPress={() => setZoomVisible(false)} hitSlop={16}>
+                  <Text style={styles.zoomCloseText}>×</Text>
+                </Pressable>
+                <ScrollView
+                  style={styles.zoomScroll}
+                  contentContainerStyle={styles.zoomScrollContent}
+                  minimumZoomScale={1}
+                  maximumZoomScale={4}
+                  centerContent
+                >
+                  <Image
+                    source={{ uri: resolvedEvent.imageUrl || 'https://placehold.co/560x400?text=Evento' }}
+                    style={styles.zoomImage}
+                    resizeMode="contain"
+                  />
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </>
   );
@@ -619,16 +623,16 @@ const styles = StyleSheet.create({
   groupBuyBtn: {
     marginTop: spacing.sm,
   },
-  zoomBackdrop: {
-    flex: 1,
+  zoomOverlay: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.lg,
   },
   zoomCard: {
-    width: '100%',
-    height: '100%',
+    width: '94%',
+    height: '84%',
+    position: 'relative',
   },
   zoomScroll: {
     width: '100%',
@@ -641,19 +645,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   zoomImage: {
-    width: '95%',
-    height: '92%',
+    width: '100%',
+    height: '100%',
   },
   zoomCloseBtn: {
     position: 'absolute',
-    right: spacing.lg,
-    top: spacing.lg,
-    zIndex: 2,
+    right: spacing.md,
+    top: spacing.md,
+    zIndex: 5,
+    width: 52,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   zoomCloseText: {
     color: '#ffffff',
-    fontSize: 56,
-    lineHeight: 56,
+    fontSize: 46,
+    lineHeight: 46,
     fontFamily: fonts.light,
   },
 });

@@ -111,7 +111,7 @@ export async function mostrarPlayasCercanas(comercio) {
 
   // 🔹 Estructura Swiper
   contenedor.innerHTML = `
-    <div class="swiper playasSwiper w-full overflow-hidden px-1">
+    <div class="swiper playasSwiper w-full overflow-hidden px-1 py-[6px]">
       <div class="swiper-wrapper"></div>
     </div>
   `;

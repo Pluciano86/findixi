@@ -81,6 +81,8 @@ export function cardComercio(comercio) {
   const planInfo = resolverPlanComercio(comercio || {});
   const permitePerfil = planInfo.permite_perfil !== false;
   const planExplicito = hasPlanData(comercio || {});
+  const esBasicSinPerfil = !permitePerfil && String(planInfo?.slug || '').toLowerCase() === 'basic';
+  const badgeSinPerfil = esBasicSinPerfil ? t('card.noPerfilBadgeBasic') : t('card.noPerfilBadge');
 
   // 🕒 Calcular tiempo estimado de llegada con i18n
   let minutosEstimados = null;
@@ -168,7 +170,7 @@ export function cardComercio(comercio) {
     ${
       !permitePerfil
         ? `<div class="absolute top-2 left-2 z-30 inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-gray-100 text-gray-600 border border-gray-200">
-             Perfil no activo
+             ${badgeSinPerfil}
            </div>`
         : ''
     }
@@ -251,7 +253,7 @@ export function cardComercio(comercio) {
     closeBtn.type = 'button';
     closeBtn.className =
       'absolute top-1 right-1 w-5 h-5 text-gray-400 hover:text-gray-600 rounded-full flex items-center justify-center';
-    closeBtn.setAttribute('aria-label', 'Cerrar');
+    closeBtn.setAttribute('aria-label', t('popup.cerrar'));
     closeBtn.textContent = '×';
     closeBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -264,17 +266,14 @@ export function cardComercio(comercio) {
     iconWrap.innerHTML = '<i class="fa-solid fa-circle-info text-xs"></i>';
 
     const title = document.createElement('div');
+    title.dataset.basicTitle = 'true';
     title.className = 'font-semibold text-[13px] text-gray-900 leading-tight';
-    title.textContent = 'Perfil aún no disponible';
+    title.textContent = t('card.noPerfilTitle');
 
     const msg = document.createElement('div');
+    msg.dataset.basicMessage = 'true';
     msg.className = 'text-[11px] text-gray-600 leading-snug mt-1';
-    const nombreComercio = comercio?.nombre || 'este comercio';
-    msg.innerHTML =
-      `Este comercio todavía no ha activado su perfil completo en ` +
-      `<span class="text-[#f57c00] font-semibold">Findixi</span>.<br>` +
-      `Le notificaremos que hay personas interesadas en conocer más sobre` +
-      `<br><span class="text-sky-600 font-semibold">${escapeHtml(nombreComercio)}</span>.`;
+    msg.innerHTML = '';
 
     const caret = document.createElement('span');
     caret.className =
@@ -295,6 +294,41 @@ export function cardComercio(comercio) {
     return bubble;
   };
 
+  const getNoProfileCopy = (info) => {
+    const nombreComercio = comercio?.nombre || 'este comercio';
+    const slug = String(info?.slug || '').toLowerCase();
+    const appHighlight = `<span class="text-[#f57c00] font-semibold">${escapeHtml(t('card.appName'))}</span>`;
+    const planHighlight = `<span class="text-[#f57c00] font-semibold">${escapeHtml(t('card.basicPlanName'))}</span>`;
+    const nombreHighlight = `<span class="text-sky-600 font-semibold">${escapeHtml(nombreComercio)}</span>`;
+
+    if (slug === 'basic') {
+      return {
+        title: t('card.noPerfilTitleBasic'),
+        message:
+          `${interpolate(t('card.noPerfilBodyBasic'), { plan: planHighlight })}<br>` +
+          `${interpolate(t('card.noPerfilBodyNotify'), { nombre: nombreHighlight })}`,
+      };
+    }
+
+    return {
+      title: t('card.noPerfilTitle'),
+      message:
+        `${interpolate(t('card.noPerfilBodyGeneric'), { app: appHighlight })}<br>` +
+        `${interpolate(t('card.noPerfilBodyNotify'), { nombre: nombreHighlight })}`,
+    };
+  };
+
+  const hydrateBubbleCopy = (info) => {
+    const bubble = ensureBubble();
+    const titleNode = bubble.querySelector('[data-basic-title="true"]');
+    const messageNode = bubble.querySelector('[data-basic-message="true"]');
+    const copy = getNoProfileCopy(info);
+
+    if (titleNode) titleNode.textContent = copy.title;
+    if (messageNode) messageNode.innerHTML = copy.message;
+    return bubble;
+  };
+
   const hideBubble = () => {
     const bubble = div.querySelector('.basic-plan-bubble');
     if (!bubble || !bubbleState?.visible) return;
@@ -311,8 +345,8 @@ export function cardComercio(comercio) {
     }
   };
 
-  const showBubble = () => {
-    const bubble = ensureBubble();
+  const showBubble = (info = planInfo) => {
+    const bubble = hydrateBubbleCopy(info);
     if (!bubbleState) bubbleState = {};
 
     bubbleState.visible = true;
@@ -364,7 +398,7 @@ export function cardComercio(comercio) {
       },
     }).catch(() => {});
 
-    showBubble();
+    showBubble(info);
   });
 
   return div;
