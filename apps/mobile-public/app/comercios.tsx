@@ -7,7 +7,7 @@ import {
   ordenarYFiltrarListadoComercios,
   resolverPlanComercio,
 } from '@findixi/shared';
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { FontAwesome, FontAwesome5, FontAwesome6, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -51,6 +51,7 @@ import { borderRadius, fonts, shadows, spacing } from '../src/theme/tokens';
 
 type OrderMode = 'ubicacion' | 'az' | 'recientes';
 type SelectOption = { value: string; label: string };
+type CategoryMeta = { label: string; slug: string; iconRaw: string | null };
 
 const STORAGE_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/';
 const DEFAULT_PORTADA = `${STORAGE_BASE}NoActivoPortada.jpg`;
@@ -80,6 +81,17 @@ const CATEGORY_ICON_BY_ID: Record<number, keyof typeof Ionicons.glyphMap> = {
   7: 'storefront',
   8: 'wine',
   9: 'game-controller',
+};
+const CATEGORY_NAME_COLUMN_BY_LANG: Record<string, string> = {
+  es: 'nombre_es',
+  en: 'nombre_en',
+  zh: 'nombre_zh',
+  fr: 'nombre_fr',
+  pt: 'nombre_pt',
+  de: 'nombre_de',
+  it: 'nombre_it',
+  ko: 'nombre_ko',
+  ja: 'nombre_ja',
 };
 
 type ListRow =
@@ -162,6 +174,101 @@ function computeDistance(item: ComercioListItem, location: UserLocation | null, 
   return { km, label: formatTravelText(Number.isFinite(travel.minutos) ? travel.minutos : null, t) };
 }
 
+type ParsedCategoryIcon = {
+  name: string;
+  iconStyle: 'solid' | 'regular' | 'brands';
+  preferFamily: 'fa6' | 'fa5';
+};
+
+function parseCategoryIcon(value: string | null | undefined): ParsedCategoryIcon | null {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+
+  const classMatch = raw.match(/class\s*=\s*["']([^"']+)["']/i);
+  const source = (classMatch?.[1] || raw).trim();
+  const tokens = source.split(/\s+/).filter(Boolean);
+  const usesFa6StyleClass = /\bfa-solid\b|\bfa-regular\b|\bfa-brands\b/i.test(source);
+
+  const iconStyle: ParsedCategoryIcon['iconStyle'] = tokens.includes('fa-brands') || tokens.includes('fab')
+    ? 'brands'
+    : tokens.includes('fa-regular') || tokens.includes('far')
+      ? 'regular'
+      : 'solid';
+
+  const iconToken = tokens.find(
+    (token) =>
+      token.startsWith('fa-') &&
+      token !== 'fa' &&
+      token !== 'fas' &&
+      token !== 'far' &&
+      token !== 'fab' &&
+      token !== 'fa-solid' &&
+      token !== 'fa-regular' &&
+      token !== 'fa-light' &&
+      token !== 'fa-thin' &&
+      token !== 'fa-brands'
+  );
+
+  const normalizeForFa5: Record<string, string> = {
+    'martini-glass-citrus': 'cocktail',
+    'martini-glass': 'glass-martini',
+    'circle-check': 'check-circle',
+    'location-dot': 'map-marker-alt',
+  };
+  const normalizeForFa6: Record<string, string> = {
+    cocktail: 'martini-glass-citrus',
+    'glass-martini': 'martini-glass',
+    'check-circle': 'circle-check',
+    'map-marker-alt': 'location-dot',
+  };
+
+  const normalizeName = (name: string, preferFamily: 'fa6' | 'fa5') => {
+    if (preferFamily === 'fa5') return normalizeForFa5[name] || name;
+    return normalizeForFa6[name] || name;
+  };
+
+  const preferFamily: 'fa6' | 'fa5' = usesFa6StyleClass ? 'fa6' : 'fa5';
+
+  if (iconToken) return { name: normalizeName(iconToken.replace(/^fa-/, ''), preferFamily), iconStyle, preferFamily };
+  if (raw.startsWith('fa-')) return { name: normalizeName(raw.replace(/^fa-/, ''), preferFamily), iconStyle, preferFamily };
+  if (/^[a-z0-9-]+$/i.test(raw)) return { name: normalizeName(raw, preferFamily), iconStyle, preferFamily };
+  return null;
+}
+
+function CategoryFilterIcon({
+  rawValue,
+  fallback,
+}: {
+  rawValue: string | null;
+  fallback: keyof typeof Ionicons.glyphMap;
+}) {
+  const parsed = parseCategoryIcon(rawValue);
+  if (parsed) {
+    if (parsed.preferFamily === 'fa5') {
+      return (
+        <FontAwesome5
+          name={parsed.name as never}
+          size={18}
+          color="#3ea6c4"
+          brand={parsed.iconStyle === 'brands'}
+          solid={parsed.iconStyle !== 'regular'}
+        />
+      );
+    }
+
+    return (
+      <FontAwesome6
+        name={parsed.name as never}
+        iconStyle={parsed.iconStyle as never}
+        size={18}
+        color="#3ea6c4"
+      />
+    );
+  }
+
+  return <Ionicons name={fallback} size={18} color="#3ea6c4" />;
+}
+
 type FilterSelectProps = {
   label: string;
   value: string;
@@ -177,7 +284,9 @@ function FilterSelect({ label, value, placeholder, options, onChange, boxWidth }
 
   return (
     <View style={[styles.selectBlock, boxWidth ? { width: boxWidth } : null]}>
-      <Text style={styles.selectLabel}>{label}</Text>
+      <View style={styles.selectLabelWrap}>
+        <Text style={styles.selectLabel}>{label}</Text>
+      </View>
       <Pressable style={styles.selectTrigger} onPress={() => setOpen(true)}>
         <View style={styles.selectChevronSlot} />
         <Text numberOfLines={1} style={[styles.selectValue, !selected ? styles.selectValuePlaceholder : null]}>
@@ -241,7 +350,9 @@ type ToggleProps = {
 function FilterToggle({ label, value, color, onToggle }: ToggleProps) {
   return (
     <View style={styles.toggleWrap}>
-      <Text style={styles.toggleLabel}>{label}</Text>
+      <View style={styles.toggleLabelWrap}>
+        <Text style={styles.toggleLabel}>{label}</Text>
+      </View>
       <Pressable
         onPress={() => onToggle(!value)}
         style={[styles.toggleTrack, value ? { backgroundColor: color } : null]}
@@ -376,7 +487,7 @@ function ComercioCard({ item, location, isFavorite, onPress }: ComercioCardProps
 
         {phoneHref ? (
           <Pressable
-            style={styles.cardPhonePill}
+            style={({ pressed }) => [styles.cardPhonePill, pressed ? styles.cardPhonePillPressed : null]}
             onPress={(event) => {
               event.stopPropagation();
               void Linking.openURL(phoneHref);
@@ -447,7 +558,10 @@ function ComercioCardNoActivo({ item, location }: ComercioCardNoActivoProps) {
         </View>
 
         {phoneHref ? (
-          <Pressable style={styles.cardNoActivoPhoneRow} onPress={() => void Linking.openURL(phoneHref)}>
+          <Pressable
+            style={({ pressed }) => [styles.cardNoActivoPhoneRow, pressed ? styles.cardNoActivoPhonePressed : null]}
+            onPress={() => void Linking.openURL(phoneHref)}
+          >
             <FontAwesome name="phone" size={16} color="#6b7280" />
             <Text style={styles.cardNoActivoPhoneText}>{phone || t('card.telefono')}</Text>
           </Pressable>
@@ -474,7 +588,7 @@ function ComercioCardNoActivo({ item, location }: ComercioCardNoActivoProps) {
 }
 
 export default function ComerciosScreen() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const params = useLocalSearchParams<{ idCategoria?: string; categoria?: string }>();
   const router = useRouter();
   const [items, setItems] = useState<ComercioListItem[]>([]);
@@ -503,6 +617,7 @@ export default function ComerciosScreen() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [featuredFirst, setFeaturedFirst] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [categoryMeta, setCategoryMeta] = useState<CategoryMeta | null>(null);
   const orderSelectedManuallyRef = useRef(false);
   const locationBootstrapDoneRef = useRef(false);
   const municipioDetectadoRef = useRef(false);
@@ -577,7 +692,53 @@ export default function ComerciosScreen() {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }, [params.idCategoria]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadCategoryMeta() {
+      if (!selectedCategoryId) {
+        setCategoryMeta(null);
+        return;
+      }
+
+      const column = CATEGORY_NAME_COLUMN_BY_LANG[lang] || 'nombre_es';
+      const { data, error } = await supabase
+        .from('Categorias')
+        .select(
+          `id,slug,icono,nombre,nombre_es,nombre_en,nombre_zh,nombre_fr,nombre_pt,nombre_de,nombre_it,nombre_ko,nombre_ja,${column}`
+        )
+        .eq('id', selectedCategoryId)
+        .maybeSingle();
+
+      if (!active) return;
+      if (error || !data) {
+        setCategoryMeta(null);
+        return;
+      }
+
+      const record = data as unknown as Record<string, unknown>;
+      const localized = String(record[column] ?? '').trim();
+      const fallbackEs = String(record.nombre_es ?? '').trim();
+      const fallbackNombre = String(record.nombre ?? '').trim();
+      const label = localized || fallbackEs || fallbackNombre;
+      const slug = String(record.slug ?? '').trim().toLowerCase();
+      const iconRaw = String(record.icono ?? '').trim();
+
+      setCategoryMeta({
+        label,
+        slug,
+        iconRaw: iconRaw || null,
+      });
+    }
+
+    void loadCategoryMeta();
+    return () => {
+      active = false;
+    };
+  }, [lang, selectedCategoryId]);
+
   const selectedCategoryLabel = useMemo(() => {
+    if (categoryMeta?.label) return categoryMeta.label;
     const raw = Array.isArray(params.categoria) ? params.categoria[0] : params.categoria;
     const clean = String(raw ?? '').trim();
     if (clean) return clean;
@@ -585,7 +746,14 @@ export default function ComerciosScreen() {
       return CATEGORY_LABEL_BY_ID[selectedCategoryId];
     }
     return t('listado.titulo');
-  }, [params.categoria, selectedCategoryId, t]);
+  }, [categoryMeta?.label, params.categoria, selectedCategoryId, t]);
+
+  const selectedCategorySlug = useMemo(() => {
+    if (categoryMeta?.slug) return categoryMeta.slug;
+    if (selectedCategoryId === 1) return 'restaurantes';
+    if (selectedCategoryId === 5) return 'food_trucks';
+    return '';
+  }, [categoryMeta?.slug, selectedCategoryId]);
 
   const selectedCategoryIcon = useMemo<keyof typeof Ionicons.glyphMap>(() => {
     if (selectedCategoryId && CATEGORY_ICON_BY_ID[selectedCategoryId]) {
@@ -593,6 +761,18 @@ export default function ComerciosScreen() {
     }
     return 'restaurant';
   }, [selectedCategoryId]);
+
+  const subcategoriaFilterLabel = useMemo(() => {
+    if (selectedCategorySlug === 'restaurantes' || selectedCategorySlug === 'food_trucks') {
+      return t('listado.tipoDeComida');
+    }
+
+    if (selectedCategoryLabel) {
+      return t('listado.tipoDe', { categoria: selectedCategoryLabel });
+    }
+
+    return t('listado.tipoDeComida');
+  }, [selectedCategoryLabel, selectedCategorySlug, t]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -901,12 +1081,12 @@ export default function ComerciosScreen() {
   const subcategoriaSelectWidth = useMemo(
     () =>
       estimateSelectWidth([
-        t('listado.tipoDeComida'),
+        subcategoriaFilterLabel,
         t('listado.todas'),
         ...subcategoryOptions.map((item) => item.label),
         subcategoria,
       ]),
-    [estimateSelectWidth, subcategoryOptions, subcategoria, t]
+    [estimateSelectWidth, subcategoriaFilterLabel, subcategoryOptions, subcategoria, t]
   );
 
   const ordenSelectWidth = useMemo(
@@ -1250,7 +1430,7 @@ export default function ComerciosScreen() {
                   <View style={styles.filtersBox}>
                     <View style={styles.searchRow}>
                       <View style={styles.categoryIcon}>
-                        <Ionicons name={selectedCategoryIcon} size={18} color="#3ea6c4" />
+                        <CategoryFilterIcon rawValue={categoryMeta?.iconRaw ?? null} fallback={selectedCategoryIcon} />
                       </View>
                       <TextInput
                         value={searchText}
@@ -1273,7 +1453,7 @@ export default function ComerciosScreen() {
                       />
 
                       <FilterSelect
-                        label={t('listado.tipoDeComida')}
+                        label={subcategoriaFilterLabel}
                         value={subcategoria}
                         placeholder={t('listado.todas')}
                         options={subcategoryOptions}
@@ -1494,9 +1674,14 @@ const styles = StyleSheet.create({
   selectLabel: {
     color: '#6b7280',
     fontSize: 13,
-    marginBottom: 4,
     textAlign: 'center',
+    lineHeight: 16,
     fontFamily: fonts.medium,
+  },
+  selectLabelWrap: {
+    minHeight: 34,
+    justifyContent: 'flex-end',
+    marginBottom: 4,
   },
   selectTrigger: {
     minHeight: 38,
@@ -1559,20 +1744,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   togglesRow: {
-    marginTop: spacing.xs,
+    marginTop: 0,
     flexDirection: 'row',
     gap: spacing.xs,
   },
   toggleWrap: {
     flex: 1,
     alignItems: 'center',
-    gap: 6,
+    gap: 2,
+  },
+  toggleLabelWrap: {
+    minHeight: 38,
+    justifyContent: 'flex-end',
   },
   toggleLabel: {
     textAlign: 'center',
     color: '#374151',
-    fontSize: 12,
-    lineHeight: 14,
+    fontSize: 14,
+    lineHeight: 15,
     fontFamily: fonts.medium,
   },
   toggleTrack: {
@@ -1954,6 +2143,9 @@ const styles = StyleSheet.create({
     gap: 6,
     minHeight: 30,
   },
+  cardPhonePillPressed: {
+    opacity: 0.88,
+  },
   cardPhoneText: {
     color: '#fff',
     fontSize: 15,
@@ -1975,6 +2167,9 @@ const styles = StyleSheet.create({
     gap: 6,
     minHeight: 24,
     paddingHorizontal: 4,
+  },
+  cardNoActivoPhonePressed: {
+    opacity: 0.7,
   },
   cardNoActivoPhoneText: {
     color: '#6b7280',

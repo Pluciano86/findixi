@@ -22,7 +22,7 @@ const footerItems: FooterItem[] = [
   {
     labelKey: 'footer.near',
     iconUri: 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoNearMe.png',
-    route: '/comercios',
+    route: '/cercademi',
   },
   {
     labelKey: 'footer.events',
@@ -38,7 +38,12 @@ const footerItems: FooterItem[] = [
 
 function isRouteActive(pathname: string, route: string): boolean {
   if (pathname === route) return true;
-  if (route === '/comercios' && (pathname.startsWith('/comercio/') || pathname === '/playas')) return true;
+  if (
+    (route === '/comercios' || route === '/cercademi') &&
+    (pathname.startsWith('/comercio/') || pathname.startsWith('/playa/') || pathname === '/playas' || pathname === '/comercios')
+  ) {
+    return true;
+  }
   return false;
 }
 

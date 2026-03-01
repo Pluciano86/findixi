@@ -1,15 +1,14 @@
 import {
   calcularDistanciaHaversineKm,
   calcularTiempoEnVehiculo,
-  DEFAULT_APP_BASE_URLS,
 } from '@findixi/shared';
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { FontAwesome, FontAwesome6, Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
   Image,
-  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -123,10 +122,13 @@ function FilterSelect({ label, value, placeholder, options, onChange }: FilterSe
     <View style={styles.selectBlock}>
       <Text style={styles.selectLabel}>{label}</Text>
       <Pressable style={styles.selectTrigger} onPress={() => setOpen(true)}>
+        <View style={styles.selectChevronSlot} />
         <Text numberOfLines={1} style={[styles.selectValue, !selected ? styles.selectValuePlaceholder : null]}>
           {selected?.label || placeholder}
         </Text>
-        <Ionicons name="chevron-down" size={14} color="#6b7280" />
+        <View style={styles.selectChevronSlot}>
+          <Ionicons name="chevron-down" size={14} color="#6b7280" />
+        </View>
       </Pressable>
 
       <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -141,7 +143,11 @@ function FilterSelect({ label, value, placeholder, options, onChange }: FilterSe
                 }}
               >
                 <Text style={styles.selectOptionText}>{placeholder}</Text>
-                {!value ? <Ionicons name="checkmark" size={16} color="#3ea6c4" /> : null}
+                {!value ? (
+                  <View style={styles.selectOptionCheck}>
+                    <Ionicons name="checkmark" size={16} color="#3ea6c4" />
+                  </View>
+                ) : null}
               </Pressable>
               {options.map((option) => (
                 <Pressable
@@ -153,7 +159,11 @@ function FilterSelect({ label, value, placeholder, options, onChange }: FilterSe
                   }}
                 >
                   <Text style={styles.selectOptionText}>{option.label}</Text>
-                  {value === option.value ? <Ionicons name="checkmark" size={16} color="#3ea6c4" /> : null}
+                  {value === option.value ? (
+                    <View style={styles.selectOptionCheck}>
+                      <Ionicons name="checkmark" size={16} color="#3ea6c4" />
+                    </View>
+                  ) : null}
                 </Pressable>
               ))}
             </ScrollView>
@@ -186,111 +196,119 @@ function FilterToggle({ label, value, color, onToggle }: ToggleProps) {
 }
 
 function PlayaCard({ item, lang, clima, tiempoTexto, onPress }: PlayaCardProps) {
-  const [imageUri, setImageUri] = useState<string>(item.imagen || PLAYA_PLACEHOLDER);
+  const initialImage = String(item.imagen || '').trim();
+  const [imageUri, setImageUri] = useState<string>(initialImage || PLAYA_PLACEHOLDER);
+  const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
-    setImageUri(item.imagen || PLAYA_PLACEHOLDER);
+    const next = String(item.imagen || '').trim();
+    setImageUri(next || PLAYA_PLACEHOLDER);
+    setImageFailed(false);
   }, [item.imagen]);
 
-  const tieneImagen = Boolean(item.imagen && item.imagen.trim() !== '');
+  const showNoImageOverlay = !initialImage || imageFailed;
 
   return (
-    <Pressable style={[styles.card, shadows.card]} onPress={onPress}>
-      <View style={styles.cardImageWrap}>
-        <Image
-          source={{ uri: imageUri || PLAYA_PLACEHOLDER }}
-          style={styles.cardImage}
-          resizeMode="cover"
-          onError={() => {
-            setImageUri(PLAYA_PLACEHOLDER);
-          }}
-        />
+    <View style={[styles.cardShadow, shadows.card]}>
+      <Pressable style={styles.card} onPress={onPress}>
+        <View style={styles.cardImageWrap}>
+          <Image
+            source={{ uri: imageUri || PLAYA_PLACEHOLDER }}
+            style={styles.cardImage}
+            resizeMode="cover"
+            onError={() => {
+              setImageFailed(true);
+              setImageUri(PLAYA_PLACEHOLDER);
+            }}
+          />
 
-        {!tieneImagen ? (
-          <View style={styles.noImageOverlay}>
-            <Text style={styles.noImageText}>{tPlayas('playa.noImageTitle', lang)}</Text>
-            <Text style={styles.noImageText}>{tPlayas('playa.noImageSubtitle', lang)}</Text>
+          {showNoImageOverlay ? (
+            <View style={styles.noImageOverlay}>
+              <Text style={styles.noImageText}>{tPlayas('playa.noImageTitle', lang)}</Text>
+              <Text style={styles.noImageText}>{tPlayas('playa.noImageSubtitle', lang)}</Text>
+            </View>
+          ) : null}
+
+          {item.favorito ? (
+            <View style={styles.favoriteBadge}>
+              <View style={styles.favoriteBadgeInner}>
+                <FontAwesome name="heart" size={9} color="#dc2626" />
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.cardContent}>
+          <Text style={styles.cardName} numberOfLines={2}>
+            {item.nombre}
+          </Text>
+
+          <Text style={styles.cardAptaLabel}>{tPlayas('playas.aptaPara', lang)}</Text>
+
+          <View style={styles.cardAptitudesRow}>
+            {item.nadar ? (
+              <View style={styles.aptitudCol}>
+                <Text style={styles.aptitudEmoji}>🏊‍♂️</Text>
+                <Text style={styles.aptitudText}>{tPlayas('playas.nadar', lang)}</Text>
+              </View>
+            ) : null}
+            {item.surfear ? (
+              <View style={styles.aptitudCol}>
+                <Text style={styles.aptitudEmoji}>🏄‍♂️</Text>
+                <Text style={styles.aptitudText}>{tPlayas('playas.surfear', lang)}</Text>
+              </View>
+            ) : null}
+            {item.snorkel ? (
+              <View style={styles.aptitudCol}>
+                <Text style={styles.aptitudEmoji}>🤿</Text>
+                <Text style={styles.aptitudText}>{tPlayas('playas.snorkel', lang)}</Text>
+              </View>
+            ) : null}
           </View>
-        ) : null}
 
-        {item.favorito ? (
-          <View style={styles.favoriteBadge}>
-            <View style={styles.favoriteBadgeInner}>
-              <FontAwesome name="heart" size={9} color="#dc2626" />
-            </View>
-          </View>
-        ) : null}
-      </View>
-
-      <View style={styles.cardContent}>
-        <Text style={styles.cardName} numberOfLines={2}>
-          {item.nombre}
-        </Text>
-
-        <Text style={styles.cardAptaLabel}>{tPlayas('playas.aptaPara', lang)}</Text>
-
-        <View style={styles.cardAptitudesRow}>
-          {item.nadar ? (
-            <View style={styles.aptitudCol}>
-              <Text style={styles.aptitudEmoji}>🏊‍♂️</Text>
-              <Text style={styles.aptitudText}>{tPlayas('playas.nadar', lang)}</Text>
-            </View>
-          ) : null}
-          {item.surfear ? (
-            <View style={styles.aptitudCol}>
-              <Text style={styles.aptitudEmoji}>🏄‍♂️</Text>
-              <Text style={styles.aptitudText}>{tPlayas('playas.surfear', lang)}</Text>
-            </View>
-          ) : null}
-          {item.snorkel ? (
-            <View style={styles.aptitudCol}>
-              <Text style={styles.aptitudEmoji}>🤿</Text>
-              <Text style={styles.aptitudText}>{tPlayas('playas.snorkel', lang)}</Text>
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.weatherRow}>
-          {clima?.iconoUrl ? (
-            <SvgCssUri width={22} height={22} uri={clima.iconoUrl} />
-          ) : (
-            <FontAwesome name="sun-o" size={16} color="#facc15" />
-          )}
-          <Text style={styles.weatherStateText} numberOfLines={1}>
-            {clima?.estado || tPlayas('playas.climaDesconocido', lang)}
-          </Text>
-        </View>
-
-        <View style={styles.windRow}>
-          <FontAwesome name="send-o" size={12} color="#9ca3af" />
-          <Text style={styles.windText} numberOfLines={1}>
-            {tPlayas('playas.vientoDe', lang, {
-              valor: clima?.viento || '-- mph',
-            })}
-          </Text>
-        </View>
-
-        <View style={styles.municipioRow}>
-          <FontAwesome name="map-pin" size={12} color="#3ea6c4" />
-          <Text style={styles.municipioText} numberOfLines={1}>
-            {item.municipio}
-          </Text>
-        </View>
-
-        {tiempoTexto ? (
-          <View style={styles.transportRow}>
-            <FontAwesome name={item.bote ? 'ship' : 'car'} size={12} color="#9c9c9c" />
-            <Text style={styles.transportText} numberOfLines={2}>
-              {tiempoTexto}
+          <View style={styles.weatherRow}>
+            {clima?.iconoUrl ? (
+              <SvgCssUri width={22} height={22} uri={clima.iconoUrl} />
+            ) : (
+              <FontAwesome name="sun-o" size={16} color="#facc15" />
+            )}
+            <Text style={styles.weatherStateText} numberOfLines={1}>
+              {clima?.estado || tPlayas('playas.climaDesconocido', lang)}
             </Text>
           </View>
-        ) : null}
-      </View>
-    </Pressable>
+
+          <View style={styles.windRow}>
+            <FontAwesome6 name="wind" size={12} color="#9ca3af" />
+            <Text style={styles.windText} numberOfLines={1}>
+              {tPlayas('playas.vientoDe', lang, {
+                valor: clima?.viento || '-- mph',
+              })}
+            </Text>
+          </View>
+
+          <View style={styles.municipioRow}>
+            <FontAwesome name="map-pin" size={12} color="#3ea6c4" />
+            <Text style={styles.municipioText} numberOfLines={1}>
+              {item.municipio}
+            </Text>
+          </View>
+
+          {tiempoTexto ? (
+            <View style={styles.transportRow}>
+              <FontAwesome name={item.bote ? 'ship' : 'car'} size={12} color="#9c9c9c" />
+              <Text style={styles.transportText} numberOfLines={1}>
+                {tiempoTexto}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </Pressable>
+    </View>
   );
 }
 
 export default function ListadoPlayasScreen() {
+  const router = useRouter();
   const { lang } = useI18n();
   const [allPlayas, setAllPlayas] = useState<PlayaListItem[]>([]);
   const [banners, setBanners] = useState<HomeBannerItem[]>([]);
@@ -612,7 +630,7 @@ export default function ListadoPlayasScreen() {
             <View style={styles.filterCard}>
               <View style={styles.searchRow}>
                 <View style={styles.searchIconLeftWrap}>
-                  <FontAwesome name="umbrella" size={17} color="#3ea6c4" />
+                  <FontAwesome6 name="umbrella-beach" size={16} color="#3ea6c4" />
                 </View>
 
                 <TextInput
@@ -714,7 +732,7 @@ export default function ListadoPlayasScreen() {
                               clima={weather}
                               tiempoTexto={travelText}
                               onPress={() => {
-                                void Linking.openURL(`${DEFAULT_APP_BASE_URLS.public}/perfilPlaya.html?id=${item.id}`);
+                                router.push({ pathname: '/playa/[id]', params: { id: String(item.id) } });
                               }}
                             />
                           </View>
@@ -804,7 +822,8 @@ const styles = StyleSheet.create({
   selectLabel: {
     color: '#6b7280',
     fontSize: 12,
-    fontFamily: fonts.semibold,
+    fontFamily: fonts.medium,
+    textAlign: 'center',
     marginBottom: 4,
   },
   selectTrigger: {
@@ -821,8 +840,14 @@ const styles = StyleSheet.create({
   selectValue: {
     flex: 1,
     color: '#0f172a',
-    fontSize: 13,
-    fontFamily: fonts.regular,
+    fontSize: 14,
+    fontFamily: fonts.medium,
+    textAlign: 'center',
+  },
+  selectChevronSlot: {
+    width: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   selectValuePlaceholder: {
     color: '#94a3b8',
@@ -841,18 +866,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   selectOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    minHeight: 46,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
   selectOptionText: {
     color: '#111827',
-    fontSize: 14,
-    fontFamily: fonts.regular,
+    fontSize: 15,
+    fontFamily: fonts.medium,
+    textAlign: 'center',
+    paddingHorizontal: 22,
+  },
+  selectOptionCheck: {
+    position: 'absolute',
+    right: spacing.md,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   togglesRow: {
     flexDirection: 'row',
@@ -965,6 +1000,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#ffffff',
   },
+  cardShadow: {
+    borderRadius: borderRadius.md,
+    backgroundColor: '#ffffff',
+  },
   cardImageWrap: {
     height: 160,
     width: '100%',
@@ -980,7 +1019,6 @@ const styles = StyleSheet.create({
     inset: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(15,23,42,0.35)',
     paddingHorizontal: spacing.sm,
   },
   noImageText: {
@@ -1025,8 +1063,8 @@ const styles = StyleSheet.create({
   cardName: {
     color: '#424242',
     fontSize: 20,
-    lineHeight: 19,
-    minHeight: 38,
+    lineHeight: 23,
+    minHeight: 46,
     fontFamily: fonts.medium,
     textAlign: 'center',
     marginBottom: 2,
@@ -1068,7 +1106,7 @@ const styles = StyleSheet.create({
   },
   weatherStateText: {
     color: '#4b5563',
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: fonts.regular,
     maxWidth: 100,
   },
@@ -1080,7 +1118,7 @@ const styles = StyleSheet.create({
   },
   windText: {
     color: '#9ca3af',
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: fonts.regular,
     maxWidth: 100,
   },
@@ -1092,22 +1130,23 @@ const styles = StyleSheet.create({
   },
   municipioText: {
     color: '#3ea6c4',
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: fonts.medium,
     maxWidth: 104,
   },
   transportRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'nowrap',
     gap: 5,
     marginTop: 4,
   },
   transportText: {
+    flexShrink: 1,
     color: '#9c9c9c',
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: fonts.regular,
-    textAlign: 'center',
-    maxWidth: 104,
+    textAlign: 'left',
   },
   moreWrap: {
     alignItems: 'center',

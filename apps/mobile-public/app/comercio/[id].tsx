@@ -1323,7 +1323,10 @@ export default function ComercioDetailScreen() {
               ) : null}
 
               {!esJangueo && phoneHref ? (
-                <Pressable style={styles.phonePill} onPress={() => void Linking.openURL(phoneHref)}>
+                <Pressable
+                  style={({ pressed }) => [styles.phonePill, pressed ? styles.phonePillPressed : null]}
+                  onPress={() => void Linking.openURL(phoneHref)}
+                >
                   <FontAwesome name="phone" size={20} color="#fff" />
                   <Text style={styles.phonePillText}>{phoneDisplay}</Text>
                 </Pressable>
@@ -1634,12 +1637,20 @@ export default function ComercioDetailScreen() {
                             {card.categoriaLabel}
                           </Text>
                           {card.telefono ? (
-                            <View style={styles.nearbyFoodPhonePill}>
+                            <Pressable
+                              style={({ pressed }) => [styles.nearbyFoodPhonePill, pressed ? styles.nearbyFoodPhonePillPressed : null]}
+                              onPress={(event) => {
+                                event.stopPropagation();
+                                const href = formatearTelefonoHref(card.telefono);
+                                if (!href) return;
+                                void Linking.openURL(href);
+                              }}
+                            >
                               <FontAwesome name="phone" size={10} color="#ffffff" />
                               <Text style={styles.nearbyFoodPhoneText} numberOfLines={1}>
                                 {formatearTelefonoDisplay(card.telefono)}
                               </Text>
-                            </View>
+                            </Pressable>
                           ) : null}
                           <View style={styles.nearbyMetaLine}>
                             <FontAwesome name="map-pin" size={11} color="#3ea6c4" />
@@ -1709,7 +1720,7 @@ export default function ComercioDetailScreen() {
                       <Pressable
                         style={styles.nearbyBeachCard}
                         onPress={() => {
-                          void Linking.openURL(`${DEFAULT_APP_BASE_URLS.public}/perfilPlaya.html?id=${card.id}`);
+                          router.push({ pathname: '/playa/[id]', params: { id: String(card.id) } });
                         }}
                       >
                         <Image source={{ uri: card.imagenUrl }} style={styles.nearbyBeachImage} resizeMode="cover" />
@@ -1997,6 +2008,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  phonePillPressed: {
+    opacity: 0.88,
   },
   phonePillText: {
     color: '#fff',
@@ -2518,6 +2532,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#dc2626',
     paddingHorizontal: 10,
     paddingVertical: 3,
+  },
+  nearbyFoodPhonePillPressed: {
+    opacity: 0.88,
   },
   nearbyMetaLine: {
     flexDirection: 'row',

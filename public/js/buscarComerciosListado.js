@@ -130,6 +130,38 @@ function obtenerIdCategoriaDesdeURL() {
 
 const idCategoriaDesdeURL = obtenerIdCategoriaDesdeURL();
 
+function syncFiltroLabelsHeight() {
+  const labels = Array.from(document.querySelectorAll('.filtro-label-sync'));
+  if (!labels.length) return;
+
+  labels.forEach((label) => {
+    label.style.minHeight = '';
+  });
+
+  const maxHeight = labels.reduce((max, label) => Math.max(max, label.offsetHeight), 0);
+  if (!maxHeight) return;
+
+  labels.forEach((label) => {
+    label.style.minHeight = `${maxHeight}px`;
+  });
+}
+
+function syncToggleLabelsHeight() {
+  const labels = Array.from(document.querySelectorAll('.toggle-label-sync'));
+  if (!labels.length) return;
+
+  labels.forEach((label) => {
+    label.style.minHeight = '';
+  });
+
+  const maxHeight = labels.reduce((max, label) => Math.max(max, label.offsetHeight), 0);
+  if (!maxHeight) return;
+
+  labels.forEach((label) => {
+    label.style.minHeight = `${maxHeight}px`;
+  });
+}
+
 const estado = {
   categoria: '',
   categoriaObj: null,
@@ -177,6 +209,13 @@ window.addEventListener('lang:changed', () => {
   renderSubcategoriasDropdown();
   const base = estado.comerciosFiltrados.length ? estado.comerciosFiltrados : estado.lista;
   renderListado(base, { omitRefinamiento: true, skipFilter: true });
+  requestAnimationFrame(syncFiltroLabelsHeight);
+  requestAnimationFrame(syncToggleLabelsHeight);
+});
+
+window.addEventListener('resize', () => {
+  requestAnimationFrame(syncFiltroLabelsHeight);
+  requestAnimationFrame(syncToggleLabelsHeight);
 });
 
 function setOrden(valor) {
@@ -1476,6 +1515,8 @@ export async function iniciarBusquedaComercios() {
   if (idCategoriaDesdeURL != null) {
     await cargarSubcategorias(idCategoriaDesdeURL);
   }
+  syncFiltroLabelsHeight();
+  syncToggleLabelsHeight();
 
   registrarEventos();
   setOrden(estado.filtros.orden);

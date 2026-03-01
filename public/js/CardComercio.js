@@ -372,6 +372,8 @@ export function cardComercio(comercio) {
   div.addEventListener('click', async (event) => {
     const telLink = event.target.closest('a[href^="tel:"]');
     if (telLink) return;
+    const mapNavTrigger = event.target.closest('[data-map-nav-action="true"]');
+    if (mapNavTrigger) return;
 
     if (bubbleState?.visible) {
       hideBubble();

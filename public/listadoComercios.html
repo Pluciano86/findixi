@@ -12,6 +12,21 @@
   
   <style>
     body { font-family: 'Kanit', sans-serif; }
+    .filtro-label-sync {
+      min-height: 2.65rem;
+      display: flex;
+      align-items: flex-end;
+      line-height: 1.15;
+    }
+    .toggle-label-sync {
+      min-height: 2.45rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      margin-bottom: 0.2rem;
+      font-size: 0.9rem;
+      line-height: 1.05;
+    }
   </style>
 
 
@@ -35,25 +50,25 @@
           <input type="text" id="filtro-nombre" placeholder="Buscar en Restaurantes" data-i18n-placeholder="listado.buscarPlaceholder" class="flex-1 px-3 py-2 border rounded-full text-base" />
           <i class="fas fa-search text-gray-400"></i>
         </div>
-        <div class="flex gap-2 text-sm">
+        <div class="flex items-start gap-2 text-sm">
 
 
     <div class="flex flex-col flex-1">
-      <label for="filtro-municipio" class="text-sm font-medium text-gray-500 mb-1" data-i18n="listado.municipios">Municipios:</label>
+      <label for="filtro-municipio" class="filtro-label-sync text-sm font-medium text-gray-500 mb-1" data-i18n="listado.municipios">Municipios:</label>
       <select id="filtro-municipio" class="border rounded px-2 py-1.5 w-full text-[15px] font-medium">
         <option value="" data-i18n="listado.municipios">Municipios</option>
       </select>
     </div>
 
     <div class="flex flex-col flex-1">
-    <label for="filtro-subcategoria" class="text-sm font-medium text-gray-500 mb-1" data-i18n="listado.tipoComida">Tipo de Comida</label>
+    <label for="filtro-subcategoria" class="filtro-label-sync text-sm font-medium text-gray-500 mb-1" data-i18n="listado.tipoComida">Tipo de Comida</label>
     <select id="filtro-subcategoria" class="border rounded px-2 py-1.5 w-full text-[15px] font-medium">
       <option value="" data-i18n="listado.todas">Todas</option>
     </select>
   </div>
 
     <div class="flex flex-col flex-1">
-      <label for="filtro-orden" class="text-sm font-medium text-gray-500 mb-1" data-i18n="listado.ordenarPor">Ordenar por:</label>
+      <label for="filtro-orden" class="filtro-label-sync text-sm font-medium text-gray-500 mb-1" data-i18n="listado.ordenarPor">Ordenar por:</label>
       <select id="filtro-orden" class="border rounded px-2 py-1.5 w-full text-[15px] font-medium">
         <option value="ubicacion" data-i18n="listado.cercania">Cercanía</option>
         <option value="az" data-i18n="listado.ordenAlfabetico">Orden Alfabético</option>
@@ -65,9 +80,9 @@
 
   </div>
 
-  <div class="flex flex-wrap gap-4 text-[15px] mt-4 text-center w-full">
+  <div class="flex flex-wrap gap-4 text-[15px] mt-0 text-center w-full">
     <div class="flex-1">
-      <div class="mb-1 text-gray-700 font-medium" data-i18n="listado.abierto">Abierto ahora</div>
+      <div class="toggle-label-sync text-gray-700 font-medium" data-i18n="listado.abierto">Abierto ahora</div>
       <label class="relative inline-flex items-center cursor-pointer">
         <input type="checkbox" id="filtro-abierto" class="sr-only peer">
         <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-500 transition-colors duration-300"></div>
@@ -76,7 +91,7 @@
     </div>
 
     <div class="flex-1">
-      <div class="mb-1 text-gray-700 font-medium" data-i18n="listado.favoritos">Mis Favoritos</div>
+      <div class="toggle-label-sync text-gray-700 font-medium" data-i18n="listado.favoritos">Mis Favoritos</div>
       <label class="relative inline-flex items-center cursor-pointer">
         <input type="checkbox" id="filtro-favoritos" class="sr-only peer">
         <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-pink-500 transition-colors duration-300"></div>
@@ -85,7 +100,7 @@
     </div>
 
     <div class="flex-1">
-      <div class="mb-1 text-gray-700 font-medium" data-i18n="listado.destacados">Destacados Primero</div>
+      <div class="toggle-label-sync text-gray-700 font-medium" data-i18n="listado.destacados">Destacados Primero</div>
       <label class="relative inline-flex items-center cursor-pointer">
         <input type="checkbox" id="filtro-destacados" class="sr-only peer" checked>
         <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-yellow-400 transition-colors duration-300"></div>

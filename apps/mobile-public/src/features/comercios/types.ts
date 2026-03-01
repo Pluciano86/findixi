@@ -44,6 +44,8 @@ export type ComercioRow = {
   sucursal?: boolean | null;
   esSucursal?: boolean | null;
   es_sucursal?: boolean | null;
+  idCategoria?: number | null;
+  color_hex?: string | null;
   ComercioCategorias?: Array<{
     idCategoria: number | null;
   }> | null;

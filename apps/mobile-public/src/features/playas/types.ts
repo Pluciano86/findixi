@@ -20,3 +20,17 @@ export type PlayaWeather = {
   viento: string;
   iconoUrl: string | null;
 };
+
+export type PlayaWeatherDetail = PlayaWeather & {
+  temperatura: string;
+  min: string;
+  max: string;
+  humedad: string;
+};
+
+export type PlayaDetail = PlayaListItem & {
+  direccion: string;
+  descripcion: string;
+  acceso: string;
+  estacionamiento: string;
+};

@@ -6,8 +6,129 @@ import { cardComercioNoActivo } from './CardComercioNoActivo.js';
 import { fetchCercanosParaCoordenadas } from './buscarComerciosListado.js';
 import { mostrarPopupUbicacionDenegada, showPopupFavoritosVacios } from './popups.js';
 import { requireAuthSilent, showAuthModal, ACTION_MESSAGES } from './authGuard.js';
+import { showPopup as showPopupManager } from './popupManager.js';
 
 const FALLBACK_USER_IMG = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+const USER_MARKER_Z_INDEX = 10000;
+
+function getNavCopy() {
+  const lang = String(getLang() || 'es').toLowerCase().split('-')[0];
+  if (lang === 'es') {
+    return {
+      openGps: 'Abrir GPS',
+      title: 'Elegir navegación',
+      body: '¿Con qué app deseas abrir la ruta?',
+      google: 'Google Maps',
+      waze: 'Waze',
+      cancel: 'Cancelar',
+    };
+  }
+  return {
+    openGps: 'Open GPS',
+    title: 'Choose navigation',
+    body: 'Which app do you want to use for directions?',
+    google: 'Google Maps',
+    waze: 'Waze',
+    cancel: 'Cancel',
+  };
+}
+
+function openWithFallback(nativeUrl, webUrl) {
+  let hidden = false;
+  const markHidden = () => {
+    hidden = true;
+  };
+  const cleanup = () => {
+    document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('pagehide', markHidden);
+  };
+  const onVisibility = () => {
+    if (document.hidden) {
+      hidden = true;
+    }
+  };
+
+  document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('pagehide', markHidden);
+
+  try {
+    window.location.href = nativeUrl;
+  } catch (_) {
+    window.open(webUrl, '_blank', 'noopener');
+    cleanup();
+    return;
+  }
+
+  setTimeout(() => {
+    cleanup();
+    if (!hidden) {
+      window.open(webUrl, '_blank', 'noopener');
+    }
+  }, 900);
+}
+
+function showNavigationPicker({ lat, lon }) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+  const copy = getNavCopy();
+  const destination = `${lat},${lon}`;
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  const googleNative = isIOS
+    ? `comgooglemaps://?daddr=${destination}&directionsmode=driving`
+    : `google.navigation:q=${destination}&mode=d`;
+  const googleWeb = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+  const wazeNative = `waze://?ll=${lat},${lon}&navigate=yes`;
+  const wazeWeb = `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
+
+  showPopupManager({
+    title: copy.title,
+    message: copy.body,
+    buttons: [
+      {
+        text: copy.cancel,
+      },
+      {
+        text: copy.google,
+        primary: true,
+        onClick: () => openWithFallback(googleNative, googleWeb),
+      },
+      {
+        text: copy.waze,
+        primary: true,
+        onClick: () => openWithFallback(wazeNative, wazeWeb),
+      },
+    ],
+  });
+}
+
+function attachGpsAction(cardNode, comercio = {}) {
+  const lat = Number(comercio.latitud ?? comercio.lat ?? comercio.latitude);
+  const lon = Number(comercio.longitud ?? comercio.lon ?? comercio.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+  const hasGpsButton = cardNode.querySelector('[data-map-nav-action="true"]');
+  if (hasGpsButton) return;
+
+  const timeRow = Array.from(cardNode.querySelectorAll('div')).find((el) =>
+    el.querySelector('i.fa-car, i.fas.fa-car')
+  );
+  if (!timeRow || !timeRow.parentElement) return;
+
+  const copy = getNavCopy();
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.dataset.mapNavAction = 'true';
+  button.className =
+    'gps-open-btn mx-auto -mt-2 mb-3 inline-flex items-center justify-center gap-1 rounded-full border border-[#a8dcee] bg-[#edf9fd] px-3 py-1 text-sm font-medium text-[#3ea6c4] hover:bg-[#dff4fb] transition';
+  button.innerHTML = `<i class="fas fa-location-arrow text-[#3ea6c4]"></i> ${copy.openGps}`;
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    showNavigationPicker({ lat, lon });
+  });
+
+  timeRow.insertAdjacentElement('afterend', button);
+}
 
 function crearIconoUsuario(src, headingDeg = null) {
   const safeSrc = typeof src === 'string' && src.trim() ? src.trim() : FALLBACK_USER_IMG;
@@ -777,6 +898,7 @@ async function renderMarkers(comercios = []) {
       tiempoVehiculo: comercio.tiempoVehiculo || comercio.tiempoTexto,
       pueblo: comercio.municipio || comercio.pueblo || '',
     });
+    attachGpsAction(cardNode, comercio);
 
     cardNode.querySelector('div[class*="text-[#3ea6c4]"]')?.remove();
     cardNode.querySelector('.municipio-info')?.remove();
@@ -932,6 +1054,7 @@ async function locateUser() {
       // crea/mueve el pin del usuario
       if (userMarker) {
         userMarker.setLatLng([userLat, userLon]);
+        userMarker.setZIndexOffset(USER_MARKER_Z_INDEX);
         if (Number.isFinite(userHeadingDeg)) {
           if (lastHeadingApplied === null || Math.abs(userHeadingDeg - lastHeadingApplied) >= 5) {
             userMarker.setIcon(crearIconoUsuario(userIconSrc, userHeadingDeg));
@@ -940,6 +1063,7 @@ async function locateUser() {
         }
       } else {
         userMarker = L.marker([userLat, userLon], { icon: crearIconoUsuario(userIconSrc, userHeadingDeg) }).addTo(map);
+        userMarker.setZIndexOffset(USER_MARKER_Z_INDEX);
         if (Number.isFinite(userHeadingDeg)) {
           lastHeadingApplied = userHeadingDeg;
         }

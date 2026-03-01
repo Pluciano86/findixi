@@ -97,6 +97,10 @@ function toFiniteNumber(value: unknown): number | null {
 function normalizeComercio(row: Partial<ComercioRow>): ComercioRow {
   const latitud = toFiniteNumber(row.latitud);
   const longitud = toFiniteNumber(row.longitud);
+  const idCategoriaRaw = (row as { idCategoria?: number | string | null }).idCategoria;
+  const idCategoria = idCategoriaRaw == null ? null : Number(idCategoriaRaw);
+  const colorHexRaw = (row as { color_hex?: string | null }).color_hex;
+  const colorHex = typeof colorHexRaw === 'string' ? colorHexRaw.trim() : '';
   return {
     id: Number(row.id ?? 0),
     nombre: String(row.nombre ?? '').trim(),
@@ -143,6 +147,8 @@ function normalizeComercio(row: Partial<ComercioRow>): ComercioRow {
     sucursal: row.sucursal ?? null,
     esSucursal: row.esSucursal ?? null,
     es_sucursal: row.es_sucursal ?? null,
+    idCategoria: Number.isFinite(idCategoria) ? idCategoria : null,
+    color_hex: colorHex || null,
     ComercioCategorias: Array.isArray(row.ComercioCategorias)
       ? row.ComercioCategorias
           .map((entry) => {

@@ -23,7 +23,7 @@ export function HomeEspecialesCard() {
 
   return (
     <View style={styles.outerWrap}>
-      <Pressable style={[styles.card, shadows.card]} onPress={() => router.push('/comercios')}>
+      <Pressable style={[styles.card, shadows.card]} onPress={() => router.push('/especiales')}>
         <View style={styles.imageWrap}>
           <Image source={{ uri: isLunch ? URL_LUNCH : URL_HH }} style={styles.image} resizeMode="contain" />
         </View>

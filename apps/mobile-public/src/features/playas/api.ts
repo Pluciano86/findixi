@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 
-import type { PlayaListItem, PlayaWeather } from './types';
+import type { PlayaDetail, PlayaListItem, PlayaWeather, PlayaWeatherDetail } from './types';
 
 const OPEN_WEATHER_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || '2c1d54239e886b97ed52ac446c3ae948';
 const WEATHER_ICON_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/';
@@ -73,6 +73,16 @@ export function resolveWeatherIconUrl(iconCode: string | null | undefined): stri
 }
 
 export async function fetchBeachWeather(lat: number, lon: number, lang: string): Promise<PlayaWeather | null> {
+  const detail = await fetchBeachWeatherDetail(lat, lon, lang);
+  if (!detail) return null;
+  return {
+    estado: detail.estado,
+    viento: detail.viento,
+    iconoUrl: detail.iconoUrl,
+  };
+}
+
+export async function fetchBeachWeatherDetail(lat: number, lon: number, lang: string): Promise<PlayaWeatherDetail | null> {
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || !OPEN_WEATHER_API_KEY) {
     return null;
   }
@@ -87,20 +97,138 @@ export async function fetchBeachWeather(lat: number, lon: number, lang: string):
     const payload = (await response.json()) as {
       weather?: Array<{ description?: string; icon?: string }>;
       wind?: { speed?: number };
+      main?: { temp?: number; temp_min?: number; temp_max?: number; humidity?: number };
     };
 
     const estado = normalizeText(payload.weather?.[0]?.description);
     const iconCode = normalizeText(payload.weather?.[0]?.icon);
     const windMph = Number(payload.wind?.speed);
+    const temp = Number(payload.main?.temp);
+    const tempMin = Number(payload.main?.temp_min);
+    const tempMax = Number(payload.main?.temp_max);
+    const humedad = Number(payload.main?.humidity);
 
     return {
       estado,
       viento: Number.isFinite(windMph) ? `${Math.round(windMph)} mph` : '-- mph',
       iconoUrl: resolveWeatherIconUrl(iconCode),
+      temperatura: Number.isFinite(temp) ? `${Math.round(temp)}°F` : '--°F',
+      min: Number.isFinite(tempMin) ? `${Math.round(tempMin)}°F` : '--°F',
+      max: Number.isFinite(tempMax) ? `${Math.round(tempMax)}°F` : '--°F',
+      humedad: Number.isFinite(humedad) ? `${Math.round(humedad)}%` : '--%',
     };
   } catch {
     return null;
   }
+}
+
+export async function fetchPlayaById(id: number): Promise<PlayaDetail | null> {
+  const safeId = Number(id);
+  if (!Number.isFinite(safeId) || safeId <= 0) return null;
+
+  const { data, error } = await supabase
+    .from('playas')
+    .select('*')
+    .eq('id', safeId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  const record = data as Record<string, unknown>;
+  const snorkeling = normalizeBool(record.snorkeling);
+  const snorkel = normalizeBool(record.snorkel) || snorkeling;
+
+  return {
+    id: safeId,
+    nombre: normalizeText(record.nombre) || 'Playa',
+    municipio: normalizeText(record.municipio),
+    direccion: normalizeText(record.direccion),
+    costa: normalizeText(record.costa),
+    descripcion: normalizeText(record.descripcion),
+    acceso: normalizeText(record.acceso),
+    estacionamiento: normalizeText(record.estacionamiento),
+    latitud: toFiniteNumber(record.latitud),
+    longitud: toFiniteNumber(record.longitud),
+    imagen: normalizeText(record.imagen) || null,
+    portada: null,
+    favorito: false,
+    bote: normalizeBool(record.bote),
+    nadar: normalizeBool(record.nadar),
+    surfear: normalizeBool(record.surfear),
+    snorkel,
+    snorkeling,
+  } satisfies PlayaDetail;
+}
+
+export async function fetchPlayaTranslation(
+  idPlaya: number,
+  lang: string
+): Promise<{ descripcion: string | null; acceso: string | null } | null> {
+  const safeId = Number(idPlaya);
+  if (!Number.isFinite(safeId) || safeId <= 0) return null;
+
+  const langNorm = String(lang || 'es')
+    .toLowerCase()
+    .split('-')[0];
+
+  if (!langNorm || langNorm === 'es') return null;
+
+  try {
+    const { data, error } = await supabase.functions.invoke('translate-playa', {
+      body: { idPlaya: safeId, lang: langNorm },
+    });
+    if (error) throw error;
+
+    const payload = data as { data?: { descripcion?: string | null; acceso?: string | null } } | null;
+    return {
+      descripcion: normalizeText(payload?.data?.descripcion) || null,
+      acceso: normalizeText(payload?.data?.acceso) || null,
+    };
+  } catch (error) {
+    console.warn('[mobile-public] No se pudo traducir la playa:', error);
+    return null;
+  }
+}
+
+export async function fetchIsFavoritePlaya(idPlaya: number, userId: string): Promise<boolean> {
+  const safeId = Number(idPlaya);
+  const safeUser = String(userId || '').trim();
+  if (!Number.isFinite(safeId) || safeId <= 0 || !safeUser) return false;
+
+  const { data, error } = await supabase
+    .from('favoritosPlayas')
+    .select('id')
+    .eq('idusuario', safeUser)
+    .eq('idplaya', safeId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('[mobile-public] No se pudo validar favorito de playa:', error);
+    return false;
+  }
+
+  return Boolean(data);
+}
+
+export async function toggleFavoritePlaya(idPlaya: number, userId: string, isFavorite: boolean): Promise<boolean> {
+  const safeId = Number(idPlaya);
+  const safeUser = String(userId || '').trim();
+  if (!Number.isFinite(safeId) || safeId <= 0 || !safeUser) return isFavorite;
+
+  if (isFavorite) {
+    const { error } = await supabase
+      .from('favoritosPlayas')
+      .delete()
+      .eq('idusuario', safeUser)
+      .eq('idplaya', safeId);
+    if (error) throw error;
+    return false;
+  }
+
+  const { error } = await supabase.from('favoritosPlayas').insert([{ idusuario: safeUser, idplaya: safeId }]);
+  if (error) throw error;
+  return true;
 }
 
 export async function fetchListadoPlayasData(): Promise<PlayaListItem[]> {
