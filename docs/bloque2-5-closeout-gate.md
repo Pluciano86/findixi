@@ -34,3 +34,6 @@ npm --prefix apps/mobile-public run qa:close-gate
 1. `qa:close-gate` pasa en verde.
 2. Reporte del dia queda marcado `PASS Bloque 2.4`.
 3. Fase 2 se considera lista para freeze.
+
+Siguiente paso:
+- ver [Bloque 2.6 Freeze Readiness](/Users/pedroluciano/Desktop/Findixi/Findixi-App/docs/bloque2-6-freeze-readiness.md)
