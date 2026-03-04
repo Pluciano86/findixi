@@ -9,8 +9,8 @@
 - Expo command:
 
 ## Technical gates
-- [ ] `npm --prefix apps/mobile-public run qa:smoke`
-- [ ] `npm --prefix apps/mobile-public run qa:parity`
+- [x] `npm --prefix apps/mobile-public run qa:smoke`
+- [x] `npm --prefix apps/mobile-public run qa:parity`
 
 ## Functional matrix
 1. Home (`/`)

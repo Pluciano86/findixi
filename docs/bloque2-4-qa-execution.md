@@ -36,3 +36,6 @@ Completar el reporte generado con:
 1. `qa:release-gate` en verde.
 2. Reporte del dia creado y completado.
 3. Decision final documentada con PASS o FAIL y blockers.
+
+Siguiente paso de cierre:
+- ver [Bloque 2.5 Closeout Gate](/Users/pedroluciano/Desktop/Findixi/Findixi-App/docs/bloque2-5-closeout-gate.md)
