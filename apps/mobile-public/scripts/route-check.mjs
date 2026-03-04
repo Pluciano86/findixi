@@ -47,6 +47,23 @@ function normalizeTarget(target) {
   return base.replace(/\/$/, '') || '/';
 }
 
+const REQUIRED_ROUTES = [
+  '/',
+  '/comercios',
+  '/comercio/[id]',
+  '/cercademi',
+  '/playas',
+  '/playa/[id]',
+  '/eventos',
+  '/especiales',
+  '/login',
+  '/usuario',
+  '/pedidos',
+  '/menu/[id]',
+  '/privacy-policy',
+  '/terms-of-service',
+];
+
 function main() {
   if (!existsSync(appDir)) {
     fail(`Missing app directory at ${appDir}`);
@@ -54,12 +71,21 @@ function main() {
 
   const files = walk(appDir).filter((file) => file.endsWith('.tsx'));
   const routes = files.map(toRoute).filter(Boolean);
+  const routeSet = new Set(routes);
   const staticRoutes = new Set(routes.filter((route) => !route.includes('[')));
   const dynamicRoutes = routes.filter((route) => route.includes('[')).map((route) => routeToRegex(route));
 
   const linkRegex = /router\.(?:push|replace)\(\s*(['"`])([^'"`]+)\1/g;
   const pathnameRegex = /pathname\s*:\s*(['"`])([^'"`]+)\1/g;
   const unresolved = [];
+  const missingRequired = REQUIRED_ROUTES.filter((route) => !routeSet.has(route));
+
+  if (missingRequired.length > 0) {
+    for (const route of missingRequired) {
+      console.error(`[mobile-public][route-check] Missing required route file for ${route}`);
+    }
+    fail(`Missing ${missingRequired.length} required route(s).`);
+  }
 
   for (const file of files) {
     const source = readFileSync(file, 'utf8');
@@ -96,7 +122,7 @@ function main() {
     fail(`Found ${unresolved.length} unresolved route reference(s).`);
   }
 
-  info(`OK (${routes.length} routes scanned, no unresolved references).`);
+  info(`OK (${routes.length} routes scanned, required routes present, no unresolved references).`);
 }
 
 main();

@@ -53,3 +53,8 @@ Se considera cerrado cuando:
 1. `npm run qa:smoke` pasa sin errores.
 2. Matriz QA manual pasa en los 8 flujos anteriores.
 3. No hay regresiones visuales/funcionales reportadas en staging app.
+
+---
+
+Siguiente endurecimiento técnico:
+- ver [Bloque 2.3 Hardening](/Users/pedroluciano/Desktop/Findixi/Findixi-App/docs/bloque2-3-hardening.md)
