@@ -58,3 +58,6 @@ Se considera cerrado cuando:
 
 Siguiente endurecimiento técnico:
 - ver [Bloque 2.3 Hardening](/Users/pedroluciano/Desktop/Findixi/Findixi-App/docs/bloque2-3-hardening.md)
+
+Ejecucion de cierre:
+- ver [Bloque 2.4 QA Execution](/Users/pedroluciano/Desktop/Findixi/Findixi-App/docs/bloque2-4-qa-execution.md)
