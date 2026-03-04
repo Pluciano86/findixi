@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Findixi Business",
+    "slug": "mobile-business",
+    "scheme": "findixi-business",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.findixi.mobilebusiness"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
