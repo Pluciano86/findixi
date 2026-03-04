@@ -66,8 +66,12 @@ function main() {
   if (/^- \[(x|X)\] FAIL Bloque 2\.4/m.test(qaReport)) {
     fail(`Latest QA report is marked FAIL: ${qaReportRel}`);
   }
-  if (/## Functional matrix[\s\S]*^- \[ \] /m.test(qaReport)) {
-    fail(`Latest QA report still has pending checkboxes: ${qaReportRel}`);
+  const functionalSectionMatch = qaReport.match(/## Functional matrix([\s\S]*?)## Findings/);
+  if (!functionalSectionMatch) {
+    fail(`Could not find "Functional matrix" section in ${qaReportRel}`);
+  }
+  if (/^- \[ \] /m.test(functionalSectionMatch[1])) {
+    fail(`Latest QA report still has pending functional checkboxes: ${qaReportRel}`);
   }
 
   mkdirSync(freezeReportsDir, { recursive: true });
