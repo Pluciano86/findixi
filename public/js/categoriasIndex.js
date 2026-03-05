@@ -1,7 +1,7 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { t } from './i18n.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initCategoriasIndex() {
   const contenedor = document.getElementById('categoriasContainer');
   const toggleBtn = document.getElementById('toggleCategorias');
   const section = document.getElementById('categoriasSection');
@@ -117,4 +117,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   cargarCategorias();
   window.addEventListener('lang:changed', cargarCategorias);
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initCategoriasIndex, { once: true });
+} else {
+  initCategoriasIndex();
+}

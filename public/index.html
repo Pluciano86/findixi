@@ -200,12 +200,18 @@ document.addEventListener('DOMContentLoaded', () => {
   import { renderJangueoCarousel } from "./js/jangueoCarousel.js";
   import { renderEventosCarousel } from "./js/eventosCarousel.js";
 
-  document.addEventListener("DOMContentLoaded", () => {
+  const bootIndexCarousels = () => {
     renderComidaCarousel("comidaCarousel");
     renderJangueoCarousel("jangueoCarousel");
     renderEventosCarousel("eventosCarousel");
     if (window.initI18n) window.initI18n();
-  });
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootIndexCarousels, { once: true });
+  } else {
+    bootIndexCarousels();
+  }
 </script>
 
 <div id="modalEvento" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[9999] hidden px-4 py-6">
@@ -238,11 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script type="module" src="js/popups.js"></script>
   <script src="js/bloquearPantalla.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      if (window.initI18n) window.initI18n();
-    });
-  </script>
 </div>
 </div>
   <script type="module" src="js/introSplash.js"></script>

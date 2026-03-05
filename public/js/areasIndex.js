@@ -105,11 +105,17 @@ async function loadAreas(container) {
   renderAreas(container);
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initAreasIndex() {
   const container = document.getElementById('areasGrid');
   if (!container) return;
 
   await loadAreas(container);
 
   window.addEventListener('lang:changed', updateLabels);
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAreasIndex, { once: true });
+} else {
+  initAreasIndex();
+}
