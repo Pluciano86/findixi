@@ -16,8 +16,8 @@ export async function renderComidaCarousel(containerId) {
   const maxSlides = 24;
 
   try {
-    // 🔸 Buscar comercios activos que pertenezcan a Restaurantes
-    const { data: comercios, error: comerciosError } = await supabase
+    // 🔸 Buscar comercios activos con categorías embebidas
+    let { data: comercios, error: comerciosError } = await supabase
       .from("Comercios")
       .select(`
         id,
@@ -40,7 +40,81 @@ export async function renderComidaCarousel(containerId) {
       .eq("activo", true)
       .limit(200);
 
-    if (comerciosError) throw comerciosError;
+    if (comerciosError) {
+      const msg = String(comerciosError?.message || '').toLowerCase();
+      const missingRelation =
+        msg.includes('relationship') ||
+        msg.includes('comerciocategorias') ||
+        msg.includes('does not exist');
+
+      if (!missingRelation) throw comerciosError;
+
+      // Fallback: leer Comercios y ComercioCategorias por separado.
+      const base = await supabase
+        .from("Comercios")
+        .select(`
+          id,
+          nombre,
+          municipio,
+          activo,
+          plan_id,
+          plan_nivel,
+          plan_nombre,
+          permite_perfil,
+          aparece_en_cercanos,
+          permite_menu,
+          permite_especiales,
+          permite_ordenes,
+          estado_propiedad,
+          estado_verificacion,
+          propietario_verificado
+        `)
+        .eq("activo", true)
+        .limit(200);
+
+      if (base.error) throw base.error;
+      comercios = base.data || [];
+
+      const ids = (comercios || []).map((c) => c.id).filter(Boolean);
+      if (ids.length) {
+        let relRows = [];
+        let relError = null;
+        const attempts = [
+          { idCom: "idComercio", idCat: "idCategoria" },
+          { idCom: "idcomercio", idCat: "idcategoria" },
+          { idCom: "idComercio", idCat: "idcategoria" },
+          { idCom: "idcomercio", idCat: "idCategoria" },
+        ];
+        for (const attempt of attempts) {
+          const rel = await supabase
+            .from("ComercioCategorias")
+            .select(`${attempt.idCom}, ${attempt.idCat}`)
+            .in(attempt.idCom, ids);
+          if (!rel.error) {
+            relRows = rel.data || [];
+            relError = null;
+            break;
+          }
+          relError = rel.error;
+        }
+        if (relError) throw relError;
+
+        const byComercio = new Map();
+        relRows.forEach((row) => {
+          const idComercio = Number(row.idComercio ?? row.idcomercio);
+          const idCategoria = Number(row.idCategoria ?? row.idcategoria);
+          if (!Number.isFinite(idComercio) || !Number.isFinite(idCategoria)) return;
+          const current = byComercio.get(idComercio) || [];
+          current.push({ idCategoria });
+          byComercio.set(idComercio, current);
+        });
+
+        comercios = (comercios || []).map((c) => ({
+          ...c,
+          ComercioCategorias: byComercio.get(Number(c.id)) || [],
+        }));
+      }
+    }
 
     // 🔹 Filtrar solo los de la categoría Restaurantes
     const comerciosFiltrados = comercios
