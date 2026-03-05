@@ -44,7 +44,7 @@ export async function renderJangueoCarousel(containerId) {
 
     // 🔹 Filtrar solo los de la categoría Jangueo
     const comerciosFiltrados = comercios
-      .filter((c) => c.ComercioCategorias?.some((cc) => cc.idCategoria === idJangueo))
+      .filter((c) => c.ComercioCategorias?.some((cc) => Number(cc.idCategoria) === idJangueo))
       .filter((c) => resolverPlanComercio(c).aparece_en_cercanos);
     const comerciosAleatorios = pickRandomItems(comerciosFiltrados, maxSlides);
 
