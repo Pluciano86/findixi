@@ -25,23 +25,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 🔹 Cargar categorías desde Supabase
   async function cargarCategorias() {
-    const columnasPreferidas =
-      'id, imagen, nombre, nombre_es, nombre_en, nombre_zh, nombre_fr, nombre_pt, nombre_de, nombre_it, nombre_ko, nombre_ja';
-    const columnasFallback = 'id, imagen, nombre, nombre_es, nombre_en, nombre_pt';
+    const queryAttempts = [
+      'id, imagen, nombre, nombre_es, nombre_en, nombre_zh, nombre_fr, nombre_pt, nombre_de, nombre_it, nombre_ko, nombre_ja',
+      'id, imagen, nombre, nombre_es, nombre_en, nombre_pt',
+      'id, nombre',
+    ];
 
-    let { data, error } = await supabase
-      .from('Categorias')
-      .select(columnasPreferidas)
-      .order('id', { ascending: true });
+    let data = null;
+    let error = null;
 
-    if (error) {
-      console.warn('⚠️ Categorias con columnas extendidas no disponibles. Intentando fallback...', error?.message || error);
-      const fallback = await supabase
+    for (const columns of queryAttempts) {
+      const result = await supabase
         .from('Categorias')
-        .select(columnasFallback)
+        .select(columns)
         .order('id', { ascending: true });
-      data = fallback.data;
-      error = fallback.error;
+      data = result.data;
+      error = result.error;
+      if (!error) break;
     }
 
     if (error) {

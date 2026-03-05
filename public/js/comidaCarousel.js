@@ -7,6 +7,7 @@ const COMERCIOS_SELECT = `
   id,
   nombre,
   municipio,
+  categoria,
   activo,
   plan_id,
   plan_nivel,
@@ -27,9 +28,21 @@ function readCategoriaId(relacion) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
-function hasCategoria(comercio, categoriaId) {
+function parseCategoriaTokens(raw) {
+  if (typeof raw !== "string") return [];
+  return raw
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function hasCategoria(comercio, categoriaId, aliases = []) {
   const relaciones = Array.isArray(comercio?.ComercioCategorias) ? comercio.ComercioCategorias : [];
-  return relaciones.some((rel) => readCategoriaId(rel) === Number(categoriaId));
+  if (relaciones.some((rel) => readCategoriaId(rel) === Number(categoriaId))) return true;
+
+  const tokens = parseCategoriaTokens(comercio?.categoria);
+  if (!tokens.length || !aliases.length) return false;
+  return tokens.some((token) => aliases.some((alias) => token.includes(alias)));
 }
 
 async function loadComerciosConCategorias() {
@@ -105,15 +118,25 @@ export async function renderComidaCarousel(containerId) {
 
   // ✅ ID de la categoría “Restaurantes”
   const idRestaurantes = 1; // asegúrate de que coincide con tu tabla Categorias
+  const aliasesRestaurantes = ["restaurante", "restaurantes", "restaurant", "restaurants"];
   const maxSlides = 24;
 
   try {
     const comercios = await loadComerciosConCategorias();
 
     // 🔹 Filtrar solo los de la categoría Restaurantes
-    const comerciosFiltrados = comercios
-      .filter((c) => hasCategoria(c, idRestaurantes))
+    let comerciosFiltrados = comercios
+      .filter((c) => hasCategoria(c, idRestaurantes, aliasesRestaurantes))
       .filter((c) => resolverPlanComercio(c).aparece_en_cercanos);
+
+    if (!comerciosFiltrados.length) {
+      comerciosFiltrados = comercios.filter((c) => hasCategoria(c, idRestaurantes, aliasesRestaurantes));
+    }
+
+    if (!comerciosFiltrados.length) {
+      comerciosFiltrados = comercios.filter((c) => resolverPlanComercio(c).aparece_en_cercanos);
+    }
+
     const comerciosAleatorios = pickRandomItems(comerciosFiltrados, maxSlides);
 
     if (comerciosAleatorios.length === 0) {

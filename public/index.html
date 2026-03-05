@@ -93,16 +93,6 @@ video::-webkit-media-controls-overlay-play-button {
 
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
-<script type="module">
-  import { renderComidaCarousel } from "./js/comidaCarousel.js";
-  import { renderEventosCarousel } from "./js/eventosCarousel.js";
-
-  document.addEventListener("DOMContentLoaded", () => {
-    renderComidaCarousel("comidaCarousel");
-    renderEventosCarousel("eventosCarousel");
-  });
-</script>
-
 
 
 <section class="relative h-[260px] overflow-hidden">
@@ -206,24 +196,15 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <script type="module">
+  import { renderComidaCarousel } from "./js/comidaCarousel.js";
+  import { renderJangueoCarousel } from "./js/jangueoCarousel.js";
   import { renderEventosCarousel } from "./js/eventosCarousel.js";
 
   document.addEventListener("DOMContentLoaded", () => {
+    renderComidaCarousel("comidaCarousel");
+    renderJangueoCarousel("jangueoCarousel");
     renderEventosCarousel("eventosCarousel");
-  });
-
-  document.addEventListener('DOMContentLoaded', () => {
     if (window.initI18n) window.initI18n();
-  });
-</script>
-
-<script type="module">
-  import { renderComidaCarousel } from "./js/comidaCarousel.js";
-  import { renderJangueoCarousel } from "./js/jangueoCarousel.js";
-
-  document.addEventListener("DOMContentLoaded", () => {
-    renderComidaCarousel("comidaCarousel");   // 🍽️ Restaurantes
-    renderJangueoCarousel("jangueoCarousel"); // 🍹 Jangueo
   });
 </script>
 

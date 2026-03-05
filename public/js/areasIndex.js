@@ -56,9 +56,8 @@ function updateLabels() {
 }
 
 async function loadAreas(container) {
-  const { data, error } = await supabase
-    .from('Area')
-    .select(`
+  const queryAttempts = [
+    `
       idArea,
       slug,
       imagen,
@@ -71,7 +70,22 @@ async function loadAreas(container) {
       nombre_zh,
       nombre_ko,
       nombre_ja
-    `);
+    `,
+    'idArea, slug, imagen, nombre_es, nombre',
+    'idArea, nombre_es, nombre',
+  ];
+
+  let data = null;
+  let error = null;
+
+  for (const columns of queryAttempts) {
+    const result = await supabase
+      .from('Area')
+      .select(columns);
+    data = result.data;
+    error = result.error;
+    if (!error) break;
+  }
 
   if (error) {
     console.error('Error cargando áreas', error);
