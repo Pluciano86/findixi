@@ -95,6 +95,25 @@ async function fetchRuntimeSupabaseConfig() {
   return { url: '', key: '' };
 }
 
+function readLocalRuntimeConfig() {
+  if (!isLocalHostRuntime() || isLikelyNetlifyDevRuntime()) {
+    return { url: '', key: '' };
+  }
+
+  const url = normalizeBaseUrl(
+    readFirstLocalStorage(['SUPABASE_URL', 'FINDIXI_SUPABASE_URL', 'VITE_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL'])
+  );
+  const key = readFirstLocalStorage([
+    'SUPABASE_ANON_KEY',
+    'SUPABASE_KEY',
+    'FINDIXI_SUPABASE_ANON_KEY',
+    'VITE_SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  ]);
+
+  return { url, key };
+}
+
 const envUrl = normalizeBaseUrl(
   readFirstEnv([
     'SUPABASE_URL',
@@ -112,19 +131,43 @@ const envKey = readFirstEnv([
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
 ]);
 
-let runtimeConfig = { url: '', key: '' };
-if (!envUrl || !envKey) {
-  runtimeConfig = await fetchRuntimeSupabaseConfig();
+const localRuntimeConfig = readLocalRuntimeConfig();
+
+export let SUPABASE_URL = envUrl || localRuntimeConfig.url || FALLBACK_URL;
+export let SUPABASE_ANON_KEY = envKey || localRuntimeConfig.key || FALLBACK_KEY;
+export let supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const hasLocalRuntimeConfig = Boolean(localRuntimeConfig.url && localRuntimeConfig.key);
+const shouldTryRuntimeFetch =
+  typeof window !== 'undefined' &&
+  typeof fetch === 'function' &&
+  (!envUrl || !envKey) &&
+  !hasLocalRuntimeConfig;
+
+if (shouldTryRuntimeFetch) {
+  fetchRuntimeSupabaseConfig()
+    .then((runtimeConfig) => {
+      const hasRuntimeConfig = Boolean(runtimeConfig.url && runtimeConfig.key);
+      if (!hasRuntimeConfig) {
+        if (typeof console !== 'undefined') {
+          console.warn(
+            '[Findixi] Usando fallback de Supabase. Para override: window.__ENV__ o /.netlify/functions/supabase-browser-config.'
+          );
+        }
+        return;
+      }
+
+      if (runtimeConfig.url === SUPABASE_URL && runtimeConfig.key === SUPABASE_ANON_KEY) return;
+
+      SUPABASE_URL = runtimeConfig.url;
+      SUPABASE_ANON_KEY = runtimeConfig.key;
+      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    })
+    .catch(() => {
+      if (typeof console !== 'undefined') {
+        console.warn(
+          '[Findixi] Usando fallback de Supabase. Para override: window.__ENV__ o /.netlify/functions/supabase-browser-config.'
+        );
+      }
+    });
 }
-
-export const SUPABASE_URL = envUrl || runtimeConfig.url || FALLBACK_URL;
-export const SUPABASE_ANON_KEY = envKey || runtimeConfig.key || FALLBACK_KEY;
-const hasRuntimeConfig = Boolean(runtimeConfig.url && runtimeConfig.key);
-
-if ((!envUrl || !envKey) && !hasRuntimeConfig && typeof console !== 'undefined') {
-  console.warn(
-    '[Findixi] Usando fallback de Supabase. Para override: window.__ENV__ o /.netlify/functions/supabase-browser-config.'
-  );
-}
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
