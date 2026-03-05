@@ -1,10 +1,11 @@
-import { DEFAULT_APP_BASE_URLS } from '@findixi/shared';
 import type { Href } from 'expo-router';
 import { usePathname, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useI18n } from '../../i18n/provider';
+import { supabase } from '../../lib/supabase';
 import { darkFooter, fonts, spacing } from '../../theme/tokens';
 
 type FooterItem = {
@@ -32,12 +33,15 @@ const footerItems: FooterItem[] = [
   {
     labelKey: 'footer.profile',
     iconUri: 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoPerfil.png',
-    route: '/cuenta',
+    route: '/usuario',
   },
 ];
 
+const DEFAULT_PROFILE_ICON = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoPerfil.png';
+
 function isRouteActive(pathname: string, route: string): boolean {
   if (pathname === route) return true;
+  if (route === '/usuario' && pathname === '/cuenta') return true;
   if (
     (route === '/comercios' || route === '/cercademi') &&
     (pathname.startsWith('/comercio/') || pathname.startsWith('/playa/') || pathname === '/playas' || pathname === '/comercios')
@@ -52,34 +56,105 @@ export function FooterWebStyle() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
-  const privacyUrl = `${DEFAULT_APP_BASE_URLS.public}/privacy-policy.html`;
-  const termsUrl = `${DEFAULT_APP_BASE_URLS.public}/terms-of-service.html`;
+  const [isAuthed, setIsAuthed] = useState(false);
+  const [footerProfileName, setFooterProfileName] = useState('');
+  const [footerProfileImage, setFooterProfileImage] = useState(DEFAULT_PROFILE_ICON);
+  const profileLabel = useMemo(() => {
+    if (isAuthed && footerProfileName.trim()) return footerProfileName.trim();
+    return t('footer.profile');
+  }, [footerProfileName, isAuthed, t]);
+
+  const loadFooterUser = useCallback(async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const user = session?.user;
+      if (!user) {
+        setIsAuthed(false);
+        setFooterProfileName('');
+        setFooterProfileImage(DEFAULT_PROFILE_ICON);
+        return;
+      }
+
+      setIsAuthed(true);
+      const fallbackName = String(user.email || '').split('@')[0] || '';
+      let nextName = fallbackName;
+      let nextImage = DEFAULT_PROFILE_ICON;
+
+      const { data: profile } = await supabase.from('usuarios').select('nombre,imagen').eq('id', user.id).maybeSingle();
+      const nombre = String((profile as { nombre?: unknown } | null)?.nombre || '').trim();
+      const imagen = String((profile as { imagen?: unknown } | null)?.imagen || '').trim();
+
+      if (nombre) nextName = nombre;
+      if (imagen) nextImage = imagen;
+
+      setFooterProfileName(nextName);
+      setFooterProfileImage(nextImage);
+    } catch {
+      setIsAuthed(false);
+      setFooterProfileName('');
+      setFooterProfileImage(DEFAULT_PROFILE_ICON);
+    }
+  }, []);
+
+  const onFooterItemPress = useCallback(
+    (item: FooterItem) => {
+      if (item.route === '/usuario' && !isAuthed) {
+        router.push({ pathname: '/login', params: { redirect: '/usuario' } });
+        return;
+      }
+      router.push(item.route);
+    },
+    [isAuthed, router]
+  );
+
+  useEffect(() => {
+    void loadFooterUser();
+    const authListener = supabase.auth.onAuthStateChange(() => {
+      void loadFooterUser();
+    });
+
+    return () => {
+      authListener.data.subscription.unsubscribe();
+    };
+  }, [loadFooterUser]);
 
   return (
     <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
       <View style={styles.row}>
         {footerItems.map((item) => {
           const active = isRouteActive(pathname, String(item.route));
+          const isProfileItem = item.route === '/usuario';
+          const iconUri = isProfileItem ? footerProfileImage : item.iconUri;
+          const label = isProfileItem ? profileLabel : t(item.labelKey);
           return (
-            <Pressable key={String(item.route)} style={styles.item} onPress={() => router.push(item.route)}>
+            <Pressable key={String(item.route)} style={styles.item} onPress={() => onFooterItemPress(item)}>
               <Image
-                source={{ uri: item.iconUri }}
-                style={[styles.icon, active ? styles.iconActive : null]}
-                resizeMode="contain"
+                source={{ uri: iconUri }}
+                style={[
+                  styles.icon,
+                  active ? styles.iconActive : null,
+                  isProfileItem && isAuthed ? styles.profileAvatar : null,
+                ]}
+                resizeMode={isProfileItem && isAuthed ? 'cover' : 'contain'}
               />
-              <Text style={[styles.label, active ? styles.labelActive : null]}>{t(item.labelKey)}</Text>
+              <Text numberOfLines={1} style={[styles.label, active ? styles.labelActive : null]}>
+                {label}
+              </Text>
             </Pressable>
           );
         })}
       </View>
 
       <View style={styles.legalRow}>
-        <Pressable onPress={() => void Linking.openURL(privacyUrl)}>
-          <Text style={styles.legalLink}>Privacy Policy</Text>
+        <Pressable onPress={() => router.push('/privacy-policy')}>
+          <Text style={styles.legalLink}>{t('login.privacyPolicy')}</Text>
         </Pressable>
         <Text style={styles.dot}>•</Text>
-        <Pressable onPress={() => void Linking.openURL(termsUrl)}>
-          <Text style={styles.legalLink}>Terms of Service</Text>
+        <Pressable onPress={() => router.push('/terms-of-service')}>
+          <Text style={styles.legalLink}>{t('login.termsOfService')}</Text>
         </Pressable>
         <Text style={styles.dot}>•</Text>
         <Pressable onPress={() => void Linking.openURL('mailto:info@findixi.com')}>
@@ -119,11 +194,20 @@ const styles = StyleSheet.create({
   iconActive: {
     opacity: 1,
   },
+  profileAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#ffffff',
+    backgroundColor: '#ffffff',
+  },
   label: {
     color: '#f8fafc',
     fontSize: 11,
     fontFamily: fonts.light,
     textAlign: 'center',
+    maxWidth: '95%',
   },
   labelActive: {
     color: '#f8fafc',

@@ -1,8 +1,8 @@
 import { supabase } from '../../lib/supabase';
+import { OPENWEATHER_API_KEY } from '../../config/env';
 
 import type { PlayaDetail, PlayaListItem, PlayaWeather, PlayaWeatherDetail } from './types';
 
-const OPEN_WEATHER_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || '2c1d54239e886b97ed52ac446c3ae948';
 const WEATHER_ICON_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/';
 
 function toFiniteNumber(value: unknown): number | null {
@@ -83,14 +83,14 @@ export async function fetchBeachWeather(lat: number, lon: number, lang: string):
 }
 
 export async function fetchBeachWeatherDetail(lat: number, lon: number, lang: string): Promise<PlayaWeatherDetail | null> {
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || !OPEN_WEATHER_API_KEY) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || !OPENWEATHER_API_KEY) {
     return null;
   }
 
   try {
     const url =
       `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}` +
-      `&units=imperial&lang=${resolveWeatherLang(lang)}&appid=${OPEN_WEATHER_API_KEY}`;
+      `&units=imperial&lang=${resolveWeatherLang(lang)}&appid=${OPENWEATHER_API_KEY}`;
     const response = await fetch(url);
     if (!response.ok) return null;
 

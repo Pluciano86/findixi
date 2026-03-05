@@ -475,7 +475,7 @@ function ComercioCard({ item, location, isFavorite, onPress }: ComercioCardProps
               numberOfLines={2}
               style={[nameSizeStyle, showBranch ? styles.cardTitleWithBranch : styles.cardTitleWithoutBranch]}
             >
-              {item.nombre || 'Comercio'}
+              {item.nombre || t('comercio.categoryComercio')}
             </Text>
           </View>
           {showBranch ? (
@@ -553,7 +553,7 @@ function ComercioCardNoActivo({ item, location }: ComercioCardNoActivoProps) {
 
         <View style={styles.cardNameBlock}>
           <Text numberOfLines={2} style={nameSizeStyle}>
-            {item.nombre || 'Comercio'}
+            {item.nombre || t('comercio.categoryComercio')}
           </Text>
         </View>
 
@@ -1783,8 +1783,8 @@ const styles = StyleSheet.create({
     transform: [{ translateX: 20 }],
   },
   resultsWrap: {
-    marginTop: 2,
-    marginBottom: spacing.md,
+    marginTop: spacing.md,
+    marginBottom: spacing.xl,
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',

@@ -24,6 +24,8 @@ type CercaI18nKey =
   | 'cerca.verPerfil'
   | 'cerca.llamar'
   | 'cerca.ir'
+  | 'cerca.comercio'
+  | 'cerca.puertoRico'
   | 'cerca.abrirGps'
   | 'cerca.rutaTitulo'
   | 'cerca.rutaBody'
@@ -61,6 +63,8 @@ const ES: Dict = {
   'cerca.verPerfil': 'Ver perfil',
   'cerca.llamar': 'Llamar',
   'cerca.ir': 'Ir',
+  'cerca.comercio': 'Comercio',
+  'cerca.puertoRico': 'Puerto Rico',
   'cerca.abrirGps': 'Abrir GPS',
   'cerca.rutaTitulo': 'Elegir navegación',
   'cerca.rutaBody': '¿Con qué app deseas abrir la ruta?',
@@ -97,6 +101,8 @@ const EN: Dict = {
   'cerca.verPerfil': 'View profile',
   'cerca.llamar': 'Call',
   'cerca.ir': 'Go',
+  'cerca.comercio': 'Business',
+  'cerca.puertoRico': 'Puerto Rico',
   'cerca.abrirGps': 'Open GPS',
   'cerca.rutaTitulo': 'Choose navigation',
   'cerca.rutaBody': 'Which app do you want to use for directions?',

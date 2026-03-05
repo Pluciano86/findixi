@@ -47,6 +47,13 @@
   </style>
 </head>
 <body class="text-gray-800 pb-20">
+  <div id="globalLoader" class="hidden fixed inset-0 z-[90] items-center justify-center bg-black/45 opacity-0 transition-opacity duration-200">
+    <div class="rounded-xl bg-white px-5 py-4 shadow-xl flex items-center gap-3">
+      <span class="inline-block w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></span>
+      <span id="globalLoaderText" class="text-sm font-medium text-gray-700">Traduciendo menu...</span>
+    </div>
+  </div>
+
   <header>
     <div id="heroPortada" class="relative w-full aspect-[16/9] max-h-64 sm:max-h-72 lg:max-h-80 overflow-hidden">
       <img id="heroImg" src="" alt="Portada" class="absolute inset-0 w-full h-full object-cover" />

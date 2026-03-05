@@ -10,7 +10,7 @@ export function HomeBusinessCta() {
 
   return (
     <View style={styles.wrap}>
-      <Pressable style={[styles.card, shadows.card]} onPress={() => router.push('/cuenta')}>
+      <Pressable style={[styles.card, shadows.card]} onPress={() => router.push('/usuario')}>
         <Text style={styles.badge}>{t('home.businessBadge')}</Text>
         <Text style={styles.title}>{t('home.businessTitle')}</Text>
         <Text style={styles.copy}>{t('home.businessCopy')}</Text>

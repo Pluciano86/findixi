@@ -27,6 +27,7 @@ import { fetchBeachWeather, fetchListadoPlayasData } from '../src/features/playa
 import { tPlayas, traducirCosta } from '../src/features/playas/i18n';
 import type { PlayaListItem, PlayaWeather } from '../src/features/playas/types';
 import { useI18n } from '../src/i18n/provider';
+import type { I18nKey } from '../src/i18n/translations';
 import { requestUserLocation, type UserLocation } from '../src/lib/location';
 import { getDrivingDistance } from '../src/lib/osrm';
 import { borderRadius, fonts, shadows, spacing } from '../src/theme/tokens';
@@ -58,14 +59,31 @@ function normalizeFilterText(value: unknown): string {
     .toLowerCase();
 }
 
-function formatTravelConversational(minutes: number): string {
-  if (!Number.isFinite(minutes)) return 'N/D';
-  if (minutes < 60) return `a ${minutes} minutos`;
+function resolveSortLocale(lang: string): string {
+  const code = String(lang || 'es').toLowerCase().split('-')[0];
+  const map: Record<string, string> = {
+    es: 'es-PR',
+    en: 'en-US',
+    zh: 'zh-CN',
+    fr: 'fr-FR',
+    pt: 'pt-PT',
+    de: 'de-DE',
+    it: 'it-IT',
+    ko: 'ko-KR',
+    ja: 'ja-JP',
+  };
+  return map[code] || 'es-PR';
+}
+
+function formatTravelConversational(
+  minutes: number,
+  t: (key: I18nKey, params?: Record<string, string | number>) => string
+): string {
+  if (!Number.isFinite(minutes)) return t('card.noDisponible');
+  if (minutes < 60) return t('card.minAway', { min: minutes });
   const horas = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  let texto = `a ${horas} hora${horas === 1 ? '' : 's'}`;
-  if (mins > 0) texto += ` y ${mins} minutos`;
-  return texto;
+  return t('card.horasMinAway', { h: horas, m: mins });
 }
 
 function toFinite(value: unknown): number | null {
@@ -309,7 +327,8 @@ function PlayaCard({ item, lang, clima, tiempoTexto, onPress }: PlayaCardProps) 
 
 export default function ListadoPlayasScreen() {
   const router = useRouter();
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
+  const sortLocale = useMemo(() => resolveSortLocale(lang), [lang]);
   const [allPlayas, setAllPlayas] = useState<PlayaListItem[]>([]);
   const [banners, setBanners] = useState<HomeBannerItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -367,9 +386,9 @@ export default function ListadoPlayasScreen() {
     });
 
     return Array.from(seen)
-      .sort((a, b) => a.localeCompare(b, 'es'))
+      .sort((a, b) => a.localeCompare(b, sortLocale))
       .map((value) => ({ value, label: traducirCosta(lang, value) }));
-  }, [allPlayas, lang]);
+  }, [allPlayas, lang, sortLocale]);
 
   const municipioOptions = useMemo<SelectOption[]>(() => {
     const coastValue = normalizeFilterText(selectedCosta);
@@ -383,9 +402,9 @@ export default function ListadoPlayasScreen() {
     });
 
     return Array.from(seen)
-      .sort((a, b) => a.localeCompare(b, 'es'))
+      .sort((a, b) => a.localeCompare(b, sortLocale))
       .map((value) => ({ value, label: value }));
-  }, [allPlayas, selectedCosta]);
+  }, [allPlayas, selectedCosta, sortLocale]);
 
   useEffect(() => {
     if (!selectedMunicipio) return;
@@ -583,7 +602,9 @@ export default function ListadoPlayasScreen() {
           // usa fallback
         }
 
-        const texto = Number.isFinite(minutos) ? formatTravelConversational(Number(minutos)) : 'N/D';
+        const texto = Number.isFinite(minutos)
+          ? formatTravelConversational(Number(minutos), t)
+          : t('card.noDisponible');
         return [playa.id, texto] as const;
       })
     ).then((results) => {
@@ -600,7 +621,7 @@ export default function ListadoPlayasScreen() {
     return () => {
       active = false;
     };
-  }, [location, travelTargets]);
+  }, [location, t, travelTargets]);
 
   const groupedRows = useMemo(() => {
     const rows: PlayaListItem[][] = [];

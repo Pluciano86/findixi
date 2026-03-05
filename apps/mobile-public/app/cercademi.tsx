@@ -297,7 +297,7 @@ function NearMeComercioCard({ item, lang, isFavorite, onPhonePress, onNavigatePr
   const inactiveLogo = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/NoActivoLogo.png';
   const isInactiveCard = item.activo === false || !canOpenProfile;
   const { showBranch, branchName } = resolveBranchInfo(item);
-  const nombre = String(item.nombre || 'Comercio');
+  const nombre = String(item.nombre || tCerca('cerca.comercio', lang));
   const tiempo = String(item.tiempoTexto || item.tiempoVehiculo || '').trim();
   const nameSizeStyle = nombre.length > 25 ? styles.mapCardTitleSmall : styles.mapCardTitle;
 
@@ -339,7 +339,7 @@ function NearMeComercioCard({ item, lang, isFavorite, onPhonePress, onNavigatePr
           <View style={styles.mapCardMetaRow}>
             <FontAwesome name="map-pin" size={14} color="#9ca3af" />
             <Text numberOfLines={1} style={styles.mapCardNoActivoMetaText}>
-              {item.pueblo || item.municipio || tCerca('cerca.municipio', lang)}
+              {item.pueblo || item.municipio || tCerca('cerca.puertoRico', lang)}
             </Text>
           </View>
 
@@ -423,7 +423,7 @@ function NearMeComercioCard({ item, lang, isFavorite, onPhonePress, onNavigatePr
         <View style={styles.mapCardMetaRow}>
           <FontAwesome name="map-pin" size={14} color="#3ea6c4" />
           <Text numberOfLines={1} style={styles.mapCardMetaText}>
-            {item.pueblo || item.municipio || tCerca('cerca.municipio', lang)}
+            {item.pueblo || item.municipio || tCerca('cerca.puertoRico', lang)}
           </Text>
         </View>
 
@@ -732,14 +732,14 @@ export default function CercaDeMiScreen() {
 
       if (!sessionUserId) {
         Alert.alert(tCerca('cerca.favoritosLoginTitulo', lang), tCerca('cerca.favoritosLoginBody', lang), [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: tCerca('cerca.cancelar', lang), style: 'cancel' },
           {
-            text: 'Ir',
-            onPress: () => {
-              router.push('/cuenta');
+              text: tCerca('cerca.ir', lang),
+              onPress: () => {
+                router.push('/login?redirect=/cercademi');
+              },
             },
-          },
-        ]);
+          ]);
         setFavoritesOnly(false);
         return;
       }

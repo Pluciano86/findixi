@@ -8,6 +8,17 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 
 const SUPPORTED_LANGS = ["es", "en", "fr", "de", "pt", "it", "zh", "ko", "ja"];
+const LANG_LABELS: Record<string, string> = {
+  es: "Spanish",
+  en: "English",
+  fr: "French",
+  de: "German",
+  pt: "Portuguese",
+  it: "Italian",
+  zh: "Chinese (Simplified)",
+  ko: "Korean",
+  ja: "Japanese",
+};
 // Lista fija de términos gastronómicos que NO se traducen (editar aquí si hace falta)
 const TERMINOS_GASTRONOMICOS_NO_TRADUCIR = [
   "mofongo",
@@ -52,6 +63,7 @@ type ProductoBase = {
   nombre: string | null;
   descripcion: string | null;
   no_traducir_nombre?: boolean | null;
+  no_traducir_descripcion?: boolean | null;
 };
 
 type MenuTraduccion = {
@@ -180,15 +192,20 @@ async function guardarProductosTraducciones(trads: ProductoTraduccion[]) {
 
 function buildSystemMessage(protectedTerms: string[], lang: string): string {
   const protectedList = protectedTerms.length > 0 ? protectedTerms.join(", ") : TERMINOS_GASTRONOMICOS_NO_TRADUCIR.join(", ");
+  const targetLabel = LANG_LABELS[lang] ?? lang;
   return `
 You are a professional food menu translator.
-Target language: ${lang}.
+Target language: ${targetLabel} (${lang}).
 
 Do NOT translate cultural food names such as:
 ${protectedList}.
 
 Keep these terms EXACTLY as written.
 Do not translate, paraphrase, pluralize, or localize them.
+
+Translate every non-empty value to the target language.
+Never keep source-language text unless it is a protected term.
+If target language is not English, do not output English text.
 
 Translate naturally and keep a promotional tone.
 Return JSON with the same keys provided in the user content.
@@ -226,13 +243,13 @@ async function traducirCampos(payload: Record<string, string>, lang: string, pro
   const content = result?.choices?.[0]?.message?.content;
   if (!content) throw new Error("OpenAI no devolvió contenido");
 
-  let parsed: Record<string, string> = {};
+  let parsed: Record<string, unknown> = {};
   try {
     parsed = JSON.parse(content);
   } catch (_e) {
     throw new Error("No se pudo parsear la respuesta de OpenAI");
   }
-  return parsed;
+  return normalizeTranslationResult(parsed, payload);
 }
 
 function buildPayload(obj: Record<string, unknown>, campos: string[]) {
@@ -244,6 +261,82 @@ function buildPayload(obj: Record<string, unknown>, campos: string[]) {
   return out;
 }
 
+function normalizeTranslationResult(
+  parsed: Record<string, unknown>,
+  payload: Record<string, string>,
+): Record<string, string> {
+  const aliasMap: Record<string, string[]> = {
+    titulo: ["titulo", "título", "title", "titre", "titolo", "titel"],
+    descripcion: ["descripcion", "descripción", "description", "desc", "descricao", "descrição", "descrizione", "beschreibung"],
+    nombre: ["nombre", "name", "nome", "nom"],
+  };
+  const normalizeKey = (key: string) =>
+    String(key || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z]/g, "");
+
+  const parsedNormalized = new Map<string, string>();
+  const parsedStringValues: string[] = [];
+  for (const [rawKey, rawValue] of Object.entries(parsed)) {
+    if (typeof rawValue !== "string") continue;
+    const trimmed = rawValue.trim();
+    if (!trimmed) continue;
+    const normalizedKey = normalizeKey(rawKey);
+    if (!parsedNormalized.has(normalizedKey)) parsedNormalized.set(normalizedKey, trimmed);
+    parsedStringValues.push(trimmed);
+  }
+
+  const normalized: Record<string, string> = {};
+  for (const key of Object.keys(payload)) {
+    const direct = parsed[key];
+
+    if (typeof direct === "string" && direct.trim()) {
+      normalized[key] = direct.trim();
+      continue;
+    }
+
+    const aliases = aliasMap[key] || [key];
+    let resolved: string | null = null;
+    for (const alias of aliases) {
+      const hit = parsedNormalized.get(normalizeKey(alias));
+      if (hit) {
+        resolved = hit;
+        break;
+      }
+    }
+    if (resolved) {
+      normalized[key] = resolved;
+      continue;
+    }
+
+    if (Object.keys(payload).length === 1 && parsedStringValues.length === 1) {
+      normalized[key] = parsedStringValues[0];
+      continue;
+    }
+
+    normalized[key] = payload[key];
+  }
+  return normalized;
+}
+
+function normalizeCompareText(value: string | null | undefined): string {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isLikelyUntranslated(base: string | null | undefined, translated: string | null | undefined): boolean {
+  const baseNorm = normalizeCompareText(base);
+  if (!baseNorm) return false;
+  const translatedNorm = normalizeCompareText(translated);
+  if (!translatedNorm) return true;
+  return baseNorm === translatedNorm;
+}
+
+function hasText(value: string | null | undefined): boolean {
+  return normalizeCompareText(value).length > 0;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -253,17 +346,83 @@ Deno.serve(async (req) => {
     return responder({ ok: false, error: "Use POST" }, 405);
   }
 
-  let payload: { idMenu?: number; idProducto?: number; lang?: string; type?: string };
+  let payload: {
+    idMenu?: number;
+    idProducto?: number;
+    lang?: string;
+    type?: string;
+    entity?: string;
+    fields?: string[];
+    mode?: string;
+  };
   try {
     payload = await req.json();
   } catch (_e) {
     return responder({ ok: false, error: "JSON inválido" }, 400);
   }
 
+  const tipo = (payload.type || "menu").toLowerCase();
+
+  if (tipo === "invalidate") {
+    const entity = String(payload.entity || "").toLowerCase();
+    const mode = String(payload.mode || "nullify").toLowerCase();
+    const fields = Array.isArray(payload.fields) ? payload.fields.map((f) => String(f || "").toLowerCase()) : [];
+
+    try {
+      if (entity === "menu") {
+        const idMenu = Number(payload.idMenu);
+        if (!Number.isFinite(idMenu) || idMenu <= 0) {
+          return responder({ ok: false, error: "idMenu requerido para invalidación de menú" }, 400);
+        }
+
+        if (mode === "delete") {
+          const { error } = await supabase.from("menus_traducciones").delete().eq("idmenu", idMenu);
+          if (error) throw error;
+          return responder({ ok: true, entity: "menu", mode: "delete", idMenu });
+        }
+
+        const patch: Record<string, null> = {};
+        if (fields.includes("titulo")) patch.titulo = null;
+        if (fields.includes("descripcion")) patch.descripcion = null;
+        if (Object.keys(patch).length === 0) return responder({ ok: true, entity: "menu", mode: "noop", idMenu });
+
+        const { error } = await supabase.from("menus_traducciones").update(patch).eq("idmenu", idMenu);
+        if (error) throw error;
+        return responder({ ok: true, entity: "menu", mode: "nullify", idMenu, fields: Object.keys(patch) });
+      }
+
+      if (entity === "producto") {
+        const idProducto = Number(payload.idProducto);
+        if (!Number.isFinite(idProducto) || idProducto <= 0) {
+          return responder({ ok: false, error: "idProducto requerido para invalidación de producto" }, 400);
+        }
+
+        if (mode === "delete") {
+          const { error } = await supabase.from("productos_traducciones").delete().eq("idproducto", idProducto);
+          if (error) throw error;
+          return responder({ ok: true, entity: "producto", mode: "delete", idProducto });
+        }
+
+        const patch: Record<string, null> = {};
+        if (fields.includes("nombre")) patch.nombre = null;
+        if (fields.includes("descripcion")) patch.descripcion = null;
+        if (Object.keys(patch).length === 0) return responder({ ok: true, entity: "producto", mode: "noop", idProducto });
+
+        const { error } = await supabase.from("productos_traducciones").update(patch).eq("idproducto", idProducto);
+        if (error) throw error;
+        return responder({ ok: true, entity: "producto", mode: "nullify", idProducto, fields: Object.keys(patch) });
+      }
+
+      return responder({ ok: false, error: "Entidad no soportada para invalidación" }, 400);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : JSON.stringify(error);
+      console.error("translate-menu invalidate error:", errMsg);
+      return responder({ ok: false, error: errMsg }, 500);
+    }
+  }
+
   const lang = normalizeLang(payload.lang);
   if (!SUPPORTED_LANGS.includes(lang)) return responder({ ok: false, error: `Idioma no soportado: ${lang}` }, 400);
-
-  const tipo = (payload.type || "menu").toLowerCase();
 
   // Traducción de un producto individual
   if (tipo === "producto") {
@@ -281,7 +440,28 @@ Deno.serve(async (req) => {
       const protectedTerms = buildProtectedTerms(glosario);
 
       const cacheProd = await buscarCacheProducto(idProducto, lang);
-      if (cacheProd) {
+      const cacheProdEn = lang !== "en" ? await buscarCacheProducto(idProducto, "en") : null;
+      const cacheProdLooksOriginal =
+        !prodBase.no_traducir_nombre && isLikelyUntranslated(prodBase.nombre, cacheProd?.nombre) ||
+        !prodBase.no_traducir_descripcion && isLikelyUntranslated(prodBase.descripcion, cacheProd?.descripcion);
+      const cacheProdLooksEnglish =
+        lang !== "en" &&
+        cacheProd &&
+        cacheProdEn &&
+        (
+          (
+            !prodBase.no_traducir_nombre &&
+            hasText(cacheProd.nombre) &&
+            normalizeCompareText(cacheProd.nombre) === normalizeCompareText(cacheProdEn.nombre)
+          ) ||
+          (
+            !prodBase.no_traducir_descripcion &&
+            hasText(cacheProd.descripcion) &&
+            normalizeCompareText(cacheProd.descripcion) === normalizeCompareText(cacheProdEn.descripcion)
+          )
+        );
+
+      if (cacheProd && !cacheProdLooksOriginal && !cacheProdLooksEnglish) {
         return responder({
           ok: true,
           source: "cache",
@@ -293,7 +473,10 @@ Deno.serve(async (req) => {
         });
       }
 
-      const payloadProd = buildPayload(prodBase as Record<string, unknown>, ["descripcion"]);
+      const payloadProd = buildPayload(
+        prodBase as Record<string, unknown>,
+        prodBase.no_traducir_descripcion ? [] : ["descripcion"],
+      );
       if (!prodBase.no_traducir_nombre) payloadProd.nombre = prodBase.nombre ?? "";
       else if (prodBase.nombre) payloadProd.nombre = prodBase.nombre;
 
@@ -301,7 +484,7 @@ Deno.serve(async (req) => {
       const merged: ProductoBase = {
         ...prodBase,
         nombre: prodBase.no_traducir_nombre ? prodBase.nombre : traducido.nombre ?? prodBase.nombre,
-        descripcion: traducido.descripcion ?? prodBase.descripcion,
+        descripcion: prodBase.no_traducir_descripcion ? prodBase.descripcion : traducido.descripcion ?? prodBase.descripcion,
       };
 
       await guardarProductosTraducciones([
@@ -344,15 +527,42 @@ Deno.serve(async (req) => {
 
     const menuCache = await buscarCacheMenu(idMenu, lang);
     const productosCache = await buscarCacheProductos(productosBase.map((p) => p.id), lang);
+    const menuCacheEn = lang !== "en" ? await buscarCacheMenu(idMenu, "en") : null;
+    const productosCacheEn = lang !== "en" ? await buscarCacheProductos(productosBase.map((p) => p.id), "en") : new Map();
 
     const traduccionesProductos: ProductoTraduccion[] = [];
     const productosTraducidos: ProductoBase[] = [];
 
-    const productosFaltantes = productosBase.filter((p) => !productosCache.has(p.id));
+    const productosFaltantes = productosBase.filter((p) => {
+      const cached = productosCache.get(p.id);
+      if (!cached) return true;
+      const nameNeedsRefresh = !p.no_traducir_nombre && isLikelyUntranslated(p.nombre, cached.nombre);
+      const descNeedsRefresh = !p.no_traducir_descripcion && isLikelyUntranslated(p.descripcion, cached.descripcion);
+      const enCached = productosCacheEn.get(p.id);
+      const looksEnglish =
+        lang !== "en" &&
+        enCached &&
+        (
+          (
+            !p.no_traducir_nombre &&
+            hasText(cached.nombre) &&
+            normalizeCompareText(cached.nombre) === normalizeCompareText(enCached.nombre)
+          ) ||
+          (
+            !p.no_traducir_descripcion &&
+            hasText(cached.descripcion) &&
+            normalizeCompareText(cached.descripcion) === normalizeCompareText(enCached.descripcion)
+          )
+        );
+      return nameNeedsRefresh || descNeedsRefresh || looksEnglish;
+    });
 
     if (productosFaltantes.length > 0) {
       for (const producto of productosFaltantes) {
-        const payloadProd = buildPayload(producto as Record<string, unknown>, ["descripcion"]);
+        const payloadProd = buildPayload(
+          producto as Record<string, unknown>,
+          producto.no_traducir_descripcion ? [] : ["descripcion"],
+        );
         // respetar flag no_traducir_nombre
         if (!producto.no_traducir_nombre) {
           payloadProd.nombre = producto.nombre ?? "";
@@ -365,28 +575,56 @@ Deno.serve(async (req) => {
           idproducto: producto.id,
           lang,
           nombre: producto.no_traducir_nombre ? producto.nombre ?? null : traducido.nombre ?? null,
-          descripcion: traducido.descripcion ?? null,
+          descripcion: producto.no_traducir_descripcion ? producto.descripcion ?? null : traducido.descripcion ?? null,
         });
         productosTraducidos.push({
           ...producto,
           nombre: producto.no_traducir_nombre ? producto.nombre : traducido.nombre ?? producto.nombre,
-          descripcion: traducido.descripcion ?? producto.descripcion,
+          descripcion: producto.no_traducir_descripcion ? producto.descripcion : traducido.descripcion ?? producto.descripcion,
         });
       }
       await guardarProductosTraducciones(traduccionesProductos);
     }
 
+    const productosTraducidosMap = new Map(productosTraducidos.map((pt) => [pt.id, pt]));
     const productosFinal = productosBase.map((p) => {
+      const recienTraducido = productosTraducidosMap.get(p.id);
+      if (recienTraducido) return recienTraducido;
+
       const cached = productosCache.get(p.id);
       if (cached) {
-        return { ...p, nombre: cached.nombre, descripcion: cached.descripcion };
+        return {
+          ...p,
+          nombre: p.no_traducir_nombre ? p.nombre : cached.nombre,
+          descripcion: p.no_traducir_descripcion ? p.descripcion : cached.descripcion,
+        };
       }
-      const nuevo = productosTraducidos.find((pt) => pt.id === p.id);
-      return nuevo ?? p;
+      return p;
     });
 
     let menuFinal: MenuBase = menuBase;
-    if (menuCache) {
+    const menuLooksEnglish =
+      lang !== "en" &&
+      menuCache &&
+      menuCacheEn &&
+      (
+        (
+          !menuBase.no_traducir &&
+          hasText(menuCache.titulo) &&
+          normalizeCompareText(menuCache.titulo) === normalizeCompareText(menuCacheEn.titulo)
+        ) ||
+        (
+          hasText(menuCache.descripcion) &&
+          normalizeCompareText(menuCache.descripcion) === normalizeCompareText(menuCacheEn.descripcion)
+        )
+      );
+    const menuNeedsRefresh =
+      !menuCache ||
+      (!menuBase.no_traducir && isLikelyUntranslated(menuBase.titulo, menuCache.titulo)) ||
+      isLikelyUntranslated(menuBase.descripcion, menuCache.descripcion) ||
+      menuLooksEnglish;
+
+    if (menuCache && !menuNeedsRefresh) {
       menuFinal = { ...menuBase, titulo: menuCache.titulo, descripcion: menuCache.descripcion };
     } else {
       const payloadMenu = buildPayload(menuBase as Record<string, unknown>, ["descripcion"]);
@@ -413,7 +651,7 @@ Deno.serve(async (req) => {
 
     return responder({
       ok: true,
-      source: menuCache ? "cache" : "translated",
+      source: menuCache && !menuNeedsRefresh ? "cache" : "translated",
       data: { menu: menuFinal, productos: productosFinal },
     });
   } catch (error) {

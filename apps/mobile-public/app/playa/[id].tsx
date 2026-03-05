@@ -36,12 +36,6 @@ const PLAYA_PLACEHOLDER =
 const STORAGE_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/';
 
 const COMIDA_CATEGORIAS_VALIDAS = new Set([1, 2, 5, 7]);
-const CATEGORIA_LABEL_BY_ID: Record<number, string> = {
-  1: 'Restaurantes',
-  2: 'Coffee Shops',
-  5: 'Food Trucks',
-  7: 'Panaderias',
-};
 const NEARBY_COMERCIO_NAME_LONG_THRESHOLD = 24;
 
 type NearbyComercioCard = {
@@ -114,13 +108,16 @@ function toStorageUrl(pathOrUrl: string | null | undefined, fallback: string): s
   return `${STORAGE_BASE}${raw.replace(/^public\//i, '').replace(/^\/+/, '')}`;
 }
 
-function renderTravelText(minutes: number | null): string {
-  if (!Number.isFinite(minutes)) return 'No disponible';
+function renderTravelText(
+  minutes: number | null,
+  t: (key: Parameters<ReturnType<typeof useI18n>['t']>[0], params?: Record<string, string | number>) => string
+): string {
+  if (!Number.isFinite(minutes)) return t('comercio.notAvailable');
   const min = Math.max(0, Math.round(Number(minutes)));
-  if (min < 60) return `a ${min} minuto${min === 1 ? '' : 's'}`;
+  if (min < 60) return t('card.minAway', { min });
   const h = Math.floor(min / 60);
   const m = min % 60;
-  return `a ${h} h ${m} min`;
+  return t('card.horasMinAway', { h, m });
 }
 
 async function resolverMinutos(origen: UserLocation, destinoLat: number, destinoLon: number): Promise<number | null> {
@@ -149,14 +146,14 @@ export default function PlayaDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const id = parseId(params.id);
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
 
   const [item, setItem] = useState<PlayaDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [location, setLocation] = useState<UserLocation | null>(null);
   const [clima, setClima] = useState<PlayaWeatherDetail | null>(null);
-  const [travelText, setTravelText] = useState(tPerfilPlaya('perfilPlaya.distancia', lang));
+  const [travelText, setTravelText] = useState(t('comercio.loadingDistance'));
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [descripcionText, setDescripcionText] = useState('');
@@ -170,6 +167,15 @@ export default function PlayaDetailScreen() {
   const [cercanosPlayas, setCercanosPlayas] = useState<NearbyPlayaCard[]>([]);
 
   const showNoImageOverlay = useMemo(() => !item?.imagen || heroFailed, [heroFailed, item?.imagen]);
+  const categoriaLabelById = useMemo<Record<number, string>>(
+    () => ({
+      1: t('comercio.categoryRestaurantes'),
+      2: t('comercio.categoryCoffeeShops'),
+      5: t('comercio.categoryFoodTrucks'),
+      7: t('comercio.categoryPanaderias'),
+    }),
+    [t]
+  );
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -179,7 +185,7 @@ export default function PlayaDetailScreen() {
       const [playaData, userLocation] = await Promise.all([fetchPlayaById(id), requestUserLocation().catch(() => null)]);
 
       if (!playaData) {
-        setError('Playa no encontrada.');
+        setError(t('playa.notFound'));
         setItem(null);
         return;
       }
@@ -210,17 +216,17 @@ export default function PlayaDetailScreen() {
 
       if (userLocation && playaData.latitud != null && playaData.longitud != null) {
         const minutos = await resolverMinutos(userLocation, Number(playaData.latitud), Number(playaData.longitud));
-        setTravelText(renderTravelText(minutos));
+        setTravelText(renderTravelText(minutos, t));
       } else {
-        setTravelText('No disponible');
+        setTravelText(t('comercio.notAvailable'));
       }
     } catch (loadError) {
       console.error('[mobile-public] Error cargando perfil de playa:', loadError);
-      setError('No se pudo cargar el perfil de playa.');
+      setError(t('playa.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [id, lang]);
+  }, [id, lang, t]);
 
   useEffect(() => {
     void loadProfile();
@@ -306,12 +312,12 @@ export default function PlayaDetailScreen() {
 
             return {
               id: Number(record.id),
-              nombre: String(record.nombre ?? 'Comercio'),
-              municipio: String(record.municipio ?? 'Puerto Rico'),
+              nombre: String(record.nombre ?? t('comercio.nearbyComercioFallback')),
+              municipio: String(record.municipio ?? t('comercio.addressFallback')),
               telefono: String(record.telefono ?? '').trim(),
               portadaUrl: toStorageUrl(String(record.portada ?? ''), 'https://placehold.co/200x120?text=Portada'),
               logoUrl: toStorageUrl(String(record.logo ?? ''), 'https://placehold.co/80x80?text=Logo'),
-              categoriaLabel: CATEGORIA_LABEL_BY_ID[firstCategoria ?? 1] ?? 'Comercio',
+              categoriaLabel: categoriaLabelById[firstCategoria ?? 1] ?? t('comercio.categoryComercio'),
               minutos: Number(minutos),
             } satisfies NearbyComercioCard;
           })
@@ -351,7 +357,7 @@ export default function PlayaDetailScreen() {
 
             return {
               id: idLugar,
-              nombre: String(record.nombre ?? 'Lugar'),
+              nombre: String(record.nombre ?? t('comercio.nearbyLugarFallback')),
               municipio: String(record.municipio ?? ''),
               imagenUrl: portadaLugarById.get(idLugar) || 'https://placehold.co/600x380?text=Lugar',
               minutos: Number(minutos),
@@ -394,7 +400,7 @@ export default function PlayaDetailScreen() {
 
                   return {
                     id: Number(record.id),
-                    nombre: String(record.nombre ?? 'Playa'),
+                    nombre: String(record.nombre ?? t('comercio.nearbyPlayaFallback')),
                     municipio: String(record.municipio ?? ''),
                     latitud: lat,
                     longitud: lon,
@@ -433,7 +439,7 @@ export default function PlayaDetailScreen() {
     return () => {
       active = false;
     };
-  }, [item, lang, location]);
+  }, [categoriaLabelById, item, lang, location, t]);
 
   const mapsUrl = useMemo(() => {
     if (!item || item.latitud == null || item.longitud == null) return null;
@@ -455,7 +461,7 @@ export default function PlayaDetailScreen() {
       } = await supabase.auth.getUser();
 
       if (!user?.id) {
-        await Linking.openURL(`${DEFAULT_APP_BASE_URLS.public}/logearse.html`);
+        router.push(`/login?redirect=/playa/${item.id}`);
         return;
       }
 
@@ -486,9 +492,9 @@ export default function PlayaDetailScreen() {
       <PublicAppChrome>
         {({ contentPaddingStyle }) => (
           <View style={[styles.stateWrap, contentPaddingStyle]}>
-            <Text style={styles.stateErrorText}>{error || 'Playa no encontrada.'}</Text>
+            <Text style={styles.stateErrorText}>{error || t('playa.notFound')}</Text>
             <Pressable style={styles.retryButton} onPress={() => void loadProfile()}>
-              <Text style={styles.retryButtonText}>Reintentar</Text>
+              <Text style={styles.retryButtonText}>{tPlayas('playas.reintentar', lang)}</Text>
             </Pressable>
           </View>
         )}
@@ -693,7 +699,7 @@ export default function PlayaDetailScreen() {
                         </View>
                         <View style={styles.nearbyMetaLine}>
                           <FontAwesome name="car" size={11} color="#ef4444" />
-                          <Text style={[styles.nearbyMetaText, styles.nearbyFoodTimeText]}>{renderTravelText(card.minutos)}</Text>
+                          <Text style={[styles.nearbyMetaText, styles.nearbyFoodTimeText]}>{renderTravelText(card.minutos, t)}</Text>
                         </View>
                       </View>
                     </Pressable>
@@ -731,7 +737,7 @@ export default function PlayaDetailScreen() {
                           </View>
                           <View style={styles.nearbyMetaLine}>
                             <FontAwesome name="car" size={13} color="#9ca3af" />
-                            <Text style={[styles.nearbyPlaceMetaText, styles.nearbyPlaceTimeText]}>{renderTravelText(card.minutos)}</Text>
+                            <Text style={[styles.nearbyPlaceMetaText, styles.nearbyPlaceTimeText]}>{renderTravelText(card.minutos, t)}</Text>
                           </View>
                         </View>
                       </View>
@@ -780,7 +786,7 @@ export default function PlayaDetailScreen() {
                         </View>
                         <View style={[styles.nearbyMetaLine, styles.nearbyBeachTimeRow]}>
                           <FontAwesome name="car" size={11} color="#ef4444" style={styles.nearbyBeachTimeIcon} />
-                          <Text style={[styles.nearbyMetaText, styles.nearbyBeachTimeText]}>{renderTravelText(card.minutos)}</Text>
+                          <Text style={[styles.nearbyMetaText, styles.nearbyBeachTimeText]}>{renderTravelText(card.minutos, t)}</Text>
                         </View>
                       </View>
                     </Pressable>

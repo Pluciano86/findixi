@@ -15,6 +15,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextStyle,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -126,6 +127,7 @@ type PickerTexts = {
   backToCommerce: string;
   menuPdf: string;
   loadingSectionTitle: string;
+  translatingMenu: string;
   updatedItemFmt: string;
   addedItemFmt: string;
   onlineOrdersPremiumOnly: string;
@@ -144,7 +146,7 @@ type PickerTexts = {
   optionGroupFallback: string;
 };
 
-const TEXTS_BY_LANG: Record<LanguageCode, PickerTexts> = {
+const TEXTS_BY_LANG: Record<LanguageCode, Partial<PickerTexts>> = {
   es: {
     loading: 'Cargando menú...',
     loadError: 'No se pudo cargar el menú de este comercio.',
@@ -155,6 +157,7 @@ const TEXTS_BY_LANG: Record<LanguageCode, PickerTexts> = {
       'Este comercio aún no ha completado la verificación de propiedad. Su menú estará disponible cuando se valide.',
     viewOrder: 'Ver Orden',
     sectionLoading: 'Cargando...',
+    translatingMenu: 'Traduciendo menú...',
     add: 'Agregar',
     optionsLoadError: 'No se pudieron cargar opciones. Se añadió el producto sin opciones.',
     customizeOrder: 'Personaliza tu orden',
@@ -222,6 +225,7 @@ const TEXTS_BY_LANG: Record<LanguageCode, PickerTexts> = {
     blockedPendingBody: 'This business has not completed ownership verification yet. The menu will be available once approved.',
     viewOrder: 'View Order',
     sectionLoading: 'Loading...',
+    translatingMenu: 'Translating menu...',
     add: 'Add',
     optionsLoadError: 'Could not load options. Product was added without options.',
     customizeOrder: 'Customize your order',
@@ -280,13 +284,356 @@ const TEXTS_BY_LANG: Record<LanguageCode, PickerTexts> = {
     optionItemFallback: 'Option',
     optionGroupFallback: 'Options',
   },
-  zh: {} as PickerTexts,
-  fr: {} as PickerTexts,
-  pt: {} as PickerTexts,
-  de: {} as PickerTexts,
-  it: {} as PickerTexts,
-  ko: {} as PickerTexts,
-  ja: {} as PickerTexts,
+  fr: {
+    sectionLoading: 'Chargement...',
+    translatingMenu: 'Traduction du menu...',
+    viewOrder: 'Voir la commande',
+    add: 'Ajouter',
+    customizeOrder: 'Personnalisez votre commande',
+    cancel: 'Annuler',
+    optional: 'facultatif',
+    notePlaceholder: 'Ex : sans oignon, sauce a part',
+    addToCart: 'Ajouter au panier',
+    saveChanges: 'Enregistrer les modifications',
+    requiredFmt: 'Obligatoire (min {min})',
+    optionalLabel: 'Optionnel',
+    maxFmt: 'max {max}',
+    noOptions: 'Aucune option disponible.',
+    cartTitle: 'Votre commande',
+    close: 'Fermer',
+    customerFieldsTitle: 'Informations pour le recu',
+    firstName: 'Prenom',
+    lastName: 'Nom',
+    phone: 'Telephone',
+    email: 'E-mail',
+    notePhone: 'Necessaire pour vous envoyer le lien de commande.',
+    noteEmail: 'Le recu sera envoye a cet e-mail.',
+    subtotal: 'Sous-total',
+    tax: 'Taxe',
+    total: 'Total',
+    checkoutPickup: 'Proceder au paiement',
+    checkoutMesa: 'Envoyer la commande en cuisine',
+    emptyCart: 'Votre panier est vide.',
+    edit: 'Modifier',
+    remove: 'Supprimer',
+    deleteConfirmFmt: 'Voulez-vous vraiment supprimer {name} de la commande ?',
+    completePickup: 'Veuillez completer prenom, nom, telephone et e-mail avant de payer.',
+    invalidEmail: 'Entrez un e-mail valide pour recevoir le recu.',
+    invalidPhone: 'Entrez un numero de telephone valide.',
+    cloverReconnect: 'Ce commerce doit reconnecter Clover pour accepter les paiements.',
+    orderLinkError: "Impossible d'obtenir le lien de paiement.",
+    orderSentMesa: 'Commande envoyee. Le paiement se fait sur place.',
+    orderGenericError: "Erreur inattendue lors de l'envoi de la commande.",
+    updatedItemFmt: '{name} mis a jour avec succes',
+    addedItemFmt: '{name} ajoute avec succes',
+    onlineOrdersPremiumOnly: 'Les commandes en ligne sont disponibles uniquement avec Findixi Premium.',
+    orderCreateErrorFmt: 'Erreur lors de la creation de la commande ({status})',
+    noteLabel: 'Note',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@exemple.com',
+    optionItemFallback: 'Option',
+    optionGroupFallback: 'Options',
+  },
+  pt: {
+    sectionLoading: 'Carregando...',
+    translatingMenu: 'Traduzindo menu...',
+    viewOrder: 'Ver Pedido',
+    add: 'Adicionar',
+    customizeOrder: 'Personalize seu pedido',
+    cancel: 'Cancelar',
+    optional: 'opcional',
+    notePlaceholder: 'Ex: sem cebola, molho a parte',
+    addToCart: 'Adicionar ao carrinho',
+    saveChanges: 'Salvar alteracoes',
+    requiredFmt: 'Obrigatorio (min {min})',
+    optionalLabel: 'Opcional',
+    maxFmt: 'max {max}',
+    noOptions: 'Sem opcoes disponiveis.',
+    cartTitle: 'Seu pedido',
+    close: 'Fechar',
+    customerFieldsTitle: 'Dados para o recibo',
+    firstName: 'Nome',
+    lastName: 'Sobrenome',
+    phone: 'Telefone',
+    email: 'E-mail',
+    notePhone: 'Necessario para enviar o link do pedido.',
+    noteEmail: 'O recibo sera enviado para este e-mail.',
+    subtotal: 'Subtotal',
+    tax: 'Imposto',
+    total: 'Total',
+    checkoutPickup: 'Prosseguir para pagamento',
+    checkoutMesa: 'Enviar pedido para a cozinha',
+    emptyCart: 'Seu carrinho esta vazio.',
+    edit: 'Editar',
+    remove: 'Remover',
+    deleteConfirmFmt: 'Tem certeza de que deseja remover {name} do pedido?',
+    completePickup: 'Preencha nome, sobrenome, telefone e e-mail antes de pagar.',
+    invalidEmail: 'Informe um e-mail valido para receber o recibo.',
+    invalidPhone: 'Informe um telefone valido.',
+    cloverReconnect: 'Este comercio precisa reconectar o Clover para aceitar pagamentos.',
+    orderLinkError: 'Nao foi possivel obter o link de pagamento.',
+    orderSentMesa: 'Pedido enviado. O pagamento e feito no local.',
+    orderGenericError: 'Erro inesperado ao enviar o pedido.',
+    updatedItemFmt: '{name} atualizado com sucesso',
+    addedItemFmt: '{name} adicionado com sucesso',
+    onlineOrdersPremiumOnly: 'Pedidos online estao disponiveis somente no Findixi Premium.',
+    orderCreateErrorFmt: 'Erro ao criar pedido ({status})',
+    noteLabel: 'Nota',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@exemplo.com',
+    optionItemFallback: 'Opcao',
+    optionGroupFallback: 'Opcoes',
+  },
+  de: {
+    sectionLoading: 'Wird geladen...',
+    translatingMenu: 'Menü wird übersetzt...',
+    viewOrder: 'Bestellung ansehen',
+    add: 'Hinzufugen',
+    customizeOrder: 'Passe deine Bestellung an',
+    cancel: 'Abbrechen',
+    optional: 'optional',
+    notePlaceholder: 'z. B. ohne Zwiebeln, Sauce separat',
+    addToCart: 'In den Warenkorb',
+    saveChanges: 'Anderungen speichern',
+    requiredFmt: 'Erforderlich (min {min})',
+    optionalLabel: 'Optional',
+    maxFmt: 'max {max}',
+    noOptions: 'Keine Optionen verfugbar.',
+    cartTitle: 'Deine Bestellung',
+    close: 'Schliessen',
+    customerFieldsTitle: 'Daten fur den Beleg',
+    firstName: 'Vorname',
+    lastName: 'Nachname',
+    phone: 'Telefon',
+    email: 'E-Mail',
+    notePhone: 'Erforderlich, um dir den Bestelllink zu senden.',
+    noteEmail: 'Der Beleg wird an diese E-Mail gesendet.',
+    subtotal: 'Zwischensumme',
+    tax: 'Steuer',
+    total: 'Gesamt',
+    checkoutPickup: 'Zur Zahlung',
+    checkoutMesa: 'Bestellung an die Kuche senden',
+    emptyCart: 'Dein Warenkorb ist leer.',
+    edit: 'Bearbeiten',
+    remove: 'Entfernen',
+    deleteConfirmFmt: 'Mochtest du {name} wirklich aus der Bestellung entfernen?',
+    completePickup: 'Bitte Vorname, Nachname, Telefon und E-Mail vor der Zahlung ausfullen.',
+    invalidEmail: 'Gib eine gultige E-Mail fur den Beleg ein.',
+    invalidPhone: 'Gib eine gultige Telefonnummer ein.',
+    cloverReconnect: 'Dieses Geschaft muss Clover erneut verbinden, um Zahlungen anzunehmen.',
+    orderLinkError: 'Zahlungslink konnte nicht abgerufen werden.',
+    orderSentMesa: 'Bestellung gesendet. Die Zahlung erfolgt vor Ort.',
+    orderGenericError: 'Unerwarteter Fehler beim Senden der Bestellung.',
+    updatedItemFmt: '{name} erfolgreich aktualisiert',
+    addedItemFmt: '{name} erfolgreich hinzugefugt',
+    onlineOrdersPremiumOnly: 'Online-Bestellungen sind nur mit Findixi Premium verfugbar.',
+    orderCreateErrorFmt: 'Fehler beim Erstellen der Bestellung ({status})',
+    noteLabel: 'Notiz',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@beispiel.com',
+    optionItemFallback: 'Option',
+    optionGroupFallback: 'Optionen',
+  },
+  it: {
+    sectionLoading: 'Caricamento...',
+    translatingMenu: 'Traduzione del menu...',
+    viewOrder: 'Vedi ordine',
+    add: 'Aggiungi',
+    customizeOrder: 'Personalizza il tuo ordine',
+    cancel: 'Annulla',
+    optional: 'opzionale',
+    notePlaceholder: 'Es: senza cipolla, salsa a parte',
+    addToCart: 'Aggiungi al carrello',
+    saveChanges: 'Salva modifiche',
+    requiredFmt: 'Obbligatorio (min {min})',
+    optionalLabel: 'Opzionale',
+    maxFmt: 'max {max}',
+    noOptions: 'Nessuna opzione disponibile.',
+    cartTitle: 'Il tuo ordine',
+    close: 'Chiudi',
+    customerFieldsTitle: 'Dati per la ricevuta',
+    firstName: 'Nome',
+    lastName: 'Cognome',
+    phone: 'Telefono',
+    email: 'Email',
+    notePhone: "Necessario per inviarti il link dell'ordine.",
+    noteEmail: 'La ricevuta verra inviata a questa email.',
+    subtotal: 'Subtotale',
+    tax: 'Tassa',
+    total: 'Totale',
+    checkoutPickup: 'Procedi al pagamento',
+    checkoutMesa: 'Invia ordine in cucina',
+    emptyCart: 'Il tuo carrello e vuoto.',
+    edit: 'Modifica',
+    remove: 'Rimuovi',
+    deleteConfirmFmt: "Sei sicuro di voler rimuovere {name} dall'ordine?",
+    completePickup: 'Completa nome, cognome, telefono ed email prima di pagare.',
+    invalidEmail: 'Inserisci una email valida per ricevere la ricevuta.',
+    invalidPhone: 'Inserisci un numero di telefono valido.',
+    cloverReconnect: 'Questo commercio deve ricollegare Clover per accettare pagamenti.',
+    orderLinkError: 'Impossibile ottenere il link di pagamento.',
+    orderSentMesa: 'Ordine inviato. Il pagamento si effettua nel locale.',
+    orderGenericError: "Errore imprevisto durante l'invio dell'ordine.",
+    updatedItemFmt: '{name} aggiornato correttamente',
+    addedItemFmt: '{name} aggiunto correttamente',
+    onlineOrdersPremiumOnly: 'Gli ordini online sono disponibili solo con Findixi Premium.',
+    orderCreateErrorFmt: 'Errore nella creazione ordine ({status})',
+    noteLabel: 'Nota',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@esempio.com',
+    optionItemFallback: 'Opzione',
+    optionGroupFallback: 'Opzioni',
+  },
+  zh: {
+    sectionLoading: '加载中...',
+    translatingMenu: '正在翻译菜单...',
+    viewOrder: '查看订单',
+    add: '添加',
+    customizeOrder: '自定义你的订单',
+    cancel: '取消',
+    optional: '可选',
+    notePlaceholder: '例如：不要洋葱，酱汁另放',
+    addToCart: '加入购物车',
+    saveChanges: '保存更改',
+    requiredFmt: '必选（最少 {min}）',
+    optionalLabel: '可选',
+    maxFmt: '最多 {max}',
+    noOptions: '暂无可选项。',
+    cartTitle: '你的订单',
+    close: '关闭',
+    customerFieldsTitle: '收据信息',
+    firstName: '名字',
+    lastName: '姓氏',
+    phone: '电话',
+    email: '邮箱',
+    notePhone: '用于发送订单链接。',
+    noteEmail: '收据将发送到该邮箱。',
+    subtotal: '小计',
+    tax: '税费',
+    total: '总计',
+    checkoutPickup: '去付款',
+    checkoutMesa: '发送订单到厨房',
+    emptyCart: '你的购物车为空。',
+    edit: '编辑',
+    remove: '删除',
+    deleteConfirmFmt: '确定要从订单中删除 {name} 吗？',
+    completePickup: '付款前请填写名字、姓氏、电话和邮箱。',
+    invalidEmail: '请输入有效邮箱以接收收据。',
+    invalidPhone: '请输入有效电话号码。',
+    cloverReconnect: '该商家需要重新连接 Clover 才能收款。',
+    orderLinkError: '无法获取付款链接。',
+    orderSentMesa: '订单已发送。请到店付款。',
+    orderGenericError: '发送订单时发生意外错误。',
+    updatedItemFmt: '{name} 已成功更新',
+    addedItemFmt: '{name} 已成功添加',
+    onlineOrdersPremiumOnly: '在线下单仅适用于 Findixi Premium。',
+    orderCreateErrorFmt: '创建订单出错（{status}）',
+    noteLabel: '备注',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@example.com',
+    optionItemFallback: '选项',
+    optionGroupFallback: '选项',
+  },
+  ko: {
+    sectionLoading: '로딩 중...',
+    translatingMenu: '메뉴 번역 중...',
+    viewOrder: '주문 보기',
+    add: '추가',
+    customizeOrder: '주문을 맞춤 설정하세요',
+    cancel: '취소',
+    optional: '선택',
+    notePlaceholder: '예: 양파 빼고, 소스는 따로',
+    addToCart: '장바구니에 추가',
+    saveChanges: '변경사항 저장',
+    requiredFmt: '필수 (최소 {min})',
+    optionalLabel: '선택',
+    maxFmt: '최대 {max}',
+    noOptions: '사용 가능한 옵션이 없습니다.',
+    cartTitle: '내 주문',
+    close: '닫기',
+    customerFieldsTitle: '영수증 정보',
+    firstName: '이름',
+    lastName: '성',
+    phone: '전화번호',
+    email: '이메일',
+    notePhone: '주문 링크 전송에 필요합니다.',
+    noteEmail: '영수증이 이 이메일로 전송됩니다.',
+    subtotal: '소계',
+    tax: '세금',
+    total: '합계',
+    checkoutPickup: '결제로 진행',
+    checkoutMesa: '주문을 주방으로 보내기',
+    emptyCart: '장바구니가 비어 있습니다.',
+    edit: '수정',
+    remove: '삭제',
+    deleteConfirmFmt: '주문에서 {name}을(를) 삭제하시겠습니까?',
+    completePickup: '결제 전에 이름, 성, 전화번호, 이메일을 입력하세요.',
+    invalidEmail: '영수증 수신을 위해 올바른 이메일을 입력하세요.',
+    invalidPhone: '올바른 전화번호를 입력하세요.',
+    cloverReconnect: '결제를 받으려면 이 상점이 Clover를 다시 연결해야 합니다.',
+    orderLinkError: '결제 링크를 가져올 수 없습니다.',
+    orderSentMesa: '주문이 전송되었습니다. 결제는 매장에서 진행됩니다.',
+    orderGenericError: '주문 전송 중 예기치 않은 오류가 발생했습니다.',
+    updatedItemFmt: '{name}이(가) 성공적으로 업데이트되었습니다',
+    addedItemFmt: '{name}이(가) 성공적으로 추가되었습니다',
+    onlineOrdersPremiumOnly: '온라인 주문은 Findixi Premium에서만 가능합니다.',
+    orderCreateErrorFmt: '주문 생성 오류 ({status})',
+    noteLabel: '메모',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@example.com',
+    optionItemFallback: '옵션',
+    optionGroupFallback: '옵션',
+  },
+  ja: {
+    sectionLoading: '読み込み中...',
+    translatingMenu: 'メニューを翻訳中...',
+    viewOrder: '注文を見る',
+    add: '追加',
+    customizeOrder: '注文をカスタマイズ',
+    cancel: 'キャンセル',
+    optional: '任意',
+    notePlaceholder: '例：玉ねぎ抜き、ソース別添え',
+    addToCart: 'カートに追加',
+    saveChanges: '変更を保存',
+    requiredFmt: '必須（最小 {min}）',
+    optionalLabel: '任意',
+    maxFmt: '最大 {max}',
+    noOptions: '利用可能なオプションがありません。',
+    cartTitle: 'あなたの注文',
+    close: '閉じる',
+    customerFieldsTitle: '領収書情報',
+    firstName: '名',
+    lastName: '姓',
+    phone: '電話',
+    email: 'メール',
+    notePhone: '注文リンク送信に必要です。',
+    noteEmail: '領収書はこのメールに送信されます。',
+    subtotal: '小計',
+    tax: '税金',
+    total: '合計',
+    checkoutPickup: '支払いに進む',
+    checkoutMesa: '注文をキッチンに送信',
+    emptyCart: 'カートは空です。',
+    edit: '編集',
+    remove: '削除',
+    deleteConfirmFmt: '注文から {name} を削除してもよろしいですか？',
+    completePickup: '支払い前に名、姓、電話、メールを入力してください。',
+    invalidEmail: '領収書受信用に有効なメールを入力してください。',
+    invalidPhone: '有効な電話番号を入力してください。',
+    cloverReconnect: '支払いを受け付けるには Clover の再接続が必要です。',
+    orderLinkError: '支払いリンクを取得できませんでした。',
+    orderSentMesa: '注文を送信しました。支払いは店舗で行います。',
+    orderGenericError: '注文送信中に予期しないエラーが発生しました。',
+    updatedItemFmt: '{name} を更新しました',
+    addedItemFmt: '{name} を追加しました',
+    onlineOrdersPremiumOnly: 'オンライン注文は Findixi Premium のみ利用可能です。',
+    orderCreateErrorFmt: '注文作成エラー（{status}）',
+    noteLabel: 'メモ',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@example.com',
+    optionItemFallback: 'オプション',
+    optionGroupFallback: 'オプション',
+  },
 };
 
 const GALLERY_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/';
@@ -331,8 +678,10 @@ const GOOGLE_FONT_TTF_BY_NAME: Record<string, string> = {
 };
 
 function getTexts(lang: LanguageCode): PickerTexts {
-  if (lang === 'es' || lang === 'en') return TEXTS_BY_LANG[lang];
-  return TEXTS_BY_LANG.en;
+  return {
+    ...(TEXTS_BY_LANG.en as PickerTexts),
+    ...(TEXTS_BY_LANG[lang] || {}),
+  } as PickerTexts;
 }
 
 function parseId(value: string | string[] | undefined): number {
@@ -349,6 +698,74 @@ function resolveOrderMode(modeRaw: string | string[] | undefined): OrderMode {
 
 function normalizeQueryValue(value: string | string[] | undefined): string {
   return String(Array.isArray(value) ? value[0] ?? '' : value ?? '').trim();
+}
+
+function normalizeLanguageCode(value: string | null | undefined): string {
+  return String(value || 'es')
+    .toLowerCase()
+    .split('-')[0];
+}
+
+function pickTranslatedValue(
+  entry: Record<string, unknown> | null | undefined,
+  primaryKey: string,
+  fallbackKey: string
+): string {
+  const direct = entry?.[primaryKey];
+  if (typeof direct === 'string' && direct.trim()) return direct.trim();
+  const fallback = entry?.[fallbackKey];
+  if (typeof fallback === 'string' && fallback.trim()) return fallback.trim();
+  return '';
+}
+
+function parseCssTextShadow(shadowRaw: string | null | undefined): TextStyle {
+  const shadow = String(shadowRaw || '').trim();
+  if (!shadow) return {};
+
+  const firstShadow = shadow
+    .split(',')
+    .map((part) => part.trim())
+    .find(Boolean);
+  if (!firstShadow) return {};
+
+  const match = firstShadow.match(
+    /(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px(?:\s+(\d+(?:\.\d+)?)px)?(?:\s+(.+))?/i
+  );
+  if (!match) return {};
+
+  const offsetX = Number(match[1] || 0);
+  const offsetY = Number(match[2] || 0);
+  const blur = Number(match[3] || 0);
+  const color = String(match[4] || '').trim() || '#00000055';
+
+  return {
+    textShadowColor: color,
+    textShadowOffset: { width: Number.isFinite(offsetX) ? offsetX : 0, height: Number.isFinite(offsetY) ? offsetY : 0 },
+    textShadowRadius: Number.isFinite(blur) ? blur : 0,
+  };
+}
+
+function getWebStrokeStyle(
+  widthRaw: number | null | undefined,
+  colorRaw: string | null | undefined,
+  shadowRaw?: string | null
+): TextStyle {
+  const width = Number(widthRaw || 0);
+  if (!Number.isFinite(width) || width <= 0) return {};
+  if (Platform.OS !== 'web') {
+    // React Native no soporta text-stroke real. Si no hay shadow configurado, simulamos un contorno suave.
+    if (String(shadowRaw || '').trim()) return {};
+    return {
+      textShadowColor: String(colorRaw || '#000000'),
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: Math.max(1, width),
+    };
+  }
+  return {
+    WebkitTextStrokeWidth: `${width}px`,
+    WebkitTextStrokeColor: String(colorRaw || '#000000'),
+    paintOrder: 'stroke fill',
+  } as unknown as TextStyle;
 }
 
 function replaceTemplate(template: string, values: Record<string, string | number>): string {
@@ -541,8 +958,10 @@ function getMenuTranslationMap(translation: MenuTranslationResult | null): Map<n
     const id = Number(entry?.id ?? entry?.idproducto);
     if (!Number.isFinite(id)) return;
     map.set(id, {
-      nombre: entry?.nombre,
-      descripcion: entry?.descripcion,
+      nombre: pickTranslatedValue((entry || null) as Record<string, unknown> | null, 'nombre', 'name') || entry?.nombre,
+      descripcion:
+        pickTranslatedValue((entry || null) as Record<string, unknown> | null, 'descripcion', 'description') ||
+        entry?.descripcion,
     });
   });
   return map;
@@ -568,7 +987,13 @@ export default function MenuComercioScreen() {
     source?: string;
   }>();
   const { lang, currentLanguage, languages, setLang, t } = useI18n();
+  const normalizedLang = useMemo(() => normalizeLanguageCode(lang), [lang]);
   const texts = getTexts(lang);
+  const textsRef = useRef<PickerTexts>(texts);
+
+  useEffect(() => {
+    textsRef.current = texts;
+  }, [texts]);
 
   const idComercio = useMemo(() => {
     return parseId(params.idComercio || params.id);
@@ -594,11 +1019,14 @@ export default function MenuComercioScreen() {
   const [products, setProducts] = useState<MenuProduct[]>([]);
   const [expandedSectionId, setExpandedSectionId] = useState<number | null>(null);
   const [sectionLoadingId, setSectionLoadingId] = useState<number | null>(null);
+  const [isTranslatingMenu, setIsTranslatingMenu] = useState(false);
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
   const [langModalOpen, setLangModalOpen] = useState(false);
 
   const [translationsByMenu, setTranslationsByMenu] = useState<Record<number, MenuTranslationResult | null>>({});
   const translationCacheRef = useRef<Map<string, MenuTranslationResult | null>>(new Map());
+  const translationInFlightRef = useRef<Map<string, Promise<MenuTranslationResult | null>>>(new Map());
+  const translationRunIdRef = useRef(0);
 
   const [cartLoaded, setCartLoaded] = useState(false);
   const [cartItems, setCartItems] = useState<CartLineItem[]>([]);
@@ -623,6 +1051,41 @@ export default function MenuComercioScreen() {
   const groupsCacheRef = useRef<Map<number, ModifierGroup[]>>(new Map());
   const itemsCacheRef = useRef<Map<number, ModifierItem[]>>(new Map());
   const loadedFontAliasesRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    translationCacheRef.current.clear();
+    translationInFlightRef.current.clear();
+    setTranslationsByMenu({});
+  }, [normalizedLang]);
+
+  const loadMenuTranslationCached = useCallback(async (menuId: number, langNorm: string) => {
+    if (langNorm === 'es') return null;
+    const cacheKey = `${menuId}:${langNorm}`;
+
+    if (translationCacheRef.current.has(cacheKey)) {
+      return translationCacheRef.current.get(cacheKey) ?? null;
+    }
+
+    const inFlight = translationInFlightRef.current.get(cacheKey);
+    if (inFlight) return inFlight;
+
+    const request = (async () => {
+      try {
+        const translated = await fetchMenuTranslation(menuId, langNorm);
+        translationCacheRef.current.set(cacheKey, translated);
+        return translated;
+      } catch (error) {
+        console.warn('[mobile-public][menu] No se pudo traducir sección:', menuId, error);
+        translationCacheRef.current.set(cacheKey, null);
+        return null;
+      } finally {
+        translationInFlightRef.current.delete(cacheKey);
+      }
+    })();
+
+    translationInFlightRef.current.set(cacheKey, request);
+    return request;
+  }, []);
 
   const menuWord = (theme?.textomenu || texts.menuWordDefault || 'Menú').trim();
   const nombreFontSize = Math.max(18, Number(theme?.nombre_font_size || 28));
@@ -652,6 +1115,16 @@ export default function MenuComercioScreen() {
   const bodyFontMetrics = useMemo(
     () => getFontRenderMetrics(theme?.fontbodyfamily, bodyFontSize),
     [bodyFontSize, theme?.fontbodyfamily]
+  );
+  const comercioNameShadowStyle = useMemo(() => parseCssTextShadow(theme?.nombre_shadow), [theme?.nombre_shadow]);
+  const menuWordShadowStyle = useMemo(() => parseCssTextShadow(theme?.menu_shadow), [theme?.menu_shadow]);
+  const comercioNameStrokeStyle = useMemo(
+    () => getWebStrokeStyle(theme?.nombre_stroke_width, theme?.nombre_stroke_color, theme?.nombre_shadow),
+    [theme?.nombre_shadow, theme?.nombre_stroke_color, theme?.nombre_stroke_width]
+  );
+  const menuWordStrokeStyle = useMemo(
+    () => getWebStrokeStyle(theme?.menu_stroke_width, theme?.menu_stroke_color, theme?.menu_shadow),
+    [theme?.menu_shadow, theme?.menu_stroke_color, theme?.menu_stroke_width]
   );
   const coverUrl = useMemo(() => toMenuStorageUrl(theme?.portadaimagen ?? null), [theme?.portadaimagen]);
   const backgroundUrl = useMemo(() => toMenuStorageUrl(theme?.backgroundimagen ?? null), [theme?.backgroundimagen]);
@@ -800,33 +1273,36 @@ export default function MenuComercioScreen() {
 
   const ensureMenuTranslation = useCallback(
     async (menuId: number) => {
-      const langNorm = String(lang || 'es')
-        .toLowerCase()
-        .split('-')[0];
-      if (langNorm === 'es') return;
+      if (!Number.isFinite(menuId) || menuId <= 0) return;
+      if (normalizedLang === 'es') return;
+      const runId = translationRunIdRef.current;
 
-      const cacheKey = `${menuId}:${langNorm}`;
+      const cacheKey = `${menuId}:${normalizedLang}`;
       if (translationCacheRef.current.has(cacheKey)) {
         const cached = translationCacheRef.current.get(cacheKey) ?? null;
+        if (runId !== translationRunIdRef.current) return;
         setTranslationsByMenu((prev) => ({ ...prev, [menuId]: cached }));
         return;
       }
 
       setSectionLoadingId(menuId);
       try {
-        const translated = await fetchMenuTranslation(menuId, langNorm);
-        translationCacheRef.current.set(cacheKey, translated);
+        const translated = await loadMenuTranslationCached(menuId, normalizedLang);
+        if (runId !== translationRunIdRef.current) return;
         setTranslationsByMenu((prev) => ({ ...prev, [menuId]: translated }));
       } finally {
-        setSectionLoadingId((current) => (current === menuId ? null : current));
+        if (runId === translationRunIdRef.current) {
+          setSectionLoadingId((current) => (current === menuId ? null : current));
+        }
       }
     },
-    [lang]
+    [loadMenuTranslationCached, normalizedLang]
   );
 
   const loadData = useCallback(async () => {
+    const currentTexts = textsRef.current;
     if (!Number.isFinite(idComercio) || idComercio <= 0) {
-      setError(texts.loadError);
+      setError(currentTexts.loadError);
       setLoading(false);
       return;
     }
@@ -844,7 +1320,7 @@ export default function MenuComercioScreen() {
       ]);
 
       if (!comercioRes) {
-        setError(texts.loadError);
+        setError(currentTexts.loadError);
         setLoading(false);
         return;
       }
@@ -859,13 +1335,13 @@ export default function MenuComercioScreen() {
       if (!plan.permite_menu) {
         if (isComercioVerificado(comercioRes)) {
           setPlanBlocked({
-            title: texts.blockedByPlanTitle,
-            body: texts.blockedByPlanBody,
+            title: currentTexts.blockedByPlanTitle,
+            body: currentTexts.blockedByPlanBody,
           });
         } else {
           setPlanBlocked({
-            title: texts.blockedPendingTitle,
-            body: texts.blockedPendingBody,
+            title: currentTexts.blockedPendingTitle,
+            body: currentTexts.blockedPendingBody,
           });
         }
         setLoading(false);
@@ -892,15 +1368,81 @@ export default function MenuComercioScreen() {
       }
     } catch (loadError) {
       console.error('[mobile-public][menu] Error cargando menu:', loadError);
-      setError(texts.loadError);
+      setError(currentTexts.loadError);
     } finally {
       setLoading(false);
     }
-  }, [allowOrdering, idComercio, texts.blockedByPlanBody, texts.blockedByPlanTitle, texts.blockedPendingBody, texts.blockedPendingTitle, texts.loadError]);
+  }, [allowOrdering, idComercio]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!comercio) return;
+    const plan = resolverPlanComercio(comercio as Record<string, unknown>);
+    if (plan.permite_menu) {
+      setPlanBlocked(null);
+      return;
+    }
+
+    if (isComercioVerificado(comercio)) {
+      setPlanBlocked({
+        title: texts.blockedByPlanTitle,
+        body: texts.blockedByPlanBody,
+      });
+      return;
+    }
+
+    setPlanBlocked({
+      title: texts.blockedPendingTitle,
+      body: texts.blockedPendingBody,
+    });
+  }, [
+    comercio,
+    texts.blockedByPlanBody,
+    texts.blockedByPlanTitle,
+    texts.blockedPendingBody,
+    texts.blockedPendingTitle,
+  ]);
+
+  useEffect(() => {
+    const runId = ++translationRunIdRef.current;
+    const menuIds = sections
+      .map((section) => Number(section.id))
+      .filter((menuId) => Number.isFinite(menuId) && menuId > 0);
+
+    setSectionLoadingId(null);
+
+    if (!menuIds.length || normalizedLang === 'es') {
+      setIsTranslatingMenu(false);
+      setTranslationsByMenu({});
+      return;
+    }
+
+    let active = true;
+    setIsTranslatingMenu(true);
+    setTranslationsByMenu({});
+
+    void Promise.all(
+      menuIds.map(async (menuId) => {
+        const translated = await loadMenuTranslationCached(menuId, normalizedLang);
+        if (!active || runId !== translationRunIdRef.current) return;
+        setTranslationsByMenu((prev) => {
+          if (prev[menuId] === translated) return prev;
+          return { ...prev, [menuId]: translated };
+        });
+      })
+    ).finally(() => {
+      if (active && runId === translationRunIdRef.current) {
+        setIsTranslatingMenu(false);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [loadMenuTranslationCached, normalizedLang, sections]);
 
   useEffect(() => {
     let active = true;
@@ -946,7 +1488,7 @@ export default function MenuComercioScreen() {
   useEffect(() => {
     if (!expandedSectionId) return;
     void ensureMenuTranslation(expandedSectionId);
-  }, [ensureMenuTranslation, expandedSectionId, lang]);
+  }, [ensureMenuTranslation, expandedSectionId]);
 
   const addLineItem = useCallback((product: MenuProduct, modifiers: CartModifier[] = [], nota = '') => {
     const key = loadLineKey(product.id, modifiers, nota);
@@ -1398,7 +1940,7 @@ export default function MenuComercioScreen() {
             ? String(translated.descripcion ?? '').trim()
             : product.descripcion;
 
-        const imageUrl = getProductoImageUrl(product.imagen) || DEFAULT_PRODUCT_IMAGE;
+        const imageUrl = getProductoImageUrl(product.imagen);
 
         return (
           <View
@@ -1413,9 +1955,11 @@ export default function MenuComercioScreen() {
             ]}
           >
             <View style={styles.productRow}>
-              <Pressable onPress={() => setImageModalUrl(imageUrl)}>
-                <Image source={{ uri: imageUrl }} style={styles.productImage} resizeMode="cover" />
-              </Pressable>
+              {imageUrl ? (
+                <Pressable onPress={() => setImageModalUrl(imageUrl)}>
+                  <Image source={{ uri: imageUrl }} style={styles.productImage} resizeMode="cover" />
+                </Pressable>
+              ) : null}
 
               <View style={styles.productInfo}>
                 <Text
@@ -1571,6 +2115,8 @@ export default function MenuComercioScreen() {
                   paddingBottom: nombreFontMetrics.paddingBottom,
                   fontFamily: menuFonts.nombre,
                 },
+                comercioNameShadowStyle,
+                comercioNameStrokeStyle,
               ]}
             >
               {comercio?.nombre || ''}
@@ -1589,6 +2135,8 @@ export default function MenuComercioScreen() {
                   paddingBottom: menuWordFontMetrics.paddingBottom,
                   fontFamily: menuFonts.menuWord,
                 },
+                menuWordShadowStyle,
+                menuWordStrokeStyle,
               ]}
             >
               {menuWord}
@@ -1600,6 +2148,13 @@ export default function MenuComercioScreen() {
               <Text style={styles.langToggleInlineText}>🌐 {currentLanguage.flag} ▾</Text>
             </Pressable>
           </View>
+
+          {isTranslatingMenu ? (
+            <View style={styles.translationStatusRow}>
+              <ActivityIndicator size="small" color="#111827" />
+              <Text style={styles.translationStatusText}>{texts.translatingMenu}</Text>
+            </View>
+          ) : null}
 
           {theme?.pdfurl ? (
             <Pressable
@@ -1645,10 +2200,17 @@ export default function MenuComercioScreen() {
 
         <View style={styles.sectionsWrap}>
           {sections.map((section) => {
-            const translated = translationsByMenu[section.id]?.menu;
-            const title = translated?.titulo?.trim() || section.titulo || texts.loadingSectionTitle;
-            const description = translated?.descripcion?.trim() || section.descripcion || '';
+            const translated = (translationsByMenu[section.id]?.menu || null) as Record<string, unknown> | null;
+            const translatedTitle = pickTranslatedValue(translated, 'titulo', 'title');
+            const translatedDescription = pickTranslatedValue(translated, 'descripcion', 'description');
+            const title = translatedTitle || section.titulo || texts.loadingSectionTitle;
+            const description = translatedDescription || section.descripcion || '';
             const isOpen = expandedSectionId === section.id;
+            const missingTranslation =
+              normalizedLang !== 'es' &&
+              Object.prototype.hasOwnProperty.call(translationsByMenu, section.id) === false;
+            const showSectionTranslationLoader =
+              missingTranslation && (isTranslatingMenu || sectionLoadingId === section.id);
 
             return (
               <View key={`menu-section-${section.id}`} style={styles.sectionBlock}>
@@ -1705,7 +2267,7 @@ export default function MenuComercioScreen() {
 
                 {isOpen ? (
                   <View style={styles.productsWrap}>
-                    {sectionLoadingId === section.id && !translationsByMenu[section.id] ? (
+                    {showSectionTranslationLoader ? (
                       <Text style={styles.sectionLoadingText}>{texts.sectionLoading}</Text>
                     ) : (
                       renderSectionProducts(section)
@@ -2216,6 +2778,25 @@ const styles = StyleSheet.create({
   langToggleInlineText: {
     color: '#111827',
     fontSize: 14,
+    fontFamily: fonts.medium,
+  },
+  translationStatusRow: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: 2,
+    backgroundColor: '#ffffff',
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+    ...shadows.card,
+  },
+  translationStatusText: {
+    color: '#111827',
+    fontSize: 12,
     fontFamily: fonts.medium,
   },
   pdfButton: {

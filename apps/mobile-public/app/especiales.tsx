@@ -49,6 +49,22 @@ function normalizeText(value: unknown): string {
     .toLowerCase();
 }
 
+function resolveSortLocale(lang: string): string {
+  const code = String(lang || 'es').toLowerCase().split('-')[0];
+  const map: Record<string, string> = {
+    es: 'es-PR',
+    en: 'en-US',
+    zh: 'zh-CN',
+    fr: 'fr-FR',
+    pt: 'pt-PT',
+    de: 'de-DE',
+    it: 'it-IT',
+    ko: 'ko-KR',
+    ja: 'ja-JP',
+  };
+  return map[code] || 'es-PR';
+}
+
 function estimateMinutesByCar(from: UserLocation | null, comercio: EspecialComercio): number | null {
   if (!from) return null;
   if (!Number.isFinite(comercio.latitud) || !Number.isFinite(comercio.longitud)) return null;
@@ -274,6 +290,7 @@ function EspecialCard({ group, lang, location }: EspecialCardProps) {
 
 export default function EspecialesScreen() {
   const { lang } = useI18n();
+  const sortLocale = useMemo(() => resolveSortLocale(lang), [lang]);
   const selectedTipo: EspecialTipo = isLunchTime() ? 'almuerzo' : 'happyhour';
   const [allGroups, setAllGroups] = useState<EspecialGrupo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -328,10 +345,10 @@ export default function EspecialesScreen() {
           .map((group) => String(group.comercio.municipio || '').trim())
           .filter((value) => value.length > 0)
       )
-    ).sort((a, b) => a.localeCompare(b, 'es'));
+    ).sort((a, b) => a.localeCompare(b, sortLocale));
 
     return values.map((value) => ({ value, label: value }));
-  }, [allGroups]);
+  }, [allGroups, sortLocale]);
 
   const orderOptions = useMemo<SelectOption[]>(
     () => [
@@ -362,7 +379,7 @@ export default function EspecialesScreen() {
 
     const output = [...base];
     if (selectedOrder === 'az') {
-      output.sort((a, b) => a.comercio.nombre.localeCompare(b.comercio.nombre, 'es'));
+      output.sort((a, b) => a.comercio.nombre.localeCompare(b.comercio.nombre, sortLocale));
     } else if (selectedOrder === 'recientes') {
       output.sort((a, b) => {
         const maxA = Math.max(...a.especiales.map((item) => item.id));
@@ -381,7 +398,7 @@ export default function EspecialesScreen() {
     }
 
     return output;
-  }, [allGroups, favoriteIds, location, onlyFavorites, searchText, selectedMunicipio, selectedOrder, selectedTipo]);
+  }, [allGroups, favoriteIds, location, onlyFavorites, searchText, selectedMunicipio, selectedOrder, selectedTipo, sortLocale]);
 
   const dayLabel = useMemo(() => getEspecialesDayLabel(lang), [lang]);
   const titleLabel = selectedTipo === 'almuerzo' ? tEspeciales('especiales.almuerzo', lang) : tEspeciales('especiales.happyHour', lang);

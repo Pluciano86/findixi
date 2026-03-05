@@ -1,6 +1,6 @@
 // menu/menuComercio.js
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/supabaseClient.js';
-import { getMenuI18n } from '../shared/menuI18n.js';
+import { getMenuI18n, clearMenuI18nCache } from '../shared/menuI18n.js';
 import { mountLangSelector } from '../shared/langSelector.js';
 import { getLang } from '../js/i18n.js';
 import { resolverPlanComercio } from '../shared/planes.js';
@@ -167,6 +167,7 @@ let menusBase = [];
 let productosBase = [];
 let productosView = [];
 const productosById = new Map();
+const menuViewById = new Map(); // idMenu -> { menu, productos }
 let renderToken = 0;
 let seccionActivaId = null;
 const menuButtons = new Map(); // idMenu -> { btn, titleEl, descEl }
@@ -196,9 +197,555 @@ const getCurrentLang = () => {
   return (stored || docLang || fallback || 'es').toLowerCase().split('-')[0];
 };
 
+const ORDER_TEXTS = {
+  es: {
+    viewOrder: 'Ver Orden',
+    add: 'Agregar',
+    customizeOrder: 'Personaliza tu orden',
+    cancel: 'Cancelar',
+    notesOptional: 'Notas (opcional)',
+    notePlaceholder: 'Ej: sin cebolla, salsa aparte',
+    addToCart: 'Agregar al carrito',
+    saveChanges: 'Guardar cambios',
+    loadingOptions: 'Cargando opciones...',
+    optionsLoadError: 'No se pudieron cargar opciones.',
+    noOptionsProduct: 'Este producto no tiene opciones.',
+    requiredWithMin: 'Requerido (min {min})',
+    required: 'Requerido',
+    optional: 'Opcional',
+    maxFmt: 'max {max}',
+    noOptionsAvailable: 'Sin opciones disponibles.',
+    maxSelectAlert: 'Puedes seleccionar maximo {max} opciones.',
+    groupRequiredAlert: 'Debes elegir al menos {min} opcion(es) en "{group}".',
+    optionGroupFallback: 'Opciones',
+    optionItemFallback: 'Opcion',
+    cartTitle: 'Tu pedido',
+    close: 'Cerrar',
+    customerFieldsTitle: 'Datos para el recibo',
+    firstName: 'Nombre',
+    lastName: 'Apellido',
+    phone: 'Telefono',
+    email: 'Email',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'correo@ejemplo.com',
+    phoneHelp: 'Necesario para enviarte el enlace del pedido.',
+    emailHelp: 'El recibo sera enviado a este email.',
+    subtotal: 'Subtotal',
+    tax: 'Tax',
+    total: 'Total',
+    emptyCart: 'Tu carrito esta vacio.',
+    noteLabel: 'Nota',
+    lineTotal: 'Total',
+    edit: 'Editar',
+    remove: 'Eliminar',
+    deleteConfirmFmt: 'Seguro deseas eliminar {name} del pedido?',
+    addedItemFmt: '{name} anadido correctamente',
+    updatedItemFmt: '{name} actualizado correctamente',
+    checkoutPickup: 'Proceder con el pago',
+    checkoutMesa: 'Enviar orden a cocina',
+    premiumOnly: 'Las ordenes en linea estan disponibles solo en Findixi Premium.',
+    completePickup: 'Por favor completa nombre, apellido, telefono y email antes de pagar.',
+    invalidEmail: 'Ingresa un email valido para recibir el recibo.',
+    invalidPhone: 'Ingresa un telefono valido.',
+    reconnectClover: 'Este comercio debe reconectar Clover para aceptar pagos.',
+    orderCreateErrorFmt: 'Error creando orden ({status})',
+    paymentLinkError: 'No se pudo obtener el enlace de pago.',
+    orderSentMesa: 'Orden enviada. El pago se realiza en el local.',
+    unexpectedOrderError: 'Error inesperado al enviar la orden.',
+    productFallbackFmt: 'Producto {id}',
+  },
+  en: {
+    viewOrder: 'View Order',
+    add: 'Add',
+    customizeOrder: 'Customize your order',
+    cancel: 'Cancel',
+    notesOptional: 'Notes (optional)',
+    notePlaceholder: 'e.g. no onions, sauce on the side',
+    addToCart: 'Add to cart',
+    saveChanges: 'Save changes',
+    loadingOptions: 'Loading options...',
+    optionsLoadError: 'Could not load options.',
+    noOptionsProduct: 'This product has no options.',
+    requiredWithMin: 'Required (min {min})',
+    required: 'Required',
+    optional: 'Optional',
+    maxFmt: 'max {max}',
+    noOptionsAvailable: 'No options available.',
+    maxSelectAlert: 'You can select a maximum of {max} options.',
+    groupRequiredAlert: 'You must select at least {min} option(s) in "{group}".',
+    optionGroupFallback: 'Options',
+    optionItemFallback: 'Option',
+    cartTitle: 'Your order',
+    close: 'Close',
+    customerFieldsTitle: 'Receipt information',
+    firstName: 'First name',
+    lastName: 'Last name',
+    phone: 'Phone',
+    email: 'Email',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@example.com',
+    phoneHelp: 'Required to send your order link.',
+    emailHelp: 'Receipt will be sent to this email.',
+    subtotal: 'Subtotal',
+    tax: 'Tax',
+    total: 'Total',
+    emptyCart: 'Your cart is empty.',
+    noteLabel: 'Note',
+    lineTotal: 'Total',
+    edit: 'Edit',
+    remove: 'Remove',
+    deleteConfirmFmt: 'Are you sure you want to remove {name} from the order?',
+    addedItemFmt: '{name} added successfully',
+    updatedItemFmt: '{name} updated successfully',
+    checkoutPickup: 'Proceed to payment',
+    checkoutMesa: 'Send order to kitchen',
+    premiumOnly: 'Online orders are available only with Findixi Premium.',
+    completePickup: 'Please complete first name, last name, phone and email before checkout.',
+    invalidEmail: 'Enter a valid email to receive the receipt.',
+    invalidPhone: 'Enter a valid phone number.',
+    reconnectClover: 'This business must reconnect Clover to accept payments.',
+    orderCreateErrorFmt: 'Error creating order ({status})',
+    paymentLinkError: 'Could not get payment link.',
+    orderSentMesa: 'Order sent. Payment is completed at the store.',
+    unexpectedOrderError: 'Unexpected error sending the order.',
+    productFallbackFmt: 'Product {id}',
+  },
+  fr: {
+    viewOrder: 'Voir la commande',
+    add: 'Ajouter',
+    customizeOrder: 'Personnalisez votre commande',
+    cancel: 'Annuler',
+    notesOptional: 'Notes (facultatif)',
+    notePlaceholder: 'Ex : sans oignon, sauce a part',
+    addToCart: 'Ajouter au panier',
+    saveChanges: 'Enregistrer les modifications',
+    loadingOptions: 'Chargement des options...',
+    optionsLoadError: 'Impossible de charger les options.',
+    noOptionsProduct: "Ce produit n'a pas d'options.",
+    requiredWithMin: 'Obligatoire (min {min})',
+    required: 'Obligatoire',
+    optional: 'Optionnel',
+    maxFmt: 'max {max}',
+    noOptionsAvailable: 'Aucune option disponible.',
+    maxSelectAlert: 'Vous pouvez selectionner un maximum de {max} options.',
+    groupRequiredAlert: 'Vous devez choisir au moins {min} option(s) dans "{group}".',
+    optionGroupFallback: 'Options',
+    optionItemFallback: 'Option',
+    cartTitle: 'Votre commande',
+    close: 'Fermer',
+    customerFieldsTitle: 'Informations pour le recu',
+    firstName: 'Prenom',
+    lastName: 'Nom',
+    phone: 'Telephone',
+    email: 'E-mail',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@exemple.com',
+    phoneHelp: 'Necessaire pour vous envoyer le lien de commande.',
+    emailHelp: 'Le recu sera envoye a cet e-mail.',
+    subtotal: 'Sous-total',
+    tax: 'Taxe',
+    total: 'Total',
+    emptyCart: 'Votre panier est vide.',
+    noteLabel: 'Note',
+    lineTotal: 'Total',
+    edit: 'Modifier',
+    remove: 'Supprimer',
+    deleteConfirmFmt: 'Voulez-vous vraiment supprimer {name} de la commande ?',
+    addedItemFmt: '{name} ajoute avec succes',
+    updatedItemFmt: '{name} mis a jour avec succes',
+    checkoutPickup: 'Proceder au paiement',
+    checkoutMesa: 'Envoyer la commande en cuisine',
+    premiumOnly: 'Les commandes en ligne sont disponibles uniquement avec Findixi Premium.',
+    completePickup: 'Veuillez completer prenom, nom, telephone et e-mail avant de payer.',
+    invalidEmail: 'Entrez un e-mail valide pour recevoir le recu.',
+    invalidPhone: 'Entrez un numero de telephone valide.',
+    reconnectClover: 'Ce commerce doit reconnecter Clover pour accepter les paiements.',
+    orderCreateErrorFmt: 'Erreur lors de la creation de la commande ({status})',
+    paymentLinkError: 'Impossible d obtenir le lien de paiement.',
+    orderSentMesa: 'Commande envoyee. Le paiement se fait sur place.',
+    unexpectedOrderError: "Erreur inattendue lors de l'envoi de la commande.",
+    productFallbackFmt: 'Produit {id}',
+  },
+  pt: {
+    viewOrder: 'Ver Pedido',
+    add: 'Adicionar',
+    customizeOrder: 'Personalize seu pedido',
+    cancel: 'Cancelar',
+    notesOptional: 'Notas (opcional)',
+    notePlaceholder: 'Ex: sem cebola, molho a parte',
+    addToCart: 'Adicionar ao carrinho',
+    saveChanges: 'Salvar alteracoes',
+    loadingOptions: 'Carregando opcoes...',
+    optionsLoadError: 'Nao foi possivel carregar as opcoes.',
+    noOptionsProduct: 'Este produto nao tem opcoes.',
+    requiredWithMin: 'Obrigatorio (min {min})',
+    required: 'Obrigatorio',
+    optional: 'Opcional',
+    maxFmt: 'max {max}',
+    noOptionsAvailable: 'Sem opcoes disponiveis.',
+    maxSelectAlert: 'Voce pode selecionar no maximo {max} opcoes.',
+    groupRequiredAlert: 'Voce deve escolher pelo menos {min} opcao(oes) em "{group}".',
+    optionGroupFallback: 'Opcoes',
+    optionItemFallback: 'Opcao',
+    cartTitle: 'Seu pedido',
+    close: 'Fechar',
+    customerFieldsTitle: 'Dados para o recibo',
+    firstName: 'Nome',
+    lastName: 'Sobrenome',
+    phone: 'Telefone',
+    email: 'E-mail',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@exemplo.com',
+    phoneHelp: 'Necessario para enviar o link do pedido.',
+    emailHelp: 'O recibo sera enviado para este e-mail.',
+    subtotal: 'Subtotal',
+    tax: 'Imposto',
+    total: 'Total',
+    emptyCart: 'Seu carrinho esta vazio.',
+    noteLabel: 'Nota',
+    lineTotal: 'Total',
+    edit: 'Editar',
+    remove: 'Remover',
+    deleteConfirmFmt: 'Tem certeza de que deseja remover {name} do pedido?',
+    addedItemFmt: '{name} adicionado com sucesso',
+    updatedItemFmt: '{name} atualizado com sucesso',
+    checkoutPickup: 'Prosseguir para pagamento',
+    checkoutMesa: 'Enviar pedido para a cozinha',
+    premiumOnly: 'Pedidos online estao disponiveis somente no Findixi Premium.',
+    completePickup: 'Preencha nome, sobrenome, telefone e e-mail antes de pagar.',
+    invalidEmail: 'Informe um e-mail valido para receber o recibo.',
+    invalidPhone: 'Informe um telefone valido.',
+    reconnectClover: 'Este comercio precisa reconectar o Clover para aceitar pagamentos.',
+    orderCreateErrorFmt: 'Erro ao criar pedido ({status})',
+    paymentLinkError: 'Nao foi possivel obter o link de pagamento.',
+    orderSentMesa: 'Pedido enviado. O pagamento e feito no local.',
+    unexpectedOrderError: 'Erro inesperado ao enviar o pedido.',
+    productFallbackFmt: 'Produto {id}',
+  },
+  de: {
+    viewOrder: 'Bestellung ansehen',
+    add: 'Hinzufugen',
+    customizeOrder: 'Passe deine Bestellung an',
+    cancel: 'Abbrechen',
+    notesOptional: 'Notizen (optional)',
+    notePlaceholder: 'z. B. ohne Zwiebeln, Sauce separat',
+    addToCart: 'In den Warenkorb',
+    saveChanges: 'Anderungen speichern',
+    loadingOptions: 'Optionen werden geladen...',
+    optionsLoadError: 'Optionen konnten nicht geladen werden.',
+    noOptionsProduct: 'Dieses Produkt hat keine Optionen.',
+    requiredWithMin: 'Erforderlich (min {min})',
+    required: 'Erforderlich',
+    optional: 'Optional',
+    maxFmt: 'max {max}',
+    noOptionsAvailable: 'Keine Optionen verfugbar.',
+    maxSelectAlert: 'Du kannst maximal {max} Optionen auswahlen.',
+    groupRequiredAlert: 'Du musst mindestens {min} Option(en) in "{group}" auswahlen.',
+    optionGroupFallback: 'Optionen',
+    optionItemFallback: 'Option',
+    cartTitle: 'Deine Bestellung',
+    close: 'Schliessen',
+    customerFieldsTitle: 'Daten fur den Beleg',
+    firstName: 'Vorname',
+    lastName: 'Nachname',
+    phone: 'Telefon',
+    email: 'E-Mail',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@beispiel.com',
+    phoneHelp: 'Erforderlich, um dir den Bestelllink zu senden.',
+    emailHelp: 'Der Beleg wird an diese E-Mail gesendet.',
+    subtotal: 'Zwischensumme',
+    tax: 'Steuer',
+    total: 'Gesamt',
+    emptyCart: 'Dein Warenkorb ist leer.',
+    noteLabel: 'Notiz',
+    lineTotal: 'Gesamt',
+    edit: 'Bearbeiten',
+    remove: 'Entfernen',
+    deleteConfirmFmt: 'Mochtest du {name} wirklich aus der Bestellung entfernen?',
+    addedItemFmt: '{name} erfolgreich hinzugefugt',
+    updatedItemFmt: '{name} erfolgreich aktualisiert',
+    checkoutPickup: 'Zur Zahlung',
+    checkoutMesa: 'Bestellung an die Kuche senden',
+    premiumOnly: 'Online-Bestellungen sind nur mit Findixi Premium verfugbar.',
+    completePickup: 'Bitte Vorname, Nachname, Telefon und E-Mail vor der Zahlung ausfullen.',
+    invalidEmail: 'Gib eine gultige E-Mail fur den Beleg ein.',
+    invalidPhone: 'Gib eine gultige Telefonnummer ein.',
+    reconnectClover: 'Dieses Geschaft muss Clover erneut verbinden, um Zahlungen anzunehmen.',
+    orderCreateErrorFmt: 'Fehler beim Erstellen der Bestellung ({status})',
+    paymentLinkError: 'Zahlungslink konnte nicht abgerufen werden.',
+    orderSentMesa: 'Bestellung gesendet. Die Zahlung erfolgt vor Ort.',
+    unexpectedOrderError: 'Unerwarteter Fehler beim Senden der Bestellung.',
+    productFallbackFmt: 'Produkt {id}',
+  },
+  it: {
+    viewOrder: 'Vedi ordine',
+    add: 'Aggiungi',
+    customizeOrder: 'Personalizza il tuo ordine',
+    cancel: 'Annulla',
+    notesOptional: 'Note (opzionale)',
+    notePlaceholder: 'Es: senza cipolla, salsa a parte',
+    addToCart: 'Aggiungi al carrello',
+    saveChanges: 'Salva modifiche',
+    loadingOptions: 'Caricamento opzioni...',
+    optionsLoadError: 'Impossibile caricare le opzioni.',
+    noOptionsProduct: 'Questo prodotto non ha opzioni.',
+    requiredWithMin: 'Obbligatorio (min {min})',
+    required: 'Obbligatorio',
+    optional: 'Opzionale',
+    maxFmt: 'max {max}',
+    noOptionsAvailable: 'Nessuna opzione disponibile.',
+    maxSelectAlert: 'Puoi selezionare un massimo di {max} opzioni.',
+    groupRequiredAlert: 'Devi scegliere almeno {min} opzione(i) in "{group}".',
+    optionGroupFallback: 'Opzioni',
+    optionItemFallback: 'Opzione',
+    cartTitle: 'Il tuo ordine',
+    close: 'Chiudi',
+    customerFieldsTitle: 'Dati per la ricevuta',
+    firstName: 'Nome',
+    lastName: 'Cognome',
+    phone: 'Telefono',
+    email: 'Email',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@esempio.com',
+    phoneHelp: "Necessario per inviarti il link dell'ordine.",
+    emailHelp: 'La ricevuta verra inviata a questa email.',
+    subtotal: 'Subtotale',
+    tax: 'Tassa',
+    total: 'Totale',
+    emptyCart: 'Il tuo carrello e vuoto.',
+    noteLabel: 'Nota',
+    lineTotal: 'Totale',
+    edit: 'Modifica',
+    remove: 'Rimuovi',
+    deleteConfirmFmt: 'Sei sicuro di voler rimuovere {name} dall ordine?',
+    addedItemFmt: '{name} aggiunto correttamente',
+    updatedItemFmt: '{name} aggiornato correttamente',
+    checkoutPickup: 'Procedi al pagamento',
+    checkoutMesa: 'Invia ordine in cucina',
+    premiumOnly: 'Gli ordini online sono disponibili solo con Findixi Premium.',
+    completePickup: 'Completa nome, cognome, telefono ed email prima di pagare.',
+    invalidEmail: 'Inserisci una email valida per ricevere la ricevuta.',
+    invalidPhone: 'Inserisci un numero di telefono valido.',
+    reconnectClover: 'Questo commercio deve ricollegare Clover per accettare pagamenti.',
+    orderCreateErrorFmt: 'Errore nella creazione ordine ({status})',
+    paymentLinkError: 'Impossibile ottenere il link di pagamento.',
+    orderSentMesa: 'Ordine inviato. Il pagamento si effettua nel locale.',
+    unexpectedOrderError: "Errore imprevisto durante l'invio dell ordine.",
+    productFallbackFmt: 'Prodotto {id}',
+  },
+  zh: {
+    viewOrder: '查看订单',
+    add: '添加',
+    customizeOrder: '自定义你的订单',
+    cancel: '取消',
+    notesOptional: '备注（可选）',
+    notePlaceholder: '例如：不要洋葱，酱汁另放',
+    addToCart: '加入购物车',
+    saveChanges: '保存更改',
+    loadingOptions: '正在加载选项...',
+    optionsLoadError: '无法加载选项。',
+    noOptionsProduct: '该商品没有可选项。',
+    requiredWithMin: '必选（最少 {min}）',
+    required: '必选',
+    optional: '可选',
+    maxFmt: '最多 {max}',
+    noOptionsAvailable: '暂无可选项。',
+    maxSelectAlert: '你最多可以选择 {max} 个选项。',
+    groupRequiredAlert: '你必须在“{group}”中至少选择 {min} 个选项。',
+    optionGroupFallback: '选项',
+    optionItemFallback: '选项',
+    cartTitle: '你的订单',
+    close: '关闭',
+    customerFieldsTitle: '收据信息',
+    firstName: '名字',
+    lastName: '姓氏',
+    phone: '电话',
+    email: '邮箱',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@example.com',
+    phoneHelp: '用于发送订单链接。',
+    emailHelp: '收据将发送到该邮箱。',
+    subtotal: '小计',
+    tax: '税费',
+    total: '总计',
+    emptyCart: '你的购物车为空。',
+    noteLabel: '备注',
+    lineTotal: '总计',
+    edit: '编辑',
+    remove: '删除',
+    deleteConfirmFmt: '确定要从订单中删除 {name} 吗？',
+    addedItemFmt: '{name} 已成功添加',
+    updatedItemFmt: '{name} 已成功更新',
+    checkoutPickup: '去付款',
+    checkoutMesa: '发送订单到厨房',
+    premiumOnly: '在线下单仅适用于 Findixi Premium。',
+    completePickup: '付款前请填写名字、姓氏、电话和邮箱。',
+    invalidEmail: '请输入有效邮箱以接收收据。',
+    invalidPhone: '请输入有效电话号码。',
+    reconnectClover: '该商家需要重新连接 Clover 才能收款。',
+    orderCreateErrorFmt: '创建订单出错（{status}）',
+    paymentLinkError: '无法获取付款链接。',
+    orderSentMesa: '订单已发送。请到店付款。',
+    unexpectedOrderError: '发送订单时发生意外错误。',
+    productFallbackFmt: '商品 {id}',
+  },
+  ko: {
+    viewOrder: '주문 보기',
+    add: '추가',
+    customizeOrder: '주문을 맞춤 설정하세요',
+    cancel: '취소',
+    notesOptional: '메모(선택)',
+    notePlaceholder: '예: 양파 빼고, 소스는 따로',
+    addToCart: '장바구니에 추가',
+    saveChanges: '변경사항 저장',
+    loadingOptions: '옵션을 불러오는 중...',
+    optionsLoadError: '옵션을 불러올 수 없습니다.',
+    noOptionsProduct: '이 상품에는 옵션이 없습니다.',
+    requiredWithMin: '필수 (최소 {min})',
+    required: '필수',
+    optional: '선택',
+    maxFmt: '최대 {max}',
+    noOptionsAvailable: '사용 가능한 옵션이 없습니다.',
+    maxSelectAlert: '최대 {max}개 옵션까지 선택할 수 있습니다.',
+    groupRequiredAlert: '"{group}"에서 최소 {min}개를 선택해야 합니다.',
+    optionGroupFallback: '옵션',
+    optionItemFallback: '옵션',
+    cartTitle: '내 주문',
+    close: '닫기',
+    customerFieldsTitle: '영수증 정보',
+    firstName: '이름',
+    lastName: '성',
+    phone: '전화번호',
+    email: '이메일',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@example.com',
+    phoneHelp: '주문 링크 전송에 필요합니다.',
+    emailHelp: '영수증이 이 이메일로 전송됩니다.',
+    subtotal: '소계',
+    tax: '세금',
+    total: '합계',
+    emptyCart: '장바구니가 비어 있습니다.',
+    noteLabel: '메모',
+    lineTotal: '합계',
+    edit: '수정',
+    remove: '삭제',
+    deleteConfirmFmt: '주문에서 {name}을(를) 삭제하시겠습니까?',
+    addedItemFmt: '{name}이(가) 성공적으로 추가되었습니다',
+    updatedItemFmt: '{name}이(가) 성공적으로 업데이트되었습니다',
+    checkoutPickup: '결제로 진행',
+    checkoutMesa: '주문을 주방으로 보내기',
+    premiumOnly: '온라인 주문은 Findixi Premium에서만 가능합니다.',
+    completePickup: '결제 전에 이름, 성, 전화번호, 이메일을 입력하세요.',
+    invalidEmail: '영수증 수신을 위해 올바른 이메일을 입력하세요.',
+    invalidPhone: '올바른 전화번호를 입력하세요.',
+    reconnectClover: '결제를 받으려면 이 상점이 Clover를 다시 연결해야 합니다.',
+    orderCreateErrorFmt: '주문 생성 오류 ({status})',
+    paymentLinkError: '결제 링크를 가져올 수 없습니다.',
+    orderSentMesa: '주문이 전송되었습니다. 결제는 매장에서 진행됩니다.',
+    unexpectedOrderError: '주문 전송 중 예기치 않은 오류가 발생했습니다.',
+    productFallbackFmt: '상품 {id}',
+  },
+  ja: {
+    viewOrder: '注文を見る',
+    add: '追加',
+    customizeOrder: '注文をカスタマイズ',
+    cancel: 'キャンセル',
+    notesOptional: 'メモ（任意）',
+    notePlaceholder: '例：玉ねぎ抜き、ソース別添え',
+    addToCart: 'カートに追加',
+    saveChanges: '変更を保存',
+    loadingOptions: 'オプションを読み込み中...',
+    optionsLoadError: 'オプションを読み込めませんでした。',
+    noOptionsProduct: 'この商品にはオプションがありません。',
+    requiredWithMin: '必須（最小 {min}）',
+    required: '必須',
+    optional: '任意',
+    maxFmt: '最大 {max}',
+    noOptionsAvailable: '利用可能なオプションがありません。',
+    maxSelectAlert: '最大 {max} 個まで選択できます。',
+    groupRequiredAlert: '"{group}" で少なくとも {min} 個選択してください。',
+    optionGroupFallback: 'オプション',
+    optionItemFallback: 'オプション',
+    cartTitle: 'あなたの注文',
+    close: '閉じる',
+    customerFieldsTitle: '領収書情報',
+    firstName: '名',
+    lastName: '姓',
+    phone: '電話',
+    email: 'メール',
+    phonePlaceholder: '787-000-0000',
+    emailPlaceholder: 'email@example.com',
+    phoneHelp: '注文リンク送信に必要です。',
+    emailHelp: '領収書はこのメールに送信されます。',
+    subtotal: '小計',
+    tax: '税金',
+    total: '合計',
+    emptyCart: 'カートは空です。',
+    noteLabel: 'メモ',
+    lineTotal: '合計',
+    edit: '編集',
+    remove: '削除',
+    deleteConfirmFmt: '注文から {name} を削除してもよろしいですか？',
+    addedItemFmt: '{name} を追加しました',
+    updatedItemFmt: '{name} を更新しました',
+    checkoutPickup: '支払いに進む',
+    checkoutMesa: '注文をキッチンに送信',
+    premiumOnly: 'オンライン注文は Findixi Premium のみ利用可能です。',
+    completePickup: '支払い前に名、姓、電話、メールを入力してください。',
+    invalidEmail: '領収書受信用に有効なメールを入力してください。',
+    invalidPhone: '有効な電話番号を入力してください。',
+    reconnectClover: '支払いを受け付けるには Clover の再接続が必要です。',
+    orderCreateErrorFmt: '注文作成エラー（{status}）',
+    paymentLinkError: '支払いリンクを取得できませんでした。',
+    orderSentMesa: '注文を送信しました。支払いは店舗で行います。',
+    unexpectedOrderError: '注文送信中に予期しないエラーが発生しました。',
+    productFallbackFmt: '商品 {id}',
+  },
+};
+
+function formatOrderText(template, vars = {}) {
+  return String(template || '').replace(/\{(\w+)\}/g, (_, key) => (vars[key] != null ? String(vars[key]) : `{${key}}`));
+}
+
+function getOrderTexts() {
+  const lang = getCurrentLang();
+  return ORDER_TEXTS[lang] || ORDER_TEXTS.en;
+}
+
+function orderText(key, vars = {}) {
+  const texts = getOrderTexts();
+  const fallback = ORDER_TEXTS.en?.[key] || ORDER_TEXTS.es?.[key] || key;
+  return formatOrderText(texts?.[key] || fallback, vars);
+}
+
+const LOADER_TEXTS = {
+  es: 'Traduciendo menu...',
+  en: 'Translating menu...',
+  fr: 'Traduction du menu...',
+  pt: 'Traduzindo menu...',
+  de: 'Menu wird ubersetzt...',
+  it: 'Traduzione del menu...',
+  zh: '正在翻译菜单...',
+  ko: '메뉴 번역 중...',
+  ja: 'メニューを翻訳中...',
+};
+
+function getLoaderText() {
+  const lang = getCurrentLang();
+  return LOADER_TEXTS[lang] || LOADER_TEXTS.en;
+}
+
+function applyLoaderLanguage() {
+  const loaderText = document.getElementById('globalLoaderText');
+  if (!loaderText) return;
+  loaderText.textContent = getLoaderText();
+}
+
 const showGlobalLoader = () => {
   const loader = document.getElementById('globalLoader');
   if (!loader) return;
+  applyLoaderLanguage();
   loader.classList.remove('hidden', 'opacity-0');
   loader.classList.add('flex', 'opacity-100');
 };
@@ -360,6 +907,163 @@ async function cargarTema() {
   if (isDev) console.log('[menu publico] Tema cargado', { idComercio, tema: temaActual, pdf: !!temaActual.pdfurl, coverUrl, backgroundUrl });
 }
 
+function getMenuBaseProductos(idMenu) {
+  return (productosBase || [])
+    .filter((p) => p.idMenu === idMenu)
+    .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+}
+
+function pickTranslatedField(entry, primaryKey, fallbackKey) {
+  const direct = entry?.[primaryKey];
+  if (typeof direct === 'string' && direct.trim()) return direct;
+  const fallback = entry?.[fallbackKey];
+  if (typeof fallback === 'string' && fallback.trim()) return fallback;
+  return '';
+}
+
+function buildMenuView(menu, menuTrad = null) {
+  const menuTradData = menuTrad?.menu || null;
+  const productosTrad = Array.isArray(menuTrad?.productos) ? menuTrad.productos : [];
+  const tradById = new Map(productosTrad.map((t) => [Number(t.id ?? t.idproducto), t]));
+  const baseProductos = getMenuBaseProductos(menu.id);
+  const productos = baseProductos.map((p) => {
+    const t = tradById.get(Number(p.id));
+    if (!t) return p;
+    return {
+      ...p,
+      nombre: pickTranslatedField(t, 'nombre', 'name') || p.nombre,
+      descripcion: pickTranslatedField(t, 'descripcion', 'description') || p.descripcion,
+    };
+  });
+
+  const translatedTitle = pickTranslatedField(menuTradData, 'titulo', 'title');
+  const translatedDescription = pickTranslatedField(menuTradData, 'descripcion', 'description');
+
+  return {
+    menu: {
+      ...menu,
+      titulo: (translatedTitle || menu.titulo || 'Sin título').trim(),
+      descripcion: (translatedDescription || menu.descripcion || '').trim(),
+    },
+    productos,
+  };
+}
+
+function getMenuView(menuId) {
+  const existing = menuViewById.get(menuId);
+  if (existing) return existing;
+  const baseMenu = menusBase.find((menu) => menu.id === menuId);
+  if (!baseMenu) return null;
+  return buildMenuView(baseMenu, null);
+}
+
+function updateMenuHeader(menuId) {
+  const refs = menuButtons.get(menuId);
+  if (!refs) return;
+  const view = getMenuView(menuId);
+  if (!view) return;
+  const { titleEl, descEl } = refs;
+  if (titleEl) titleEl.textContent = view.menu.titulo || 'Sin título';
+  if (descEl) descEl.textContent = view.menu.descripcion || '';
+}
+
+function renderMenuProducts(menuId) {
+  const refs = menuButtons.get(menuId);
+  if (!refs) return;
+  const view = getMenuView(menuId);
+  if (!view) return;
+  const { listaDiv } = refs;
+  listaDiv.innerHTML = '';
+  updateMenuHeader(menuId);
+
+  const productos = Array.isArray(view.productos) ? view.productos : [];
+  if (!productos.length) {
+    listaDiv.innerHTML = '<p class="text-sm text-gray-500">No hay productos disponibles.</p>';
+    return;
+  }
+
+  const fontBody = temaActual.fontbodyfamily ? `'${temaActual.fontbodyfamily}', 'Kanit', sans-serif` : '';
+  const alphaItem = 1 - Math.min(Math.max(Number(temaActual.item_overlay) || 0, 0), 80) / 100;
+  const itemBgColor = temaActual.item_bg_color || '#ffffff';
+  const toRgba = (color, a) => {
+    const alpha = Math.min(Math.max(a, 0), 1);
+    if (!color) return `rgba(0,0,0,${alpha})`;
+    if (color.startsWith('rgb')) {
+      const parts = color.replace(/rgba?\(|\)/g, '').split(',').map((v) => v.trim());
+      const [r = 0, g = 0, b = 0] = parts;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    const hex = color.replace('#', '');
+    const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+    const num = parseInt(full, 16);
+    const r = (num >> 16) & 255;
+    const g = (num >> 8) & 255;
+    const b = num & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+  const itemBg = toRgba(itemBgColor, alphaItem);
+  const alignVal = (temaActual.productoAlign || 'left').toLowerCase();
+  const alignItems = alignVal === 'center' ? 'center' : 'flex-start';
+  const textAlign = alignVal === 'center' ? 'center' : 'left';
+
+  for (const p of productos) {
+    const priceTxt = Number.isFinite(Number(p.precio)) ? Number(p.precio).toFixed(2) : (p.precio ?? '');
+    productosById.set(p.id, p);
+    const div = document.createElement('div');
+    div.className = 'rounded-lg shadow p-4 mb-2 flex gap-4';
+    div.style.backgroundColor = itemBg;
+
+    const imagenHTML = p.imagen
+      ? `
+          <div class="w-24 h-24 flex-shrink-0">
+              <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${p.imagen}" 
+                    alt="${p.nombre}" class="w-full h-full object-cover rounded cursor-pointer"
+                    onclick="ampliarImagen('${p.imagen}')">
+            </div>
+          `
+      : '';
+
+    div.innerHTML = `
+      ${imagenHTML}
+      <div class="flex flex-col justify-between" style="text-align:${textAlign};align-items:${alignItems};width:100%;flex:1;">
+        <div class="w-full">
+          <h3 class="text-xl font-semibold" style="color:${temaActual.colortitulo};${fontBody ? `font-family:${fontBody};` : ''}">${p.nombre}</h3>
+          <p class="text-base leading-5 font-light" style="color:${temaActual.colortexto};${fontBody ? `font-family:${fontBody};` : ''}">${p.descripcion || ''}</p>
+        </div>
+        <div class="mt-2 w-full flex items-center justify-between gap-2 product-actions">
+          <div class="font-bold text-xl" style="color:${temaActual.colorprecio};${fontBody ? `font-family:${fontBody};` : ''}">$${priceTxt}</div>
+        </div>
+      </div>
+    `;
+
+    if (allowOrdering && planPermiteOrdenes) {
+      const actions = div.querySelector('.product-actions');
+      if (actions) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'text-sm font-semibold px-3 py-2 rounded-lg bg-black text-white';
+        btn.textContent = orderText('add');
+        btn.addEventListener('click', async () => {
+          try {
+            const groups = await fetchModifierGroups(p.id);
+            if (!groups || groups.length === 0) {
+              addLineItem(p, []);
+              return;
+            }
+            openModifiersDrawer(p);
+          } catch (err) {
+            console.warn('Error cargando opciones:', err);
+            addLineItem(p, []);
+          }
+        });
+        actions.appendChild(btn);
+      }
+    }
+
+    listaDiv.appendChild(div);
+  }
+}
+
 async function cargarDatos() {
   await cargarTema();
 
@@ -453,6 +1157,7 @@ async function cargarDatos() {
   if (errorMenus) return alert('Error cargando menú');
   menusBase = menus || [];
   menuButtons.clear();
+  menuViewById.clear();
 
   if (!seccionesEl) {
     console.warn('[menu] Contenedor de secciones no encontrado');
@@ -547,7 +1252,7 @@ async function cargarDatos() {
       wrapper,
     });
 
-    btn.onclick = async () => {
+    btn.onclick = () => {
       if (seccionActiva === productosContenedor) {
         productosContenedor.classList.add('hidden');
         seccionActiva = null;
@@ -570,124 +1275,7 @@ async function cargarDatos() {
       seccionActivaId = menu.id;
       productosContenedor.classList.remove('hidden');
       wrapper.classList.add('menu-open');
-
-      const lang = getLang();
-      const descElLocal = btn.querySelector('.menuHeaderDesc');
-      const titleEl = btn.querySelector('.menuHeaderTitle');
-
-      try {
-        const myToken = ++renderToken;
-        listaDiv.innerHTML = '<p class="text-sm text-gray-500">Cargando...</p>';
-        const menuTrad = await getMenuI18n(menu.id, lang, { includeProductos: true });
-        if (titleEl && menuTrad?.menu?.titulo) titleEl.textContent = menuTrad.menu.titulo;
-        const descTxt = (menuTrad?.menu?.descripcion || menu.descripcion || '').trim();
-        if (descElLocal) descElLocal.textContent = descTxt;
-
-        const productosTrad = (menuTrad?.productos || []).map((p) => ({ ...p }));
-        const baseProductos = (productosBase || [])
-          .filter((p) => p.idMenu === menu.id)
-          .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
-
-        const tradById = new Map(productosTrad.map((t) => [Number(t.id ?? t.idproducto), t]));
-        const productos = baseProductos.map((p) => {
-          const t = tradById.get(Number(p.id));
-          if (!t) return p;
-          return {
-            ...p, // conserva precio/imagen/etc.
-            nombre: t.nombre ?? p.nombre,
-            descripcion: t.descripcion ?? p.descripcion,
-          };
-        });
-
-        if (myToken !== renderToken) return;
-        listaDiv.innerHTML = '';
-
-        const fontBody = temaActual.fontbodyfamily ? `'${temaActual.fontbodyfamily}', 'Kanit', sans-serif` : '';
-        const alphaItem = 1 - Math.min(Math.max(Number(temaActual.item_overlay) || 0, 0), 80) / 100;
-        const itemBgColor = temaActual.item_bg_color || '#ffffff';
-        const toRgba = (color, a) => {
-          const alpha = Math.min(Math.max(a, 0), 1);
-          if (!color) return `rgba(0,0,0,${alpha})`;
-          if (color.startsWith('rgb')) {
-            const parts = color.replace(/rgba?\(|\)/g, '').split(',').map((v) => v.trim());
-            const [r = 0, g = 0, b = 0] = parts;
-            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-          }
-          const hex = color.replace('#', '');
-          const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
-          const num = parseInt(full, 16);
-          const r = (num >> 16) & 255;
-          const g = (num >> 8) & 255;
-          const b = num & 255;
-          return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        };
-        const itemBg = toRgba(itemBgColor, alphaItem);
-        const alignVal = (temaActual.productoAlign || 'left').toLowerCase();
-        const alignItems = alignVal === 'center' ? 'center' : 'flex-start';
-        const textAlign = alignVal === 'center' ? 'center' : 'left';
-
-        for (const p of productos) {
-          const priceTxt = Number.isFinite(Number(p.precio)) ? Number(p.precio).toFixed(2) : (p.precio ?? '');
-          productosById.set(p.id, p);
-          const div = document.createElement('div');
-          div.className = 'rounded-lg shadow p-4 mb-2 flex gap-4';
-          div.style.backgroundColor = itemBg;
-
-          const imagenHTML = p.imagen
-            ? `
-              <div class="w-24 h-24 flex-shrink-0">
-                 <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${p.imagen}" 
-                       alt="${p.nombre}" class="w-full h-full object-cover rounded cursor-pointer"
-                       onclick="ampliarImagen('${p.imagen}')">
-                </div>
-              `
-            : '';
-
-          div.innerHTML = `
-            ${imagenHTML}
-            <div class="flex flex-col justify-between" style="text-align:${textAlign};align-items:${alignItems};width:100%;flex:1;">
-              <div class="w-full">
-                <h3 class="text-xl font-semibold" style="color:${temaActual.colortitulo};${fontBody ? `font-family:${fontBody};` : ''}">${p.nombre}</h3>
-                <p class="text-base leading-5 font-light" style="color:${temaActual.colortexto};${fontBody ? `font-family:${fontBody};` : ''}">${p.descripcion || ''}</p>
-              </div>
-              <div class="mt-2 w-full flex items-center justify-between gap-2 product-actions">
-                <div class="font-bold text-xl" style="color:${temaActual.colorprecio};${fontBody ? `font-family:${fontBody};` : ''}">$${priceTxt}</div>
-              </div>
-            </div>
-          `;
-
-          if (allowOrdering && planPermiteOrdenes) {
-            const actions = div.querySelector('.product-actions');
-            if (actions) {
-              const btn = document.createElement('button');
-              btn.type = 'button';
-              btn.className = 'text-sm font-semibold px-3 py-2 rounded-lg bg-black text-white';
-              btn.textContent = 'Agregar';
-              btn.addEventListener('click', async () => {
-                try {
-                  const groups = await fetchModifierGroups(p.id);
-                  if (!groups || groups.length === 0) {
-                    addLineItem(p, []);
-                    return;
-                  }
-                  openModifiersDrawer(p);
-                } catch (err) {
-                  console.warn('Error cargando opciones:', err);
-                  addLineItem(p, []);
-                }
-              });
-              actions.appendChild(btn);
-            }
-          }
-
-          listaDiv.appendChild(div);
-        }
-      } catch (e) {
-        console.warn('Error traduciendo menú/productos:', e);
-        const descTxt = (menu.descripcion || '').trim();
-        if (descElLocal) descElLocal.textContent = descTxt;
-        listaDiv.innerHTML = '';
-      }
+      renderMenuProducts(menu.id);
     };
 
     wrapper.appendChild(btn);
@@ -695,7 +1283,7 @@ async function cargarDatos() {
     seccionesEl.appendChild(wrapper);
   }
 
-  // Traduce solo títulos/descripciones de secciones según idioma actual
+  // Traduce secciones y productos según idioma actual
   await actualizarTitulosSecciones();
 
   const linkPerfil = document.getElementById('linkPerfilComercio');
@@ -766,29 +1354,60 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.addEventListener('lang:changed', async () => {
+  clearMenuI18nCache();
+  applyOrderUiLanguage();
   await actualizarTitulosSecciones();
+  applyOrderUiLanguage();
 });
 
 async function actualizarTitulosSecciones() {
   if (!menusBase.length) return;
+  const myToken = ++renderToken;
   showGlobalLoader();
   const lang = getCurrentLang();
   try {
-    for (const menu of menusBase) {
-      const refs = menuButtons.get(menu.id);
-      if (!refs) continue;
-      const { titleEl, descEl } = refs;
-      const trad = await getMenuI18n(menu.id, lang, { includeProductos: false });
-      if (titleEl && trad?.menu?.titulo) titleEl.textContent = trad.menu.titulo;
-      if (descEl) {
-        const descTxt = (trad?.menu?.descripcion || menu.descripcion || '').trim();
-        descEl.textContent = descTxt;
-      }
+    menuViewById.clear();
+    const translatedProducts = [];
+
+    await Promise.all(
+      menusBase.map(async (menu) => {
+        if (lang === 'es') {
+          const view = buildMenuView(menu, null);
+          if (myToken !== renderToken) return;
+          menuViewById.set(menu.id, view);
+          translatedProducts.push(...(view.productos || []));
+          updateMenuHeader(menu.id);
+          return;
+        }
+
+        try {
+          const trad = await getMenuI18n(menu.id, lang, { includeProductos: true });
+          const view = buildMenuView(menu, trad);
+          if (myToken !== renderToken) return;
+          menuViewById.set(menu.id, view);
+          translatedProducts.push(...(view.productos || []));
+          updateMenuHeader(menu.id);
+        } catch (error) {
+          console.warn('[menu] Traducción no disponible, usando original:', menu.id, error);
+          const view = buildMenuView(menu, null);
+          if (myToken !== renderToken) return;
+          menuViewById.set(menu.id, view);
+          translatedProducts.push(...(view.productos || []));
+          updateMenuHeader(menu.id);
+        }
+      })
+    );
+    if (myToken !== renderToken) return;
+
+    productosView = translatedProducts;
+
+    if (seccionActivaId) {
+      renderMenuProducts(seccionActivaId);
     }
   } catch (err) {
-    console.warn('No se pudieron traducir encabezados de menú:', err);
+    console.warn('No se pudieron traducir encabezados/productos de menú:', err);
   } finally {
-    hideGlobalLoader();
+    if (myToken === renderToken) hideGlobalLoader();
   }
 }
 
@@ -873,10 +1492,10 @@ function renderModifiersByGroup(mods) {
   if (!mods.length) return '';
   const resolveGroup = (m) => {
     const raw = m.grupo || m.grupo_nombre || m.group;
-    if (raw && raw !== 'Opciones') return raw;
+    if (raw && raw !== orderText('optionGroupFallback')) return raw;
     const id = Number(m.idOpcionItem || m.id);
     const mapped = modifierItemGroupMap.get(id);
-    return mapped || raw || 'Opciones';
+    return mapped || raw || orderText('optionGroupFallback');
   };
   const grouped = new Map();
   mods.forEach((m) => {
@@ -920,6 +1539,7 @@ function initOrderUi() {
   buildCartBar();
   buildCartDrawer();
   buildModifiersDrawer();
+  applyOrderUiLanguage();
   ensureModifierMapForCart().finally(() => updateCartUi());
   setupCartBarSticky();
 }
@@ -935,7 +1555,7 @@ function buildCartBar() {
       <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-black text-white">
         <i class="fa-solid fa-basket-shopping"></i>
       </span>
-      <span class="font-semibold text-sm sm:text-base">Ver Orden</span>
+      <span id="cartBarLabel" class="font-semibold text-sm sm:text-base">${orderText('viewOrder')}</span>
     </div>
     <span id="cartCount" class="text-sm font-semibold bg-black text-white px-3 py-1 rounded-full">0</span>
   `;
@@ -955,8 +1575,8 @@ function buildModifiersDrawer() {
     <div data-mod-close class="absolute inset-0 bg-black/60"></div>
     <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl p-4 max-h-[80vh] overflow-auto">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold">Personaliza tu orden</h3>
-        <button type="button" data-mod-close class="text-gray-500 hover:text-gray-700">Cancelar</button>
+        <h3 id="modDrawerTitle" class="text-lg font-semibold">${orderText('customizeOrder')}</h3>
+        <button id="modDrawerCancelBtn" type="button" data-mod-close class="text-gray-500 hover:text-gray-700">${orderText('cancel')}</button>
       </div>
       <div class="flex flex-col items-center text-center gap-2 mb-3">
         <img id="modProductImage" src="" alt="" class="hidden w-24 h-24 rounded-xl object-cover" />
@@ -964,10 +1584,10 @@ function buildModifiersDrawer() {
       </div>
       <div id="modGroups" class="space-y-4"></div>
       <div class="mt-4">
-        <label for="modNote" class="text-sm font-semibold text-gray-700">Notas (opcional)</label>
-        <textarea id="modNote" rows="3" class="mt-2 w-full border rounded-lg p-2 text-sm" placeholder="Ej: sin cebolla, salsa aparte"></textarea>
+        <label id="modNoteLabel" for="modNote" class="text-sm font-semibold text-gray-700">${orderText('notesOptional')}</label>
+        <textarea id="modNote" rows="3" class="mt-2 w-full border rounded-lg p-2 text-sm" placeholder="${orderText('notePlaceholder')}"></textarea>
       </div>
-      <button id="modAddBtn" type="button" class="mt-4 w-full bg-black text-white py-3 rounded-lg font-semibold">Agregar al carrito</button>
+      <button id="modAddBtn" type="button" class="mt-4 w-full bg-black text-white py-3 rounded-lg font-semibold">${orderText('addToCart')}</button>
     </div>
   `;
   modifiersDrawer.addEventListener('click', (e) => {
@@ -986,7 +1606,7 @@ function openModifiersDrawer(product, lineItem = null) {
   currentEditLine = lineItem ? { key: lineItem.key, qty: lineItem.qty, modifiers: lineItem.modifiers || [] } : null;
   renderModifiersForProduct(product, lineItem);
   const addBtn = modifiersDrawer.querySelector('#modAddBtn');
-  if (addBtn) addBtn.textContent = currentEditLine ? 'Guardar cambios' : 'Agregar al carrito';
+  if (addBtn) addBtn.textContent = currentEditLine ? orderText('saveChanges') : orderText('addToCart');
   modifiersDrawer.classList.remove('hidden');
 }
 
@@ -1064,25 +1684,25 @@ async function renderModifiersForProduct(product, lineItem = null) {
   if (imgEl) {
     if (product?.imagen) {
       imgEl.src = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${product.imagen}`;
-      imgEl.alt = product?.nombre || 'Producto';
+      imgEl.alt = product?.nombre || orderText('productFallbackFmt', { id: product?.id || '' });
       imgEl.classList.remove('hidden');
     } else {
       imgEl.classList.add('hidden');
     }
   }
-  groupsContainer.innerHTML = '<p class="text-sm text-gray-500">Cargando opciones...</p>';
+  groupsContainer.innerHTML = `<p class="text-sm text-gray-500">${orderText('loadingOptions')}</p>`;
   if (noteEl) noteEl.value = lineItem?.nota || '';
 
   let groups = [];
   try {
     groups = await fetchModifierGroups(product.id);
   } catch (err) {
-    groupsContainer.innerHTML = '<p class="text-sm text-red-500">No se pudieron cargar opciones.</p>';
+    groupsContainer.innerHTML = `<p class="text-sm text-red-500">${orderText('optionsLoadError')}</p>`;
     return;
   }
 
   if (!groups.length) {
-    groupsContainer.innerHTML = '<p class="text-sm text-gray-500">Este producto no tiene opciones.</p>';
+    groupsContainer.innerHTML = `<p class="text-sm text-gray-500">${orderText('noOptionsProduct')}</p>`;
     return;
   }
 
@@ -1094,7 +1714,7 @@ async function renderModifiersForProduct(product, lineItem = null) {
 
   for (const group of groups) {
     const groupId = group.id;
-    const nombre = group.nombre || 'Opciones';
+    const nombre = group.nombre || orderText('optionGroupFallback');
     const minSel = Number(group.min_sel ?? 0) || 0;
     const maxSelRaw = Number(group.max_sel ?? 0) || 0;
     const requerido = Boolean(group.requerido) || minSel > 0;
@@ -1102,12 +1722,17 @@ async function renderModifiersForProduct(product, lineItem = null) {
 
     const wrapper = document.createElement('div');
     wrapper.className = 'border rounded-xl p-3';
+    const requiredLabel = requerido
+      ? minSel
+        ? orderText('requiredWithMin', { min: minSel })
+        : orderText('required')
+      : orderText('optional');
+    const maxLabel = maxSel > 1 ? ` · ${orderText('maxFmt', { max: maxSel })}` : '';
     wrapper.innerHTML = `
       <div class="flex items-center justify-between">
         <h4 class="font-semibold text-sm">${nombre}</h4>
         <span class="text-xs text-gray-500">
-          ${requerido ? `Requerido${minSel ? ` (mín ${minSel})` : ''}` : 'Opcional'}
-          ${maxSel > 1 ? ` · máx ${maxSel}` : ''}
+          ${requiredLabel}${maxLabel}
         </span>
       </div>
       <div class="mt-2 space-y-2" data-group="${groupId}"></div>
@@ -1125,14 +1750,14 @@ async function renderModifiersForProduct(product, lineItem = null) {
     const listEl = wrapper.querySelector(`[data-group="${groupId}"]`);
     if (!listEl) continue;
     if (!items.length) {
-      listEl.innerHTML = '<p class="text-xs text-gray-500">Sin opciones disponibles.</p>';
+      listEl.innerHTML = `<p class="text-xs text-gray-500">${orderText('noOptionsAvailable')}</p>`;
       continue;
     }
 
     for (const item of items) {
       const extra = Number(item.precio_extra || 0);
       if (group?.nombre || group?.id) {
-        const groupName = group?.nombre || 'Opciones';
+        const groupName = group?.nombre || orderText('optionGroupFallback');
         modifierItemGroupMap.set(item.id, groupName);
       }
       const inputType = maxSel > 1 ? 'checkbox' : 'radio';
@@ -1141,7 +1766,7 @@ async function renderModifiersForProduct(product, lineItem = null) {
       row.innerHTML = `
         <span class="flex items-center gap-2">
           <input type="${inputType}" name="group-${groupId}" data-group-id="${groupId}" data-item-id="${item.id}" />
-          <span>${item.nombre || 'Opción'}</span>
+          <span>${item.nombre || orderText('optionItemFallback')}</span>
         </span>
         <span class="text-xs text-gray-500">${extra ? `+ $${extra.toFixed(2)}` : ''}</span>
       `;
@@ -1166,7 +1791,7 @@ async function renderModifiersForProduct(product, lineItem = null) {
           if (e.target.checked) {
             if (maxSel && selected.length >= maxSel) {
               e.target.checked = false;
-              alert(`Puedes seleccionar máximo ${maxSel} opciones.`);
+              alert(orderText('maxSelectAlert', { max: maxSel }));
               return;
             }
             selected.push(item);
@@ -1204,7 +1829,7 @@ async function ensureModifierMapForCart() {
         groupItems = [];
       }
       for (const item of groupItems) {
-        const groupName = group?.nombre || 'Opciones';
+        const groupName = group?.nombre || orderText('optionGroupFallback');
         modifierItemGroupMap.set(item.id, groupName);
       }
     }
@@ -1215,7 +1840,7 @@ async function ensureModifierMapForCart() {
   for (const item of cartState.items) {
     const mods = item.modifiers || [];
     mods.forEach((m) => {
-      if (m.grupo && m.grupo !== 'Opciones') return;
+      if (m.grupo && m.grupo !== orderText('optionGroupFallback')) return;
       const id = Number(m.idOpcionItem || m.id);
       const mapped = modifierItemGroupMap.get(id);
       if (mapped && mapped !== m.grupo) {
@@ -1239,7 +1864,12 @@ function handleConfirmModifiers() {
     const requerido = Boolean(group.requerido) || minSel > 0;
     const selected = selectedByGroup.get(groupId) || [];
     if (requerido && selected.length < Math.max(minSel, 1)) {
-      alert(`Debes elegir al menos ${Math.max(minSel, 1)} opción(es) en "${group.nombre || 'Opciones'}".`);
+      alert(
+        orderText('groupRequiredAlert', {
+          min: Math.max(minSel, 1),
+          group: group.nombre || orderText('optionGroupFallback'),
+        })
+      );
       return;
     }
   }
@@ -1249,9 +1879,9 @@ function handleConfirmModifiers() {
     const selected = selectedByGroup.get(group.id) || [];
     selected.forEach((item) => modifiers.push({
       idOpcionItem: item.id,
-      nombre: item.nombre || 'Opción',
+      nombre: item.nombre || orderText('optionItemFallback'),
       precio_extra: Number(item.precio_extra || 0),
-      grupo: group.nombre || 'Opciones',
+      grupo: group.nombre || orderText('optionGroupFallback'),
     }));
   }
   if (currentEditLine) {
@@ -1270,44 +1900,44 @@ function buildCartDrawer() {
     <div data-cart-close class="absolute inset-0 bg-black/60"></div>
     <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl p-4 max-h-[80vh] overflow-auto">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold">Tu pedido</h3>
-        <button type="button" data-cart-close class="text-gray-500 hover:text-gray-700">Cerrar</button>
+        <h3 id="cartDrawerTitle" class="text-lg font-semibold">${orderText('cartTitle')}</h3>
+        <button id="cartDrawerClose" type="button" data-cart-close class="text-gray-500 hover:text-gray-700">${orderText('close')}</button>
       </div>
       <div id="cartItems" class="space-y-3"></div>
       <div id="checkoutCustomerFields" class="mt-4 space-y-3">
-        <div class="text-sm font-semibold text-gray-800">Datos para el recibo</div>
+        <div id="cartCustomerFieldsTitle" class="text-sm font-semibold text-gray-800">${orderText('customerFieldsTitle')}</div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div class="space-y-1">
-            <label class="text-xs text-gray-500">Nombre</label>
-            <input id="cartFirstName" type="text" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Nombre" />
+            <label id="cartFirstNameLabel" class="text-xs text-gray-500">${orderText('firstName')}</label>
+            <input id="cartFirstName" type="text" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="${orderText('firstName')}" />
           </div>
           <div class="space-y-1">
-            <label class="text-xs text-gray-500">Apellido</label>
-            <input id="cartLastName" type="text" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Apellido" />
+            <label id="cartLastNameLabel" class="text-xs text-gray-500">${orderText('lastName')}</label>
+            <input id="cartLastName" type="text" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="${orderText('lastName')}" />
           </div>
         </div>
         <div class="space-y-1">
-          <label class="text-xs text-gray-500">Teléfono</label>
-          <input id="cartPhone" type="tel" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="787-000-0000" />
-          <p class="text-[11px] text-gray-400">Necesario para enviarte el enlace del pedido.</p>
+          <label id="cartPhoneLabel" class="text-xs text-gray-500">${orderText('phone')}</label>
+          <input id="cartPhone" type="tel" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="${orderText('phonePlaceholder')}" />
+          <p id="cartPhoneHelp" class="text-[11px] text-gray-400">${orderText('phoneHelp')}</p>
         </div>
         <div class="space-y-1">
-          <label class="text-xs text-gray-500">Email</label>
-          <input id="cartEmail" type="email" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="correo@ejemplo.com" />
-          <p class="text-[11px] text-gray-400">El recibo será enviado a este email.</p>
+          <label id="cartEmailLabel" class="text-xs text-gray-500">${orderText('email')}</label>
+          <input id="cartEmail" type="email" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="${orderText('emailPlaceholder')}" />
+          <p id="cartEmailHelp" class="text-[11px] text-gray-400">${orderText('emailHelp')}</p>
         </div>
       </div>
       <div class="mt-4 space-y-1 text-sm">
         <div class="flex items-center justify-between">
-          <span>Subtotal</span>
+          <span id="cartSubtotalLabel">${orderText('subtotal')}</span>
           <span id="cartSubtotal">$0.00</span>
         </div>
         <div class="flex items-center justify-between">
-          <span>Tax</span>
+          <span id="cartTaxLabel">${orderText('tax')}</span>
           <span id="cartTax">$0.00</span>
         </div>
         <div class="flex items-center justify-between text-base font-semibold">
-          <span>Total</span>
+          <span id="cartTotalLabel">${orderText('total')}</span>
           <span id="cartTotal">$0.00</span>
         </div>
       </div>
@@ -1333,7 +1963,7 @@ function buildCartDrawer() {
   });
   const checkoutBtn = cartDrawer.querySelector('#cartCheckout');
   if (checkoutBtn) {
-    checkoutBtn.textContent = allowMesa ? 'Enviar orden a cocina' : 'Proceder con el pago';
+    checkoutBtn.textContent = allowMesa ? orderText('checkoutMesa') : orderText('checkoutPickup');
     checkoutBtn.addEventListener('click', submitOrder);
   }
   const customerFields = cartDrawer.querySelector('#checkoutCustomerFields');
@@ -1341,6 +1971,61 @@ function buildCartDrawer() {
     customerFields.classList.add('hidden');
   }
   document.body.appendChild(cartDrawer);
+}
+
+function applyOrderUiLanguage() {
+  if (cartBar) {
+    const barLabel = cartBar.querySelector('#cartBarLabel');
+    if (barLabel) barLabel.textContent = orderText('viewOrder');
+  }
+
+  if (modifiersDrawer) {
+    const titleEl = modifiersDrawer.querySelector('#modDrawerTitle');
+    const cancelBtn = modifiersDrawer.querySelector('#modDrawerCancelBtn');
+    const noteLabel = modifiersDrawer.querySelector('#modNoteLabel');
+    const noteInput = modifiersDrawer.querySelector('#modNote');
+    const addBtn = modifiersDrawer.querySelector('#modAddBtn');
+    if (titleEl) titleEl.textContent = orderText('customizeOrder');
+    if (cancelBtn) cancelBtn.textContent = orderText('cancel');
+    if (noteLabel) noteLabel.textContent = orderText('notesOptional');
+    if (noteInput) noteInput.placeholder = orderText('notePlaceholder');
+    if (addBtn) addBtn.textContent = currentEditLine ? orderText('saveChanges') : orderText('addToCart');
+  }
+
+  if (cartDrawer) {
+    const setText = (selector, text) => {
+      const el = cartDrawer.querySelector(selector);
+      if (el) el.textContent = text;
+    };
+    setText('#cartDrawerTitle', orderText('cartTitle'));
+    setText('#cartDrawerClose', orderText('close'));
+    setText('#cartCustomerFieldsTitle', orderText('customerFieldsTitle'));
+    setText('#cartFirstNameLabel', orderText('firstName'));
+    setText('#cartLastNameLabel', orderText('lastName'));
+    setText('#cartPhoneLabel', orderText('phone'));
+    setText('#cartEmailLabel', orderText('email'));
+    setText('#cartPhoneHelp', orderText('phoneHelp'));
+    setText('#cartEmailHelp', orderText('emailHelp'));
+    setText('#cartSubtotalLabel', orderText('subtotal'));
+    setText('#cartTaxLabel', orderText('tax'));
+    setText('#cartTotalLabel', orderText('total'));
+
+    const firstNameInput = cartDrawer.querySelector('#cartFirstName');
+    const lastNameInput = cartDrawer.querySelector('#cartLastName');
+    const phoneInput = cartDrawer.querySelector('#cartPhone');
+    const emailInput = cartDrawer.querySelector('#cartEmail');
+    if (firstNameInput) firstNameInput.placeholder = orderText('firstName');
+    if (lastNameInput) lastNameInput.placeholder = orderText('lastName');
+    if (phoneInput) phoneInput.placeholder = orderText('phonePlaceholder');
+    if (emailInput) emailInput.placeholder = orderText('emailPlaceholder');
+
+    const checkoutBtn = cartDrawer.querySelector('#cartCheckout');
+    if (checkoutBtn) {
+      checkoutBtn.textContent = allowMesa ? orderText('checkoutMesa') : orderText('checkoutPickup');
+    }
+  }
+
+  updateCartUi();
 }
 
 function loadCartState() {
@@ -1400,8 +2085,8 @@ function addLineItem(producto, modifiers = [], nota = '') {
       qty: 1,
       modifiers: modifiers.map((m) => ({
         idOpcionItem: Number(m.idOpcionItem || m.id),
-        nombre: m.nombre || m.name || 'Opción',
-        grupo: m.grupo || m.grupo_nombre || m.group || 'Opciones',
+        nombre: m.nombre || m.name || orderText('optionItemFallback'),
+        grupo: m.grupo || m.grupo_nombre || m.group || orderText('optionGroupFallback'),
         precio_extra: Number(m.precio_extra || 0),
       })),
       nota: String(nota || '').trim(),
@@ -1409,8 +2094,8 @@ function addLineItem(producto, modifiers = [], nota = '') {
   }
   saveCartState();
   updateCartUi();
-  const nombre = producto?.nombre || `Producto ${idProducto}`;
-  alert(`${nombre} añadido correctamente`);
+  const nombre = producto?.nombre || orderText('productFallbackFmt', { id: idProducto });
+  alert(orderText('addedItemFmt', { name: nombre }));
 }
 
 function updateLineQty(key, delta) {
@@ -1431,8 +2116,8 @@ function removeLineItem(key) {
   if (idx === -1) return;
   const line = cartState.items[idx];
   const product = productosById.get(Number(line.idProducto));
-  const nombre = product?.nombre || `Producto ${line.idProducto}`;
-  if (!confirm(`¿Seguro deseas eliminar ${nombre} del pedido?`)) return;
+  const nombre = product?.nombre || orderText('productFallbackFmt', { id: line.idProducto });
+  if (!confirm(orderText('deleteConfirmFmt', { name: nombre }))) return;
   cartState.items.splice(idx, 1);
   saveCartState();
   updateCartUi();
@@ -1444,8 +2129,8 @@ function replaceLineItem(oldKey, producto, modifiers, qty, nota = '') {
   const newKey = buildLineKey(idProducto, modifiers, nota);
   const mappedModifiers = modifiers.map((m) => ({
     idOpcionItem: Number(m.idOpcionItem || m.id),
-    nombre: m.nombre || m.name || 'Opción',
-    grupo: m.grupo || m.grupo_nombre || m.group || 'Opciones',
+    nombre: m.nombre || m.name || orderText('optionItemFallback'),
+    grupo: m.grupo || m.grupo_nombre || m.group || orderText('optionGroupFallback'),
     precio_extra: Number(m.precio_extra || 0),
   }));
   const oldIdx = cartState.items.findIndex((i) => i.key === oldKey);
@@ -1462,8 +2147,8 @@ function replaceLineItem(oldKey, producto, modifiers, qty, nota = '') {
   }
   saveCartState();
   updateCartUi();
-  const nombre = producto?.nombre || `Producto ${idProducto}`;
-  alert(`${nombre} actualizado correctamente`);
+  const nombre = producto?.nombre || orderText('productFallbackFmt', { id: idProducto });
+  alert(orderText('updatedItemFmt', { name: nombre }));
 }
 
 function editLineItem(key) {
@@ -1489,7 +2174,7 @@ function updateCartUi() {
   const cartTotalEl = cartDrawer.querySelector('#cartTotal');
   if (!cartItemsEl || !cartSubtotalEl || !cartTaxEl || !cartTotalEl) return;
   if (count === 0) {
-    cartItemsEl.innerHTML = '<p class="text-sm text-gray-500">Tu carrito está vacío.</p>';
+    cartItemsEl.innerHTML = `<p class="text-sm text-gray-500">${orderText('emptyCart')}</p>`;
     cartSubtotalEl.textContent = '$0.00';
     cartTaxEl.textContent = '$0.00';
     cartTotalEl.textContent = '$0.00';
@@ -1509,9 +2194,9 @@ function updateCartUi() {
     const taxRate = getTaxRateForProduct(item.idProducto);
     taxTotal += lineSubtotal * taxRate;
     const mods = (item.modifiers || []).map((m) => ({
-      nombre: m.nombre || 'Opción',
+      nombre: m.nombre || orderText('optionItemFallback'),
       precio_extra: Number(m.precio_extra || 0),
-      grupo: m.grupo || 'Opciones',
+      grupo: m.grupo || orderText('optionGroupFallback'),
     }));
     const row = document.createElement('div');
     row.className = 'border rounded-xl p-3';
@@ -1522,12 +2207,12 @@ function updateCartUi() {
       <div class="flex items-start gap-3">
         ${imgSrc ? `<img src="${imgSrc}" alt="${product?.nombre || ''}" class="w-20 h-20 rounded-lg object-cover flex-shrink-0" />` : ''}
       <div class="flex-1">
-        <div class="font-semibold text-base sm:text-lg">${product?.nombre || `Producto ${item.idProducto}`}</div>
+        <div class="font-semibold text-base sm:text-lg">${product?.nombre || orderText('productFallbackFmt', { id: item.idProducto })}</div>
         <div class="text-xs text-gray-500 space-y-1 mt-1">
           ${renderModifiersByGroup(mods)}
         </div>
-        ${item.nota ? `<div class="text-xs text-gray-500 mt-2"><span class="font-semibold text-gray-600">Nota:</span> ${item.nota}</div>` : ''}
-        <div class="mt-2 text-sm font-semibold">Total: $${lineSubtotal.toFixed(2)}</div>
+        ${item.nota ? `<div class="text-xs text-gray-500 mt-2"><span class="font-semibold text-gray-600">${orderText('noteLabel')}:</span> ${item.nota}</div>` : ''}
+        <div class="mt-2 text-sm font-semibold">${orderText('lineTotal')}: $${lineSubtotal.toFixed(2)}</div>
       </div>
         <div class="flex flex-col items-center gap-2 min-w-[90px]">
           <div class="flex items-center gap-2">
@@ -1536,8 +2221,8 @@ function updateCartUi() {
             <button type="button" data-cart-action="inc" data-key="${item.key}" class="w-8 h-8 rounded-full border text-sm">+</button>
           </div>
           <div class="flex items-center gap-3 text-xs">
-            <button type="button" data-cart-action="edit" data-key="${item.key}" class="text-blue-500">Editar</button>
-            <button type="button" data-cart-action="remove" data-key="${item.key}" class="text-red-500">Eliminar</button>
+            <button type="button" data-cart-action="edit" data-key="${item.key}" class="text-blue-500">${orderText('edit')}</button>
+            <button type="button" data-cart-action="remove" data-key="${item.key}" class="text-red-500">${orderText('remove')}</button>
           </div>
         </div>
       </div>
@@ -1581,7 +2266,7 @@ function setupCartBarSticky() {
 
 async function submitOrder() {
   if (!planPermiteOrdenes) {
-    alert('Las órdenes en línea están disponibles solo en Findixi Premium.');
+    alert(orderText('premiumOnly'));
     return;
   }
   const items = getCartItemsArray();
@@ -1593,17 +2278,17 @@ async function submitOrder() {
     const phone = String(document.querySelector('#cartPhone')?.value || '').trim();
     const email = String(document.querySelector('#cartEmail')?.value || '').trim();
     if (!firstName || !lastName || !email || !phone) {
-      alert('Por favor completa nombre, apellido, teléfono y email antes de pagar.');
+      alert(orderText('completePickup'));
       return;
     }
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!emailOk) {
-      alert('Ingresa un email válido para recibir el recibo.');
+      alert(orderText('invalidEmail'));
       return;
     }
     const phoneDigits = phone.replace(/\D/g, '');
     if (phoneDigits.length < 7) {
-      alert('Ingresa un teléfono válido.');
+      alert(orderText('invalidPhone'));
       return;
     }
     customer = {
@@ -1655,11 +2340,14 @@ async function submitOrder() {
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) {
       if (resp.status === 401 && json?.needs_reconnect) {
-        alert('Este comercio debe reconectar Clover para aceptar pagos.');
+        alert(orderText('reconnectClover'));
         return;
       }
       const rawMsg = json?.raw ? ` (${json.raw})` : '';
-      const msg = (json?.error ? `${json.error}${rawMsg}` : '') || json?.details?.message || `Error creando orden (${resp.status})`;
+      const msg =
+        (json?.error ? `${json.error}${rawMsg}` : '') ||
+        json?.details?.message ||
+        orderText('orderCreateErrorFmt', { status: resp.status });
       alert(msg);
       return;
     }
@@ -1673,16 +2361,16 @@ async function submitOrder() {
         window.location.href = url;
         return;
       }
-      alert('No se pudo obtener el enlace de pago.');
+      alert(orderText('paymentLinkError'));
       return;
     }
 
-    alert('Orden enviada. El pago se realiza en el local.');
+    alert(orderText('orderSentMesa'));
     cartState = { items: {} };
     saveCartState();
     updateCartUi();
     if (cartDrawer) cartDrawer.classList.add('hidden');
   } catch (err) {
-    alert(err?.message || 'Error inesperado al enviar la orden.');
+    alert(err?.message || orderText('unexpectedOrderError'));
   }
 }

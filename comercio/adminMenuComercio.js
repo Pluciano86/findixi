@@ -175,6 +175,96 @@ const DEFAULT_TEMA = {
   boton_stroke_color: '#000000',
 };
 
+function normalizeComparableText(value) {
+  return String(value ?? '').trim();
+}
+
+async function invokeTranslateMenuInvalidate(payload) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token || SUPABASE_ANON_KEY;
+  const response = await fetch(`${FUNCTIONS_BASE}/translate-menu`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      type: 'invalidate',
+      ...payload,
+    }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || body?.ok === false) {
+    throw new Error(body?.error || `HTTP ${response.status}`);
+  }
+}
+
+async function invalidateMenuTranslationCells(idMenu, { titleChanged = false, descriptionChanged = false } = {}) {
+  const menuId = Number(idMenu);
+  if (!Number.isFinite(menuId) || menuId <= 0) return;
+  if (!titleChanged && !descriptionChanged) return;
+
+  const fields = [];
+  if (titleChanged) fields.push('titulo');
+  if (descriptionChanged) fields.push('descripcion');
+
+  try {
+    await invokeTranslateMenuInvalidate({
+      entity: 'menu',
+      idMenu: menuId,
+      mode: 'nullify',
+      fields,
+    });
+  } catch (invokeError) {
+    const patch = {};
+    if (titleChanged) patch.titulo = null;
+    if (descriptionChanged) patch.descripcion = null;
+    const { error } = await supabase.from('menus_traducciones').update(patch).eq('idmenu', menuId);
+    if (error) {
+      console.warn('[menu-admin] No se pudo invalidar cache de traducciones de sección:', { menuId, invokeError, error });
+    }
+  }
+}
+
+async function invalidateProductTranslationCells(
+  idProducto,
+  { nameChanged = false, descriptionChanged = false, mode = 'nullify' } = {},
+) {
+  const productId = Number(idProducto);
+  if (!Number.isFinite(productId) || productId <= 0) return;
+  if (mode !== 'delete' && !nameChanged && !descriptionChanged) return;
+
+  const fields = [];
+  if (nameChanged) fields.push('nombre');
+  if (descriptionChanged) fields.push('descripcion');
+
+  try {
+    await invokeTranslateMenuInvalidate({
+      entity: 'producto',
+      idProducto: productId,
+      mode,
+      fields,
+    });
+  } catch (invokeError) {
+    if (mode === 'delete') {
+      const { error } = await supabase.from('productos_traducciones').delete().eq('idproducto', productId);
+      if (error) {
+        console.warn('[menu-admin] No se pudo limpiar traducciones del producto eliminado:', { productId, invokeError, error });
+      }
+      return;
+    }
+
+    const patch = {};
+    if (nameChanged) patch.nombre = null;
+    if (descriptionChanged) patch.descripcion = null;
+    const { error } = await supabase.from('productos_traducciones').update(patch).eq('idproducto', productId);
+    if (error) {
+      console.warn('[menu-admin] No se pudo invalidar cache de traducciones de producto:', { productId, invokeError, error });
+    }
+  }
+}
+
 function renderPlanBadge(info) {
   if (planBadge) {
     planBadge.textContent = `${info.nombre} (Nivel ${info.nivel})`;
@@ -1332,10 +1422,27 @@ btnGuardarSeccion.onclick = async () => {
 
   if (!nueva.titulo) return alert('El título es requerido');
 
+  let previousSection = null;
   try {
     if (editandoId) {
+      const { data: prevData, error: prevErr } = await supabase
+        .from('menus')
+        .select('id, titulo, descripcion, no_traducir')
+        .eq('id', editandoId)
+        .maybeSingle();
+      if (prevErr) throw prevErr;
+      previousSection = prevData || null;
+
       const { error } = await supabase.from('menus').update(nueva).eq('id', editandoId);
       if (error) throw error;
+
+      const titleChanged =
+        normalizeComparableText(previousSection?.titulo) !== normalizeComparableText(nueva.titulo) ||
+        Boolean(previousSection?.no_traducir) !== Boolean(nueva.no_traducir);
+      const descriptionChanged =
+        normalizeComparableText(previousSection?.descripcion) !== normalizeComparableText(nueva.descripcion);
+
+      await invalidateMenuTranslationCells(editandoId, { titleChanged, descriptionChanged });
     } else {
       const { error } = await supabase.from('menus').insert(nueva);
       if (error) throw error;
@@ -1638,6 +1745,7 @@ window.eliminarProducto = async (idProducto, nombreProducto, rutaImagen = '') =>
     alert('Error al eliminar producto');
     console.error(error);
   } else {
+    await invalidateProductTranslationCells(idProducto, { mode: 'delete' });
     alert(`"${nombreProducto}" fue eliminado exitosamente.`);
     await cargarSecciones();
   }
@@ -1666,11 +1774,28 @@ btnGuardarProducto.onclick = async () => {
   }
 
   let productoId = productoEditandoId;
+  let previousProduct = null;
 
   try {
     if (productoId) {
+      const { data: prevData, error: prevErr } = await supabase
+        .from('productos')
+        .select('id, nombre, descripcion, no_traducir_nombre')
+        .eq('id', productoId)
+        .maybeSingle();
+      if (prevErr) throw prevErr;
+      previousProduct = prevData || null;
+
       const { error } = await supabase.from('productos').update(nuevo).eq('id', productoId);
       if (error) throw error;
+
+      const nameChanged =
+        normalizeComparableText(previousProduct?.nombre) !== normalizeComparableText(nuevo.nombre) ||
+        Boolean(previousProduct?.no_traducir_nombre) !== Boolean(nuevo.no_traducir_nombre);
+      const descriptionChanged =
+        normalizeComparableText(previousProduct?.descripcion) !== normalizeComparableText(nuevo.descripcion);
+
+      await invalidateProductTranslationCells(productoId, { nameChanged, descriptionChanged });
     } else {
       const { data, error } = await supabase.from('productos').insert(nuevo).select().single();
       if (error) throw error;

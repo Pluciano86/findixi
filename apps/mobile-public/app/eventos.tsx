@@ -491,11 +491,11 @@ export default function EventosScreen() {
         return fb.localeCompare(fa);
       });
     } else {
-      output.sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')));
+      output.sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), resolveLocale(lang)));
     }
 
     return output;
-  }, [eventos, onlyFree, onlyToday, onlyWeek, searchText, selectedCategoria, selectedMunicipio, selectedOrder]);
+  }, [eventos, lang, onlyFree, onlyToday, onlyWeek, searchText, selectedCategoria, selectedMunicipio, selectedOrder]);
 
   const rows = useMemo(() => {
     const grouped: EventoListadoItem[][] = [];

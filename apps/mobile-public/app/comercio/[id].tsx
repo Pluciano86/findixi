@@ -48,6 +48,8 @@ import {
 } from '../../src/features/comercios/api';
 import type { ComercioRow } from '../../src/features/comercios/types';
 import { useI18n } from '../../src/i18n/provider';
+import type { I18nKey } from '../../src/i18n/translations';
+import { OPENWEATHER_API_KEY } from '../../src/config/env';
 import { requestUserLocation, type UserLocation } from '../../src/lib/location';
 import { getDrivingDistance } from '../../src/lib/osrm';
 import { supabase } from '../../src/lib/supabase';
@@ -57,10 +59,10 @@ const STORAGE_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object
 const DEFAULT_PORTADA = `${STORAGE_BASE}NoActivoPortada.jpg`;
 const DEFAULT_LOGO = `${STORAGE_BASE}NoActivoLogo.png`;
 const SOCIAL_ICON_BASE = `${STORAGE_BASE}`;
-const OPEN_WEATHER_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || '2c1d54239e886b97ed52ac446c3ae948';
 const WEATHER_ICON_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/';
 
 const DAY_LABELS_ES = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'] as const;
+const DAY_LABELS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
 function parseId(value: string | string[] | undefined): number {
   if (Array.isArray(value)) return Number(value[0] ?? 0);
@@ -144,17 +146,23 @@ function amenidadIconName(iconClass: string | null | undefined, amenidadNombre?:
   };
 }
 
-function renderTravelText(minutes: number | null): string {
-  if (!Number.isFinite(minutes)) return 'No disponible';
+function renderTravelText(
+  minutes: number | null,
+  t: (key: I18nKey, params?: Record<string, string | number>) => string
+): string {
+  if (!Number.isFinite(minutes)) return t('comercio.notAvailable');
   const min = Math.max(0, Math.round(Number(minutes)));
-  if (min < 60) return `a ${min} minuto${min === 1 ? '' : 's'}`;
+  if (min < 60) return t('card.minAway', { min });
   const h = Math.floor(min / 60);
   const m = min % 60;
-  return `a ${h} h ${m} min`;
+  return t('card.horasMinAway', { h, m });
 }
 
-function formatPrice(value: number | null): string {
-  return formatearMonedaUSD(value, { fallback: 'Gratis' });
+function formatPrice(
+  value: number | null,
+  t: (key: I18nKey, params?: Record<string, string | number>) => string
+): string {
+  return formatearMonedaUSD(value, { fallback: t('area.gratis') });
 }
 
 type CuponCard = {
@@ -210,13 +218,6 @@ type NearbyPlayaCard = {
 type NearbyPlayaBase = Omit<NearbyPlayaCard, 'clima'>;
 
 const COMIDA_CATEGORIAS_VALIDAS = new Set([1, 2, 5, 7]);
-const CATEGORIA_LABEL_BY_ID: Record<number, string> = {
-  1: 'Restaurantes',
-  2: 'Coffee Shops',
-  5: 'Food Trucks',
-  7: 'Panaderias',
-  11: 'Jangueo',
-};
 const NEARBY_COMERCIO_NAME_LONG_THRESHOLD = 24;
 
 function toFiniteNumber(value: unknown): number | null {
@@ -294,13 +295,18 @@ function resolveWeatherIconUrl(iconCode: string | null | undefined): string | nu
   return `${WEATHER_ICON_BASE}${map[icon] || '1.svg'}`;
 }
 
-async function fetchBeachWeather(lat: number, lon: number, lang: string) {
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || !OPEN_WEATHER_API_KEY) return null;
+async function fetchBeachWeather(
+  lat: number,
+  lon: number,
+  lang: string,
+  unavailableLabel: string
+) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || !OPENWEATHER_API_KEY) return null;
 
   try {
     const url =
       `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}` +
-      `&units=imperial&lang=${resolveWeatherLang(lang)}&appid=${OPEN_WEATHER_API_KEY}`;
+      `&units=imperial&lang=${resolveWeatherLang(lang)}&appid=${OPENWEATHER_API_KEY}`;
     const response = await fetch(url);
     if (!response.ok) return null;
 
@@ -311,7 +317,7 @@ async function fetchBeachWeather(lat: number, lon: number, lang: string) {
     const iconCode = String(payload.weather?.[0]?.icon ?? '').trim();
 
     return {
-      estado: estado || 'Clima no disponible',
+      estado: estado || unavailableLabel,
       iconoUrl: resolveWeatherIconUrl(iconCode),
     };
   } catch {
@@ -320,7 +326,7 @@ async function fetchBeachWeather(lat: number, lon: number, lang: string) {
 }
 
 export default function ComercioDetailScreen() {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const id = parseId(params.id);
@@ -344,7 +350,7 @@ export default function ComercioDetailScreen() {
   const [descExpanded, setDescExpanded] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
-  const [travelText, setTravelText] = useState('Cargando distancia...');
+  const [travelText, setTravelText] = useState(() => t('comercio.loadingDistance'));
   const [blockedByPlan, setBlockedByPlan] = useState(false);
   const [nowTick, setNowTick] = useState<number>(() => Date.now());
   const [cupones, setCupones] = useState<CuponCard[]>([]);
@@ -363,6 +369,20 @@ export default function ComercioDetailScreen() {
     () => Boolean(item?.ComercioCategorias?.some((entry) => Number(entry.idCategoria) === 11)),
     [item]
   );
+  const dayLabels = useMemo(
+    () => (lang.toLowerCase().startsWith('en') ? [...DAY_LABELS_EN] : [...DAY_LABELS_ES]),
+    [lang]
+  );
+  const categoriaLabelById = useMemo<Record<number, string>>(
+    () => ({
+      1: t('comercio.categoryRestaurantes'),
+      2: t('comercio.categoryCoffeeShops'),
+      5: t('comercio.categoryFoodTrucks'),
+      7: t('comercio.categoryPanaderias'),
+      11: t('comercio.categoryJangueo'),
+    }),
+    [t]
+  );
 
   const heroImage = galleryImages[galleryIndex] || toStorageUrl(item?.portada, DEFAULT_PORTADA);
   const statusHorario = useMemo(
@@ -370,18 +390,18 @@ export default function ComercioDetailScreen() {
       obtenerMensajeHorario({
         horarios,
         now: new Date(nowTick),
-        diasSemana: [...DAY_LABELS_ES],
+        diasSemana: dayLabels,
         labels: {
-          abiertoAhora: 'Abierto Ahora',
-          cerradoAhora: 'Cerrado Ahora',
-          horarioNoDisponible: 'Horario no disponible',
-          abreHoy: 'Abre hoy a {hora}',
-          abreDia: 'Abre {dia} a {hora}',
-          manana: 'manana',
-          cierraALas: 'Cierra a las {hora}',
+          abiertoAhora: t('card.abiertoAhora'),
+          cerradoAhora: t('card.cerradoAhora'),
+          horarioNoDisponible: t('comercio.scheduleNotAvailable'),
+          abreHoy: t('comercio.opensTodayAt'),
+          abreDia: t('comercio.opensDayAt'),
+          manana: t('comercio.tomorrow'),
+          cierraALas: t('comercio.closesAt'),
         },
       }),
-    [horarios, nowTick]
+    [dayLabels, horarios, nowTick, t]
   );
 
   useEffect(() => {
@@ -446,14 +466,14 @@ export default function ComercioDetailScreen() {
       } = await supabase.auth.getUser();
       if (!user?.id) {
         Alert.alert(
-          'Inicia sesion',
-          'Debes iniciar sesion para gestionar tus favoritos.',
+          t('comercio.loginRequiredTitle'),
+          t('comercio.loginRequiredFavoritesBody'),
           [
-            { text: 'Cancelar', style: 'cancel' },
+            { text: t('comercio.cancel'), style: 'cancel' },
             {
-              text: 'Ir a login',
+              text: t('comercio.goToLogin'),
               onPress: () => {
-                void Linking.openURL(`${DEFAULT_APP_BASE_URLS.public}/logearse.html`);
+                router.push(`/login?redirect=/comercio/${id}`);
               },
             },
           ]
@@ -476,14 +496,14 @@ export default function ComercioDetailScreen() {
           idcomercio: id,
         });
         if (insertError) throw insertError;
-        setIsFavorite(true);
-      }
-    } catch (toggleError) {
-      console.warn('[mobile-public] No se pudo actualizar favorito:', toggleError);
-    } finally {
+      setIsFavorite(true);
+    }
+  } catch (toggleError) {
+    console.warn('[mobile-public] No se pudo actualizar favorito:', toggleError);
+  } finally {
       setFavoriteBusy(false);
     }
-  }, [favoriteBusy, id, isFavorite]);
+  }, [favoriteBusy, id, isFavorite, router, t]);
 
   useEffect(() => {
     if (!galleryImages.length || modalVisible) return;
@@ -542,7 +562,7 @@ export default function ComercioDetailScreen() {
 
   useEffect(() => {
     if (!item || !location || item.latitud == null || item.longitud == null) {
-      setTravelText('No disponible');
+      setTravelText(t('comercio.notAvailable'));
       return;
     }
 
@@ -553,7 +573,7 @@ export default function ComercioDetailScreen() {
       Number(item.longitud)
     );
     const fallback = calcularTiempoEnVehiculo(fallbackKm);
-    setTravelText(renderTravelText(Number.isFinite(fallback.minutos) ? fallback.minutos : null));
+    setTravelText(renderTravelText(Number.isFinite(fallback.minutos) ? fallback.minutos : null, t));
 
     let mounted = true;
     void getDrivingDistance(
@@ -562,7 +582,7 @@ export default function ComercioDetailScreen() {
     )
       .then((osrm) => {
         if (!mounted || !osrm) return;
-        setTravelText(renderTravelText(osrm.duracion / 60));
+        setTravelText(renderTravelText(osrm.duracion / 60, t));
       })
       .catch(() => {
         // fallback already set
@@ -571,11 +591,11 @@ export default function ComercioDetailScreen() {
     return () => {
       mounted = false;
     };
-  }, [item, location]);
+  }, [item, location, t]);
 
   useEffect(() => {
     if (!Number.isFinite(id) || id <= 0) {
-      setError('ID de comercio invalido');
+      setError(t('comercio.invalidId'));
       setLoading(false);
       return;
     }
@@ -593,7 +613,7 @@ export default function ComercioDetailScreen() {
         if (!active) return;
         if (!comercio) {
           setItem(null);
-          setError('Comercio no encontrado');
+          setError(t('comercio.notFound'));
           setLoading(false);
           return;
         }
@@ -687,7 +707,7 @@ export default function ComercioDetailScreen() {
         }
       } catch (loadError) {
         if (!active) return;
-        setError(loadError instanceof Error ? loadError.message : 'No se pudo cargar el comercio');
+        setError(loadError instanceof Error ? loadError.message : t('comercio.loadError'));
       } finally {
         if (active) setLoading(false);
       }
@@ -698,7 +718,7 @@ export default function ComercioDetailScreen() {
     return () => {
       active = false;
     };
-  }, [id, lang]);
+  }, [id, lang, t]);
 
   const mapsUrl = useMemo(() => {
     if (!item || item.latitud == null || item.longitud == null) return null;
@@ -861,7 +881,7 @@ export default function ComercioDetailScreen() {
 
           return {
             id: idCupon,
-            titulo: String((record.titulo ?? 'Cupon') as string).trim() || 'Cupon',
+            titulo: String((record.titulo ?? t('comercio.couponTitleFallback')) as string).trim() || t('comercio.couponTitleFallback'),
             descripcion: String((record.descripcion ?? '') as string).trim(),
             imagenUrl: imagen || 'https://placehold.co/600x400?text=Cupon',
             descuento: toFiniteNumber(record.descuento),
@@ -894,14 +914,14 @@ export default function ComercioDetailScreen() {
 
       if (!user?.id) {
         Alert.alert(
-          'Inicia sesion',
-          'Debes iniciar sesion para guardar cupones.',
+          t('comercio.loginRequiredTitle'),
+          t('comercio.loginRequiredCouponsBody'),
           [
-            { text: 'Cancelar', style: 'cancel' },
+            { text: t('comercio.cancel'), style: 'cancel' },
             {
-              text: 'Ir a login',
+              text: t('comercio.goToLogin'),
               onPress: () => {
-                void Linking.openURL(`${DEFAULT_APP_BASE_URLS.public}/logearse.html`);
+                router.push(`/login?redirect=/comercio/${id}`);
               },
             },
           ]
@@ -911,12 +931,12 @@ export default function ComercioDetailScreen() {
 
       if (!usuarioPerfil?.membresiaUp) {
         Alert.alert(
-          'Membresia Up requerida',
-          'Para guardar este cupon necesitas Membresia Up.',
+          t('comercio.upRequiredTitle'),
+          t('comercio.upRequiredBody'),
           [
-            { text: 'Cerrar', style: 'cancel' },
+            { text: t('comercio.close'), style: 'cancel' },
             {
-              text: 'Hazte Up',
+              text: t('comercio.becomeUp'),
               onPress: () => {
                 void Linking.openURL(`${DEFAULT_APP_BASE_URLS.public}/upgradeUp.html`);
               },
@@ -943,7 +963,7 @@ export default function ComercioDetailScreen() {
 
         if (insertError) {
           if (insertError.code === '23505') {
-            Alert.alert('Cupon guardado', 'Ya guardaste este cupon.');
+            Alert.alert(t('comercio.couponAlreadySavedTitle'), t('comercio.couponAlreadySavedBody'));
           } else {
             throw insertError;
           }
@@ -952,12 +972,12 @@ export default function ComercioDetailScreen() {
         await loadCupones();
       } catch (saveError) {
         console.warn('[mobile-public] No se pudo guardar cupon:', saveError);
-        Alert.alert('Error', 'No se pudo guardar el cupon. Intenta nuevamente.');
+        Alert.alert(t('comercio.errorTitle'), t('comercio.couponSaveError'));
       } finally {
         setSavingCuponId(null);
       }
     },
-    [loadCupones, savingCuponId, usuarioPerfil]
+    [id, loadCupones, router, savingCuponId, t, usuarioPerfil]
   );
 
   useEffect(() => {
@@ -1033,12 +1053,12 @@ export default function ComercioDetailScreen() {
 
             return {
               id: Number(record.id),
-              nombre: String(record.nombre ?? 'Comercio'),
-              municipio: String(record.municipio ?? 'Puerto Rico'),
+              nombre: String(record.nombre ?? t('comercio.nearbyComercioFallback')),
+              municipio: String(record.municipio ?? t('comercio.addressFallback')),
               telefono: String(record.telefono ?? '').trim(),
               portadaUrl: toStorageUrl(String(record.portada ?? ''), 'https://placehold.co/200x120?text=Portada'),
               logoUrl: toStorageUrl(String(record.logo ?? ''), 'https://placehold.co/80x80?text=Logo'),
-              categoriaLabel: CATEGORIA_LABEL_BY_ID[firstCategoria ?? 1] ?? 'Comercio',
+              categoriaLabel: categoriaLabelById[firstCategoria ?? 1] ?? t('comercio.categoryComercio'),
               minutos: Number(minutos),
             } satisfies NearbyComercioCard;
           })
@@ -1084,7 +1104,7 @@ export default function ComercioDetailScreen() {
 
             return {
               id: idLugar,
-              nombre: String(record.nombre ?? 'Lugar'),
+              nombre: String(record.nombre ?? t('comercio.nearbyLugarFallback')),
               municipio: String(record.municipio ?? ''),
               imagenUrl: portadaLugarById.get(idLugar) || 'https://placehold.co/600x380?text=Lugar',
               minutos: Number(minutos),
@@ -1129,7 +1149,7 @@ export default function ComercioDetailScreen() {
 
                 return {
                   id: Number(record.id),
-                  nombre: String(record.nombre ?? 'Playa'),
+                  nombre: String(record.nombre ?? t('comercio.nearbyPlayaFallback')),
                   municipio: String(record.municipio ?? ''),
                   latitud: Number(record.latitud),
                   longitud: Number(record.longitud),
@@ -1149,7 +1169,7 @@ export default function ComercioDetailScreen() {
 
             playasFiltradas = await Promise.all(
               playasBaseFiltradas.map(async (playa): Promise<NearbyPlayaCard> => {
-                const clima = await fetchBeachWeather(playa.latitud, playa.longitud, lang);
+                const clima = await fetchBeachWeather(playa.latitud, playa.longitud, lang, t('comercio.weatherUnavailable'));
                 return {
                   ...playa,
                   clima,
@@ -1179,14 +1199,14 @@ export default function ComercioDetailScreen() {
     return () => {
       active = false;
     };
-  }, [item, lang]);
+  }, [categoriaLabelById, item, lang, t]);
 
   if (loading) {
     return (
       <PublicAppChrome>
         {({ contentPaddingStyle }) => (
           <View style={[styles.stateWrap, contentPaddingStyle]}>
-            <ScreenState loading message="Cargando perfil comercio..." />
+            <ScreenState loading message={t('comercio.loadingProfile')} />
           </View>
         )}
       </PublicAppChrome>
@@ -1210,7 +1230,7 @@ export default function ComercioDetailScreen() {
       <PublicAppChrome>
         {({ contentPaddingStyle }) => (
           <View style={[styles.stateWrap, contentPaddingStyle]}>
-            <ScreenState message="Comercio no encontrado." />
+            <ScreenState message={t('comercio.notFound')} />
           </View>
         )}
       </PublicAppChrome>
@@ -1223,12 +1243,10 @@ export default function ComercioDetailScreen() {
         {({ contentPaddingStyle }) => (
           <View style={[styles.stateWrap, contentPaddingStyle]}>
             <View style={[styles.blockedCard, shadows.card]}>
-              <Text style={styles.blockedTitle}>Perfil en construccion</Text>
-              <Text style={styles.blockedText}>
-                Este comercio aun esta en plan Basic. Muy pronto podras ver su perfil completo.
-              </Text>
+              <Text style={styles.blockedTitle}>{t('comercio.planBlockedTitle')}</Text>
+              <Text style={styles.blockedText}>{t('comercio.planBlockedBody')}</Text>
               <Pressable style={styles.blockedButton} onPress={() => router.push('/comercios')}>
-                <Text style={styles.blockedButtonText}>Volver al listado</Text>
+                <Text style={styles.blockedButtonText}>{t('comercio.backToList')}</Text>
               </Pressable>
             </View>
           </View>
@@ -1276,7 +1294,7 @@ export default function ComercioDetailScreen() {
               >
                 <FontAwesome name={isFavorite ? 'heart' : 'heart-o'} size={34} color={isFavorite ? '#dc2626' : '#6b7280'} />
                 <Text style={[styles.favoriteText, isFavorite ? styles.favoriteTextActive : null]}>
-                  {isFavorite ? 'Mi Favorito' : 'Añadir\nFavoritos'}
+                  {isFavorite ? t('comercio.favoriteMine') : t('comercio.favoriteAdd')}
                 </Text>
               </Pressable>
 
@@ -1317,7 +1335,7 @@ export default function ComercioDetailScreen() {
             </View>
 
             <View style={styles.centerInfo}>
-              <Text style={styles.nameText}>{item.nombre || 'Comercio'}</Text>
+              <Text style={styles.nameText}>{item.nombre || t('comercio.categoryComercio')}</Text>
               {(item.nombreSucursal || item.nombre_sucursal) ? (
                 <Text style={styles.branchText}>{item.nombreSucursal || item.nombre_sucursal}</Text>
               ) : null}
@@ -1334,7 +1352,7 @@ export default function ComercioDetailScreen() {
 
               <View style={[styles.metaLine, styles.addressMetaLine]}>
                 <FontAwesome name="map-pin" size={16} color="#3ea6c4" />
-                <Text style={styles.metaBlue}>{item.direccion || item.municipio || 'Puerto Rico'}</Text>
+                <Text style={styles.metaBlue}>{item.direccion || item.municipio || t('comercio.addressFallback')}</Text>
               </View>
 
               <View style={styles.metaLine}>
@@ -1389,8 +1407,8 @@ export default function ComercioDetailScreen() {
 
             {cupones.length > 0 ? (
               <View style={[styles.cardSection, shadows.card]}>
-                <Text style={styles.sectionTitle}>Ofertas y Descuentos</Text>
-                <Text style={styles.cuponIndicatorText}>{cupones.length} cupones disponibles</Text>
+                <Text style={styles.sectionTitle}>{t('comercio.offersTitle')}</Text>
+                <Text style={styles.cuponIndicatorText}>{t('comercio.couponsAvailable', { n: cupones.length })}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cuponList}>
                   {cupones.map((cupon) => {
                     const cantidadRestante =
@@ -1412,22 +1430,26 @@ export default function ComercioDetailScreen() {
                           </Text>
                         ) : null}
                         {Number.isFinite(cupon.descuento) ? (
-                          <Text style={styles.cuponDiscount}>Descuento: {Number(cupon.descuento)}%</Text>
+                          <Text style={styles.cuponDiscount}>{t('comercio.couponDiscount', { value: Number(cupon.descuento) })}</Text>
                         ) : null}
                         {cantidadRestante != null ? (
                           <Text style={styles.cuponCountText}>
-                            Disponibles: {cantidadRestante} de {cupon.cantidadDisponible}
+                            {t('comercio.couponAvailableCount', { remaining: cantidadRestante, total: cupon.cantidadDisponible })}
                           </Text>
                         ) : null}
-                        <Text style={styles.cuponDateText}>Valido hasta el {formatFechaLegible(cupon.fechaFinRaw)}</Text>
+                        <Text style={styles.cuponDateText}>
+                          {t('comercio.couponValidUntil', { date: formatFechaLegible(cupon.fechaFinRaw) })}
+                        </Text>
 
                         {guardado ? (
                           <View style={[styles.cuponStatePill, guardado.redimido ? styles.cuponStateRedeemed : styles.cuponStateSaved]}>
-                            <Text style={styles.cuponStateText}>{guardado.redimido ? 'Redimido' : 'Ya guardado'}</Text>
+                            <Text style={styles.cuponStateText}>
+                              {guardado.redimido ? t('comercio.couponRedeemed') : t('comercio.couponSaved')}
+                            </Text>
                           </View>
                         ) : agotado ? (
                           <View style={[styles.cuponStatePill, styles.cuponStateSoldOut]}>
-                            <Text style={styles.cuponStateText}>Agotado</Text>
+                            <Text style={styles.cuponStateText}>{t('comercio.couponSoldOut')}</Text>
                           </View>
                         ) : (
                           <Pressable
@@ -1438,7 +1460,7 @@ export default function ComercioDetailScreen() {
                             }}
                           >
                             <Text style={styles.cuponSaveButtonText}>
-                              {savingCuponId === cupon.id ? 'Guardando...' : 'Guardar cupon'}
+                              {savingCuponId === cupon.id ? t('comercio.couponSaving') : t('comercio.couponSave')}
                             </Text>
                           </Pressable>
                         )}
@@ -1451,7 +1473,7 @@ export default function ComercioDetailScreen() {
 
             {sucursales.length > 0 ? (
               <View style={[styles.cardSection, shadows.card]}>
-                <Text style={styles.sectionTitle}>Otras Sucursales</Text>
+                <Text style={styles.sectionTitle}>{t('comercio.otherBranches')}</Text>
                 <View style={styles.sucursalesWrap}>
                   {sucursales.map((sucursal) => (
                     <Pressable
@@ -1472,24 +1494,30 @@ export default function ComercioDetailScreen() {
               <Pressable
                 style={styles.menuButton}
                 onPress={() => {
-                  const menuUrl = `${DEFAULT_APP_BASE_URLS.public}/menu/menuComercio.html?idComercio=${menuTargetId}&modo=pickup&source=app`;
-                  void Linking.openURL(menuUrl);
+                  router.push({
+                    pathname: '/menu/[id]',
+                    params: {
+                      id: String(menuTargetId),
+                      modo: 'pickup',
+                      source: 'app',
+                    },
+                  });
                 }}
               >
-                <Text style={styles.menuButtonText}>Ver Nuestro Menu</Text>
+                <Text style={styles.menuButtonText}>{t('comercio.menuButton')}</Text>
               </Pressable>
             ) : null}
 
             {specialsVisible ? (
               <View style={[styles.cardSection, shadows.card]}>
-                <Text style={styles.sectionTitle}>Especiales para hoy</Text>
+                <Text style={styles.sectionTitle}>{t('comercio.specialsToday')}</Text>
                 <View style={styles.specialToggleRow}>
                   {especialesDia.almuerzo.length > 0 ? (
                     <Pressable
                       style={[styles.specialToggleButton, styles.specialToggleLunch, tabEspecial === 'almuerzo' ? styles.specialToggleActive : null]}
                       onPress={() => setTabEspecial('almuerzo')}
                     >
-                      <Text style={styles.specialToggleText}>Ver Almuerzo</Text>
+                      <Text style={styles.specialToggleText}>{t('comercio.specialsLunch')}</Text>
                     </Pressable>
                   ) : null}
                   {especialesDia.happyhour.length > 0 ? (
@@ -1497,7 +1525,7 @@ export default function ComercioDetailScreen() {
                       style={[styles.specialToggleButton, styles.specialToggleHappy, tabEspecial === 'happyhour' ? styles.specialToggleActive : null]}
                       onPress={() => setTabEspecial('happyhour')}
                     >
-                      <Text style={styles.specialToggleText}>Ver Happy Hour</Text>
+                      <Text style={styles.specialToggleText}>{t('comercio.specialsHappyHour')}</Text>
                     </Pressable>
                   ) : null}
                 </View>
@@ -1506,14 +1534,14 @@ export default function ComercioDetailScreen() {
                   {activeSpecialList.map((especial) => (
                     <View key={`especial-${especial.id}`} style={[styles.specialCard, shadows.card]}>
                       <Image
-                        source={{ uri: especial.imagenUrl || 'https://placehold.co/120x120?text=Especial' }}
+                        source={{ uri: especial.imagenUrl || `https://placehold.co/120x120?text=${encodeURIComponent(t('comercio.specialPlaceholder'))}` }}
                         style={styles.specialImage}
                         resizeMode="cover"
                       />
                       <View style={styles.specialInfo}>
                         <Text style={styles.specialName}>{especial.nombre}</Text>
                         {especial.descripcion ? <Text style={styles.specialDescription}>{especial.descripcion}</Text> : null}
-                        <Text style={styles.specialPrice}>{formatPrice(especial.precio)}</Text>
+                        <Text style={styles.specialPrice}>{formatPrice(especial.precio, t)}</Text>
                       </View>
                     </View>
                   ))}
@@ -1527,13 +1555,15 @@ export default function ComercioDetailScreen() {
                   {descripcion}
                 </Text>
                 <Pressable style={styles.descToggle} onPress={() => setDescExpanded((prev) => !prev)}>
-                  <Text style={styles.descToggleText}>{descExpanded ? 'Ocultar informacion' : 'Ver toda la informacion'}</Text>
+                  <Text style={styles.descToggleText}>
+                    {descExpanded ? t('comercio.descriptionHide') : t('comercio.descriptionShow')}
+                  </Text>
                 </Pressable>
               </View>
             ) : null}
 
             <View style={[styles.cardSection, shadows.card]}>
-              <Text style={styles.sectionTitle}>Horario de {item.nombre}</Text>
+              <Text style={styles.sectionTitle}>{t('comercio.scheduleTitle', { name: item.nombre || t('comercio.categoryComercio') })}</Text>
               <Text style={[styles.scheduleStatusTitle, statusHorario.abierto ? styles.statusOpen : styles.statusClosed]}>
                 {statusHorario.titulo}
               </Text>
@@ -1556,8 +1586,8 @@ export default function ComercioDetailScreen() {
                         {horario
                           ? formatearHorario(horario.apertura, horario.cierre, horario.cerrado)
                           : isClosedToday
-                            ? 'Cerrado'
-                            : 'No disponible'}
+                            ? t('comercio.scheduleClosed')
+                            : t('comercio.notAvailable')}
                       </Text>
                     </View>
                   );
@@ -1567,11 +1597,11 @@ export default function ComercioDetailScreen() {
 
             <View style={[styles.cardSection, shadows.card]}>
               <Text style={styles.sectionTitle}>
-                {item.nombre} cuenta con:
+                {t('comercio.withAmenities', { name: item.nombre || t('comercio.categoryComercio') })}
               </Text>
               <View style={styles.amenidadesGrid}>
                 {amenidades.length === 0 ? (
-                  <Text style={styles.emptyAmenidadesText}>Sin amenidades registradas.</Text>
+                  <Text style={styles.emptyAmenidadesText}>{t('comercio.noAmenities')}</Text>
                 ) : (
                   amenidades.map((amenidad) => (
                     <View key={`amenidad-${amenidad.id}`} style={styles.amenidadItem}>
@@ -1604,7 +1634,7 @@ export default function ComercioDetailScreen() {
             </View>
 
             <View style={styles.nearbySection}>
-              <Text style={styles.nearbyTitle}>Lugares para Comer a menos de 10 minutos de {item.nombre}</Text>
+              <Text style={styles.nearbyTitle}>{t('comercio.nearbyFoodTitle', { name: item.nombre || t('comercio.categoryComercio') })}</Text>
               {loadingCercanos ? (
                 <View style={styles.nearbyLoadingWrap}>
                   <ActivityIndicator size="small" color="#3ea6c4" />
@@ -1658,7 +1688,7 @@ export default function ComercioDetailScreen() {
                           </View>
                           <View style={styles.nearbyMetaLine}>
                             <FontAwesome name="car" size={11} color="#ef4444" />
-                            <Text style={[styles.nearbyMetaText, styles.nearbyFoodTimeText]}>{renderTravelText(card.minutos)}</Text>
+                            <Text style={[styles.nearbyMetaText, styles.nearbyFoodTimeText]}>{renderTravelText(card.minutos, t)}</Text>
                           </View>
                         </View>
                       </Pressable>
@@ -1669,7 +1699,7 @@ export default function ComercioDetailScreen() {
             </View>
 
             <View style={styles.nearbySection}>
-              <Text style={styles.nearbyTitle}>Lugares de interes cerca de {item.nombre}</Text>
+              <Text style={styles.nearbyTitle}>{t('comercio.nearbyPlacesTitle', { name: item.nombre || t('comercio.categoryComercio') })}</Text>
               {loadingCercanos ? (
                 <View style={styles.nearbyLoadingWrap}>
                   <ActivityIndicator size="small" color="#3ea6c4" />
@@ -1696,7 +1726,7 @@ export default function ComercioDetailScreen() {
                             </View>
                             <View style={styles.nearbyMetaLine}>
                               <FontAwesome name="car" size={13} color="#9ca3af" />
-                              <Text style={[styles.nearbyPlaceMetaText, styles.nearbyPlaceTimeText]}>{renderTravelText(card.minutos)}</Text>
+                              <Text style={[styles.nearbyPlaceMetaText, styles.nearbyPlaceTimeText]}>{renderTravelText(card.minutos, t)}</Text>
                             </View>
                           </View>
                         </View>
@@ -1708,7 +1738,7 @@ export default function ComercioDetailScreen() {
             </View>
 
             <View style={styles.nearbySection}>
-              <Text style={styles.nearbyTitle}>Playas a menos de 45 minutos de {item.nombre}</Text>
+              <Text style={styles.nearbyTitle}>{t('comercio.nearbyBeachesTitle', { name: item.nombre || t('comercio.categoryComercio') })}</Text>
               {loadingCercanos ? (
                 <View style={styles.nearbyLoadingWrap}>
                   <ActivityIndicator size="small" color="#3ea6c4" />
@@ -1752,7 +1782,7 @@ export default function ComercioDetailScreen() {
                           </View>
                           <View style={[styles.nearbyMetaLine, styles.nearbyBeachTimeRow]}>
                             <FontAwesome name="car" size={11} color="#ef4444" style={styles.nearbyBeachTimeIcon} />
-                            <Text style={[styles.nearbyMetaText, styles.nearbyBeachTimeText]}>{renderTravelText(card.minutos)}</Text>
+                            <Text style={[styles.nearbyMetaText, styles.nearbyBeachTimeText]}>{renderTravelText(card.minutos, t)}</Text>
                           </View>
                         </View>
                       </Pressable>

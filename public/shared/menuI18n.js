@@ -9,6 +9,12 @@ const isDev = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
 const normalizeLang = (lang) => (lang || "es").toLowerCase().split("-")[0];
 
+export function clearMenuI18nCache() {
+  cacheProductos.clear();
+  cacheMenus.clear();
+  cacheMenusFull.clear();
+}
+
 export async function getProductoI18n(producto, lang) {
   const normLang = normalizeLang(lang);
   if (normLang === "es") return producto;

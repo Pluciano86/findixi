@@ -21,7 +21,8 @@
           "locationWhenInUsePermission": "Findixi usa tu ubicacion para calcular distancia a comercios cercanos."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-web-browser"
     ],
     "ios": {
       "supportsTablet": true

@@ -43,7 +43,13 @@ export default function RootLayout() {
           <Stack.Screen name="playa/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="comercios" options={{ headerShown: false }} />
           <Stack.Screen name="eventos" options={{ headerShown: false }} />
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="usuario" options={{ headerShown: false }} />
           <Stack.Screen name="cuenta" options={{ headerShown: false }} />
+          <Stack.Screen name="pedidos" options={{ headerShown: false }} />
+          <Stack.Screen name="menu/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+          <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
           <Stack.Screen name="comercio/[id]" options={{ headerShown: false }} />
         </Stack>
       </I18nProvider>
