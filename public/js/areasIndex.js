@@ -4,11 +4,13 @@ import { t } from './i18n.js';
 const state = { areas: [] };
 
 function getLang() {
-  return localStorage.getItem('lang') || document.documentElement.lang || 'es';
+  return (localStorage.getItem('lang') || document.documentElement.lang || 'es')
+    .toLowerCase()
+    .split('-')[0];
 }
 
 function getAreaLabel(area) {
-  const lang = getLang().toLowerCase();
+  const lang = getLang();
   const col = `nombre_${lang}`;
   return area?.[col] || area?.nombre_es || '';
 }

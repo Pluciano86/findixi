@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const toggleBtn = document.getElementById('toggleCategorias');
   const section = document.getElementById('categoriasSection');
   if (!contenedor || !toggleBtn || !section) return;
+
   let todasCategorias = [];
   let mostrandoTodas = false;
 
@@ -24,28 +25,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 🔹 Cargar categorías desde Supabase
   async function cargarCategorias() {
+    const columnasPreferidas =
+      'id, imagen, nombre, nombre_es, nombre_en, nombre_zh, nombre_fr, nombre_pt, nombre_de, nombre_it, nombre_ko, nombre_ja';
+    const columnasFallback = 'id, imagen, nombre, nombre_es, nombre_en, nombre_pt';
+
     let { data, error } = await supabase
       .from('Categorias')
-      .select('id, imagen, color_hex, icono, nombre, nombre_es, nombre_en, nombre_zh, nombre_fr, nombre_pt, nombre_de, nombre_it, nombre_ko, nombre_ja')
+      .select(columnasPreferidas)
       .order('id', { ascending: true });
 
     if (error) {
-      const msg = String(error?.message || '').toLowerCase();
-      const missingColumn = msg.includes('column') && msg.includes('does not exist');
-      if (missingColumn) {
-        // Fallback para esquemas donde faltan columnas i18n/icono/color.
-        const fallback = await supabase
-          .from('Categorias')
-          .select('id, imagen, nombre, nombre_es, nombre_en, nombre_fr, nombre_pt, nombre_de, nombre_it, nombre_ko, nombre_ja')
-          .order('id', { ascending: true });
-        data = fallback.data || [];
-        error = fallback.error;
-      }
+      console.warn('⚠️ Categorias con columnas extendidas no disponibles. Intentando fallback...', error?.message || error);
+      const fallback = await supabase
+        .from('Categorias')
+        .select(columnasFallback)
+        .order('id', { ascending: true });
+      data = fallback.data;
+      error = fallback.error;
     }
 
     if (error) {
       console.error('❌ Error cargando categorías:', error);
-      contenedor.innerHTML = `<p class="text-sm text-red-500 col-span-3">${t('area.errorComida') || 'Error cargando categorías.'}</p>`;
+      contenedor.innerHTML = '';
+      toggleBtn.classList.add('hidden');
       return;
     }
 
@@ -73,7 +75,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     contenedor.innerHTML = '';
 
     const categoriasAMostrar = mostrandoTodas ? todasCategorias : todasCategorias.slice(0, 6);
-    const lang = (localStorage.getItem('lang') || document.documentElement.lang || 'es').toLowerCase().split('-')[0];
+    const lang = (localStorage.getItem('lang') || document.documentElement.lang || 'es')
+      .toLowerCase()
+      .split('-')[0];
     const col = `nombre_${lang}`;
 
     categoriasAMostrar.forEach(cat => {

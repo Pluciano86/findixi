@@ -119,10 +119,9 @@ if (!envUrl || !envKey) {
 
 export const SUPABASE_URL = envUrl || runtimeConfig.url || FALLBACK_URL;
 export const SUPABASE_ANON_KEY = envKey || runtimeConfig.key || FALLBACK_KEY;
-
-const hasEnvConfig = Boolean(envUrl && envKey);
 const hasRuntimeConfig = Boolean(runtimeConfig.url && runtimeConfig.key);
-if (!hasEnvConfig && !hasRuntimeConfig && typeof console !== 'undefined') {
+
+if ((!envUrl || !envKey) && !hasRuntimeConfig && typeof console !== 'undefined') {
   console.warn(
     '[Findixi] Usando fallback de Supabase. Para override: window.__ENV__ o /.netlify/functions/supabase-browser-config.'
   );
