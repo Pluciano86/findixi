@@ -8,6 +8,7 @@ import { showPopup } from './popups.js';
 import { resolverPlanComercio } from '../shared/planes.js';
 import { mostrarLugaresCercanos } from './lugaresCercanos.js';
 import { QR_REDIMIR_URL } from '../shared/runtimeConfig.js';
+import { bindTrackedAnchor, trackAnalyticsEvent } from '../shared/analyticsTracker.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 let latUsuario = null;
@@ -505,6 +506,16 @@ export async function obtenerComercioPorID(idComercio) {
     telefonoElemento.innerHTML = `<i class="fa-solid fa-phone text-xl"></i> ${telefonoDisplay}`;
     if (telefonoHref) {
       telefonoElemento.href = telefonoHref;
+      bindTrackedAnchor(telefonoElemento, {
+        idComercio,
+        eventName: 'click_call',
+        source: 'web',
+        municipio: data.municipio || null,
+        dedupeKey: `perfil:call:${idComercio}`,
+        dedupeMs: 1500,
+        navigateAfterTrack: true,
+        navigationDelayMs: 220,
+      });
     } else {
       telefonoElemento.removeAttribute('href');
     }
@@ -514,11 +525,66 @@ export async function obtenerComercioPorID(idComercio) {
 
   document.getElementById('nombreCercanosComida').textContent = data.nombre;
 
-  if (data.whatsapp) document.getElementById('linkWhatsapp')?.setAttribute('href', data.whatsapp);
-  if (data.facebook) document.getElementById('linkFacebook')?.setAttribute('href', data.facebook);
-  if (data.instagram) document.getElementById('linkInstagram')?.setAttribute('href', data.instagram);
-  if (data.tiktok) document.getElementById('linkTikTok')?.setAttribute('href', data.tiktok);
-  if (data.webpage) document.getElementById('linkWeb')?.setAttribute('href', data.webpage);
+  if (data.whatsapp) {
+    const el = document.getElementById('linkWhatsapp');
+    el?.setAttribute('href', data.whatsapp);
+    bindTrackedAnchor(el, {
+      idComercio,
+      eventName: 'click_whatsapp',
+      source: 'web',
+      municipio: data.municipio || null,
+      dedupeKey: `perfil:whatsapp:${idComercio}`,
+      dedupeMs: 1500,
+    });
+  }
+  if (data.facebook) {
+    const el = document.getElementById('linkFacebook');
+    el?.setAttribute('href', data.facebook);
+    bindTrackedAnchor(el, {
+      idComercio,
+      eventName: 'click_facebook',
+      source: 'web',
+      municipio: data.municipio || null,
+      dedupeKey: `perfil:facebook:${idComercio}`,
+      dedupeMs: 1500,
+    });
+  }
+  if (data.instagram) {
+    const el = document.getElementById('linkInstagram');
+    el?.setAttribute('href', data.instagram);
+    bindTrackedAnchor(el, {
+      idComercio,
+      eventName: 'click_instagram',
+      source: 'web',
+      municipio: data.municipio || null,
+      dedupeKey: `perfil:instagram:${idComercio}`,
+      dedupeMs: 1500,
+    });
+  }
+  if (data.tiktok) {
+    const el = document.getElementById('linkTikTok');
+    el?.setAttribute('href', data.tiktok);
+    bindTrackedAnchor(el, {
+      idComercio,
+      eventName: 'click_tiktok',
+      source: 'web',
+      municipio: data.municipio || null,
+      dedupeKey: `perfil:tiktok:${idComercio}`,
+      dedupeMs: 1500,
+    });
+  }
+  if (data.webpage) {
+    const el = document.getElementById('linkWeb');
+    el?.setAttribute('href', data.webpage);
+    bindTrackedAnchor(el, {
+      idComercio,
+      eventName: 'click_webpage',
+      source: 'web',
+      municipio: data.municipio || null,
+      dedupeKey: `perfil:webpage:${idComercio}`,
+      dedupeMs: 1500,
+    });
+  }
   if (data.email) document.getElementById('linkEmail')?.setAttribute('href', `mailto:${data.email}`);
 
   const { data: imagenLogo } = await supabase
@@ -548,6 +614,22 @@ export async function obtenerComercioPorID(idComercio) {
 
     document.getElementById('btnGoogleMaps').href = googleMapsURL;
     document.getElementById('btnWaze').href = wazeURL;
+    bindTrackedAnchor(document.getElementById('btnGoogleMaps'), {
+      idComercio,
+      eventName: 'click_google_maps',
+      source: 'web',
+      municipio: data.municipio || null,
+      dedupeKey: `perfil:gmap:${idComercio}`,
+      dedupeMs: 1500,
+    });
+    bindTrackedAnchor(document.getElementById('btnWaze'), {
+      idComercio,
+      eventName: 'click_waze',
+      source: 'web',
+      municipio: data.municipio || null,
+      dedupeKey: `perfil:waze:${idComercio}`,
+      dedupeMs: 1500,
+    });
   }
 
   if (data.tieneSucursales) await mostrarSucursales(idComercio, data.nombre);
@@ -555,6 +637,14 @@ export async function obtenerComercioPorID(idComercio) {
   await cargarCuponesComercio(idComercio);
 
   comercioActual = data;
+  void trackAnalyticsEvent({
+    idComercio,
+    eventName: 'view_profile',
+    source: 'web',
+    municipio: data.municipio || null,
+    dedupeKey: `perfil:view:${idComercio}`,
+    dedupeMs: 30000,
+  });
   return data;
 }
 
