@@ -1,10 +1,12 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { t } from './i18n.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initCategoriasIndex() {
   const contenedor = document.getElementById('categoriasContainer');
   const toggleBtn = document.getElementById('toggleCategorias');
   const section = document.getElementById('categoriasSection');
+  if (!contenedor || !toggleBtn || !section) return;
+
   let todasCategorias = [];
   let mostrandoTodas = false;
 
@@ -23,13 +25,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 🔹 Cargar categorías desde Supabase
   async function cargarCategorias() {
-    const { data, error } = await supabase
-      .from('Categorias')
-      .select('id, imagen, color_hex, icono, nombre, nombre_es, nombre_en, nombre_zh, nombre_fr, nombre_pt, nombre_de, nombre_it, nombre_ko, nombre_ja')
-      .order('id', { ascending: true });
+    const queryAttempts = [
+      'id, imagen, nombre, nombre_es, nombre_en, nombre_zh, nombre_fr, nombre_pt, nombre_de, nombre_it, nombre_ko, nombre_ja',
+      'id, imagen, nombre, nombre_es, nombre_en, nombre_pt',
+      'id, nombre',
+    ];
+
+    let data = null;
+    let error = null;
+
+    for (const columns of queryAttempts) {
+      const result = await supabase
+        .from('Categorias')
+        .select(columns)
+        .order('id', { ascending: true });
+      data = result.data;
+      error = result.error;
+      if (!error) break;
+    }
 
     if (error) {
       console.error('❌ Error cargando categorías:', error);
+      contenedor.innerHTML = '';
+      toggleBtn.classList.add('hidden');
       return;
     }
 
@@ -57,7 +75,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     contenedor.innerHTML = '';
 
     const categoriasAMostrar = mostrandoTodas ? todasCategorias : todasCategorias.slice(0, 6);
-    const lang = (localStorage.getItem('lang') || document.documentElement.lang || 'es').toLowerCase();
+    const lang = (localStorage.getItem('lang') || document.documentElement.lang || 'es')
+      .toLowerCase()
+      .split('-')[0];
     const col = `nombre_${lang}`;
 
     categoriasAMostrar.forEach(cat => {
@@ -97,4 +117,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   cargarCategorias();
   window.addEventListener('lang:changed', cargarCategorias);
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initCategoriasIndex, { once: true });
+} else {
+  initCategoriasIndex();
+}

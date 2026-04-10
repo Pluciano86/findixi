@@ -45,8 +45,14 @@ function renderBanner(contenedor) {
   window.addEventListener('lang:changed', actualizarTextos);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initEspecialesBanner() {
   const contenedor = document.getElementById('bannerContenido');
   if (!contenedor) return;
   renderBanner(contenedor);
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initEspecialesBanner, { once: true });
+} else {
+  initEspecialesBanner();
+}

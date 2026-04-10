@@ -3,6 +3,111 @@ import { supabase } from "../shared/supabaseClient.js";
 import { resolverPlanComercio } from "../shared/planes.js";
 import { pickRandomItems } from "../shared/utils.js";
 
+const COMERCIOS_SELECT = `
+  id,
+  nombre,
+  municipio,
+  categoria,
+  activo,
+  plan_id,
+  plan_nivel,
+  plan_nombre,
+  permite_perfil,
+  aparece_en_cercanos,
+  permite_menu,
+  permite_especiales,
+  permite_ordenes,
+  estado_propiedad,
+  estado_verificacion,
+  propietario_verificado
+`;
+
+function readCategoriaId(relacion) {
+  const raw = relacion?.idCategoria ?? relacion?.idcategoria ?? relacion?.id_categoria;
+  const numeric = Number(raw);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function parseCategoriaTokens(raw) {
+  if (typeof raw !== "string") return [];
+  return raw
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function hasCategoria(comercio, categoriaId, aliases = []) {
+  const relaciones = Array.isArray(comercio?.ComercioCategorias) ? comercio.ComercioCategorias : [];
+  if (relaciones.some((rel) => readCategoriaId(rel) === Number(categoriaId))) return true;
+
+  const tokens = parseCategoriaTokens(comercio?.categoria);
+  if (!tokens.length || !aliases.length) return false;
+  return tokens.some((token) => aliases.some((alias) => token.includes(alias)));
+}
+
+async function loadComerciosConCategorias() {
+  const embeddedQuery = await supabase
+    .from("Comercios")
+    .select(`
+      ${COMERCIOS_SELECT},
+      ComercioCategorias ( idCategoria )
+    `)
+    .eq("activo", true)
+    .limit(200);
+
+  if (!embeddedQuery.error) {
+    return (embeddedQuery.data || []).map((comercio) => ({
+      ...comercio,
+      ComercioCategorias: Array.isArray(comercio.ComercioCategorias) ? comercio.ComercioCategorias : [],
+    }));
+  }
+
+  console.warn("⚠️ Fallback carrusel comida: relación ComercioCategorias no disponible.", embeddedQuery.error?.message || embeddedQuery.error);
+
+  const baseQuery = await supabase
+    .from("Comercios")
+    .select(COMERCIOS_SELECT)
+    .eq("activo", true)
+    .limit(200);
+
+  if (baseQuery.error) throw baseQuery.error;
+
+  const comercios = baseQuery.data || [];
+  const idsComercios = comercios.map((comercio) => Number(comercio.id)).filter(Number.isFinite);
+  if (idsComercios.length === 0) return comercios;
+
+  const relationAttempts = [
+    { select: "idComercio,idCategoria", comercioCol: "idComercio", categoriaCol: "idCategoria" },
+    { select: "idcomercio,idcategoria", comercioCol: "idcomercio", categoriaCol: "idcategoria" },
+    { select: "idComercio,id_categoria", comercioCol: "idComercio", categoriaCol: "id_categoria" },
+  ];
+
+  const relacionesPorComercio = new Map();
+
+  for (const attempt of relationAttempts) {
+    const relQuery = await supabase
+      .from("ComercioCategorias")
+      .select(attempt.select)
+      .in(attempt.comercioCol, idsComercios);
+
+    if (relQuery.error) continue;
+
+    for (const rel of relQuery.data || []) {
+      const idComercio = Number(rel?.[attempt.comercioCol]);
+      const idCategoria = Number(rel?.[attempt.categoriaCol]);
+      if (!Number.isFinite(idComercio) || !Number.isFinite(idCategoria)) continue;
+      if (!relacionesPorComercio.has(idComercio)) relacionesPorComercio.set(idComercio, []);
+      relacionesPorComercio.get(idComercio).push({ idCategoria });
+    }
+    break;
+  }
+
+  return comercios.map((comercio) => ({
+    ...comercio,
+    ComercioCategorias: relacionesPorComercio.get(Number(comercio.id)) || [],
+  }));
+}
+
 /**
  * 🔹 Carrusel de "Aquí en Pe Erre se come bien"
  * Solo muestra comercios con categoría Restaurantes.
@@ -13,39 +118,25 @@ export async function renderComidaCarousel(containerId) {
 
   // ✅ ID de la categoría “Restaurantes”
   const idRestaurantes = 1; // asegúrate de que coincide con tu tabla Categorias
+  const aliasesRestaurantes = ["restaurante", "restaurantes", "restaurant", "restaurants"];
   const maxSlides = 24;
 
   try {
-    // 🔸 Buscar comercios activos que pertenezcan a Restaurantes
-    const { data: comercios, error: comerciosError } = await supabase
-      .from("Comercios")
-      .select(`
-        id,
-        nombre,
-        municipio,
-        activo,
-        plan_id,
-        plan_nivel,
-        plan_nombre,
-        permite_perfil,
-        aparece_en_cercanos,
-        permite_menu,
-        permite_especiales,
-        permite_ordenes,
-        estado_propiedad,
-        estado_verificacion,
-        propietario_verificado,
-        ComercioCategorias ( idCategoria )
-      `)
-      .eq("activo", true)
-      .limit(200);
-
-    if (comerciosError) throw comerciosError;
+    const comercios = await loadComerciosConCategorias();
 
     // 🔹 Filtrar solo los de la categoría Restaurantes
-    const comerciosFiltrados = comercios
-      .filter((c) => c.ComercioCategorias?.some((cc) => cc.idCategoria === idRestaurantes))
+    let comerciosFiltrados = comercios
+      .filter((c) => hasCategoria(c, idRestaurantes, aliasesRestaurantes))
       .filter((c) => resolverPlanComercio(c).aparece_en_cercanos);
+
+    if (!comerciosFiltrados.length) {
+      comerciosFiltrados = comercios.filter((c) => hasCategoria(c, idRestaurantes, aliasesRestaurantes));
+    }
+
+    if (!comerciosFiltrados.length) {
+      comerciosFiltrados = comercios.filter((c) => resolverPlanComercio(c).aparece_en_cercanos);
+    }
+
     const comerciosAleatorios = pickRandomItems(comerciosFiltrados, maxSlides);
 
     if (comerciosAleatorios.length === 0) {
@@ -76,7 +167,7 @@ export async function renderComidaCarousel(containerId) {
 
     // 🔸 Tomar una imagen por comercio (priorizar portada)
     const imagenesPorComercio = idsComercios.map((id) => {
-      const imgs = imagenes.filter((img) => img.idComercio === id);
+      const imgs = imagenes.filter((img) => Number(img.idComercio) === Number(id));
       return imgs.find((img) => img.portada) || imgs[0];
     }).filter(Boolean);
 

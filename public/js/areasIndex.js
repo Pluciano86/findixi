@@ -4,11 +4,13 @@ import { t } from './i18n.js';
 const state = { areas: [] };
 
 function getLang() {
-  return localStorage.getItem('lang') || document.documentElement.lang || 'es';
+  return (localStorage.getItem('lang') || document.documentElement.lang || 'es')
+    .toLowerCase()
+    .split('-')[0];
 }
 
 function getAreaLabel(area) {
-  const lang = getLang().toLowerCase();
+  const lang = getLang();
   const col = `nombre_${lang}`;
   return area?.[col] || area?.nombre_es || '';
 }
@@ -54,9 +56,8 @@ function updateLabels() {
 }
 
 async function loadAreas(container) {
-  const { data, error } = await supabase
-    .from('Area')
-    .select(`
+  const queryAttempts = [
+    `
       idArea,
       slug,
       imagen,
@@ -69,7 +70,22 @@ async function loadAreas(container) {
       nombre_zh,
       nombre_ko,
       nombre_ja
-    `);
+    `,
+    'idArea, slug, imagen, nombre_es, nombre',
+    'idArea, nombre_es, nombre',
+  ];
+
+  let data = null;
+  let error = null;
+
+  for (const columns of queryAttempts) {
+    const result = await supabase
+      .from('Area')
+      .select(columns);
+    data = result.data;
+    error = result.error;
+    if (!error) break;
+  }
 
   if (error) {
     console.error('Error cargando áreas', error);
@@ -89,11 +105,17 @@ async function loadAreas(container) {
   renderAreas(container);
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initAreasIndex() {
   const container = document.getElementById('areasGrid');
   if (!container) return;
 
   await loadAreas(container);
 
   window.addEventListener('lang:changed', updateLabels);
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAreasIndex, { once: true });
+} else {
+  initAreasIndex();
+}

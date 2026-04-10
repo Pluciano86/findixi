@@ -8,6 +8,15 @@
   - Sin 404 de modulos JS.
   - Sin errores de inicializacion de Supabase o funciones.
 
+## Comando de pre-check web-public
+- Antes de deploy de `test.findixi.com`, ejecutar:
+  - `npm run qa:web-public`
+- Este check valida:
+  - No uso de `top-level await` en `public/shared/supabaseClient.js` (compatibilidad movil).
+  - Inicializacion unica de carruseles e i18n en `public/index.html`.
+  - Redirect valido de funciones en `public/netlify.toml`.
+  - Init seguro por `readyState` en modulos criticos del `index`.
+
 ## Public - `test.findixi.com`
 1. `https://test.findixi.com/`
 - Validar: header/footer, categorias, areas, banners, popups base.
