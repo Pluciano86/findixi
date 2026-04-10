@@ -7,3 +7,6 @@ public/.netlify/
 .env
 .env.local
 public/shared/localMapsConfig.js
+
+.DS_Store
+**/.DS_Store
