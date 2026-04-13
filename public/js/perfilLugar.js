@@ -237,7 +237,7 @@ async function cargarPerfilLugar() {
 
     aplicarColoresLugar(lugar.colorPrimario, lugar.colorSecundario);
     if (lugar.nombre) {
-      document.title = `${lugar.nombre} | EnPe Erre`;
+      document.title = `${lugar.nombre} | Findixi`;
     }
 
     nombreEl.textContent = lugar.nombre || 'Lugar sin nombre';

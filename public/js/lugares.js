@@ -8,6 +8,7 @@ import { supabase } from '../shared/supabaseClient.js';
 import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
 import { calcularTiemposParaLugares } from './distanciaLugar.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
+import { t } from './i18n.js';
 
 // 📍 Calcula distancia entre dos coordenadas (Haversine)
 function calcularDistancia(lat1, lon1, lat2, lon2) {
@@ -43,6 +44,33 @@ let lugares = [];
 let latUsuario = null;
 let lonUsuario = null;
 let renderVersion = 0;
+const PLACEHOLDER_LUGAR =
+  'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/imgagenLugarNoDisponible.jpg';
+
+function buildNoImageOverlay() {
+  return `
+    <div class="playa-no-image-overlay absolute inset-0 flex flex-col items-center justify-center text-center text-white font-semibold text-sm leading-tight">
+      <span style="text-shadow: 0 2px 4px rgba(0,0,0,0.85);">${t('playa.noImageTitle')}</span>
+      <span style="text-shadow: 0 2px 4px rgba(0,0,0,0.85);">${t('playa.noImageSubtitle')}</span>
+    </div>
+  `;
+}
+
+function ensureNoImageOverlay(wrapper, mostrar) {
+  if (!wrapper) return;
+  let overlay = wrapper.querySelector('.playa-no-image-overlay');
+  if (!mostrar) {
+    overlay?.remove();
+    return;
+  }
+  if (!overlay) {
+    wrapper.insertAdjacentHTML('beforeend', buildNoImageOverlay());
+  } else {
+    const spans = overlay.querySelectorAll('span');
+    if (spans[0]) spans[0].textContent = t('playa.noImageTitle');
+    if (spans[1]) spans[1].textContent = t('playa.noImageSubtitle');
+  }
+}
 
 const claseBaseContenedor = contenedor?.className || '';
 function restaurarContenedor() {
@@ -93,6 +121,9 @@ async function crearBannerElemento(slotName = 'banner-inline') {
 function crearCardLugar(lugar) {
   const div = document.createElement('div');
   div.className = "bg-white rounded-2xl shadow-md overflow-hidden text-center w-full max-w-[200px] mx-auto";
+  const portadaRaw = typeof lugar.portada === 'string' ? lugar.portada.trim() : '';
+  const portadaUrl = portadaRaw || PLACEHOLDER_LUGAR;
+  const usaPlaceholder = portadaUrl === PLACEHOLDER_LUGAR;
 
   let estadoTexto = '';
   let estadoColor = '';
@@ -129,7 +160,8 @@ function crearCardLugar(lugar) {
             </div>`
           : ''
       }
-      <img src="${lugar.portada}" alt="Portada de ${lugar.nombre}" class="w-full h-40 object-cover" />
+      <img src="${portadaUrl}" alt="Portada de ${lugar.nombre}" class="w-full h-40 object-cover" data-lugar-image />
+      ${usaPlaceholder ? buildNoImageOverlay() : ''}
     <a href="${getPublicBase()}perfilLugar.html?id=${lugar.id}" class="relative w-full flex flex-col items-center no-underline">
         <div class="relative h-12 w-full">
           <div class="absolute inset-0 flex items-center justify-center px-2 text-center">
@@ -156,6 +188,19 @@ function crearCardLugar(lugar) {
       </d iv>
     </div>
   `;
+
+  const imageWrapper = div.querySelector('.relative.overflow-hidden');
+  const imageEl = div.querySelector('[data-lugar-image]');
+  ensureNoImageOverlay(imageWrapper, usaPlaceholder);
+  if (imageEl) {
+    imageEl.addEventListener('error', () => {
+      if (imageEl.src !== PLACEHOLDER_LUGAR) {
+        imageEl.src = PLACEHOLDER_LUGAR;
+      }
+      ensureNoImageOverlay(imageWrapper, true);
+    });
+  }
+
   return div;
 }
 
@@ -209,7 +254,7 @@ async function cargarLugares() {
   });
 
   // 🖼️ Intentar obtener imagen directamente desde la columna 'imagen' del lugar
-const imagenDefault = "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/lugarnodisponible.jpg";
+const imagenDefault = PLACEHOLDER_LUGAR;
 
 // 🔹 Buscar imágenes alternativas (solo si no hay imagen directa)
 const { data: imagenes, error: errorImg } = await supabase

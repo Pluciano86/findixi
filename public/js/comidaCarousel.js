@@ -109,7 +109,7 @@ async function loadComerciosConCategorias() {
 }
 
 /**
- * 🔹 Carrusel de "Aquí en Pe Erre se come bien"
+ * 🔹 Carrusel de "Aquí en Findixi se come bien"
  * Solo muestra comercios con categoría Restaurantes.
  */
 export async function renderComidaCarousel(containerId) {

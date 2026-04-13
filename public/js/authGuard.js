@@ -8,9 +8,9 @@ const LOGO_ENPR_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/objec
 const LOGO_UP_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo%20UP.png';
 
 export const ACTION_MESSAGES = {
-  favoriteCommerce: '✋🏼 Los favoritos son pal Corillo de EnPeErre. Debes iniciar sesión para agregar este lugar a tus favoritos, Crea tu cuenta ahora pa’ que no pierdas tus favoritos cada vez que cierres la app.',
-  favoritePlace: '✋🏼Los favoritos son pal Corillo de EnPeErre. Debes iniciar sesión para agregar este lugar a tus favoritos, Crea tu cuenta ahora pa’ que no pierdas tus favoritos cada vez que cierres la app.',
-  favoriteBeach: '✋🏼Los favoritos son pal Corillo de EnPeErre. Debes iniciar sesión para agregar esta Playa a tus favoritos, Crea tu cuenta ahora pa’ que no pierdas tus favoritos cada vez que cierres la app.',
+  favoriteCommerce: '✋🏼 Los favoritos son pal Corillo de Findixi. Debes iniciar sesión para agregar este lugar a tus favoritos, Crea tu cuenta ahora pa’ que no pierdas tus favoritos cada vez que cierres la app.',
+  favoritePlace: '✋🏼Los favoritos son pal Corillo de Findixi. Debes iniciar sesión para agregar este lugar a tus favoritos, Crea tu cuenta ahora pa’ que no pierdas tus favoritos cada vez que cierres la app.',
+  favoriteBeach: '✋🏼Los favoritos son pal Corillo de Findixi. Debes iniciar sesión para agregar esta Playa a tus favoritos, Crea tu cuenta ahora pa’ que no pierdas tus favoritos cada vez que cierres la app.',
   saveCoupon: '😎⬆️ Este privilegio es solo pa’ la gente UP... <br> Ahora mismo está GRATIS, pero solo hasta el 31 de enero. Métele ahora… Después no digas que no te avisé… 😏🔥',
   default: 'Debes iniciar sesión para continuar.'
 };
@@ -34,7 +34,7 @@ function ensureModal() {
       </button>
       <div class="flex flex-col items-center gap-3">
         <div class="flex items-center justify-center">
-          <img src="${LOGO_ENPR_URL}" alt="Logo En Pe Erre" class="auth-guard-logo object-contain" loading="lazy" />
+          <img src="${LOGO_ENPR_URL}" alt="Logo Findixi" class="auth-guard-logo object-contain" loading="lazy" />
         </div>
         <p id="auth-guard-message" class="text-sm text-gray-700 leading-relaxed"></p>
       </div>
@@ -76,7 +76,7 @@ export function showAuthModal(message, actionKey) {
   if (modalLogoEl) {
     const isCouponAction = actionKey === 'saveCoupon';
     modalLogoEl.src = isCouponAction ? LOGO_UP_URL : LOGO_ENPR_URL;
-    modalLogoEl.alt = isCouponAction ? 'Logo Up' : 'Logo En Pe Erre';
+    modalLogoEl.alt = isCouponAction ? 'Logo Up' : 'Logo Findixi';
     if (isCouponAction) {
       modalLogoEl.style.width = '100px';
       modalLogoEl.style.height = 'auto';

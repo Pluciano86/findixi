@@ -412,7 +412,7 @@ const DICTS = {
     // cupon
     'cupon.titulo': 'Redimir Cupón',
     'cupon.subtitulo': 'Validación rápida y segura para comercios aliados.',
-    'cupon.instruccion': 'Introduce el código secreto provisto por el sistema de En Pe Erre.',
+    'cupon.instruccion': 'Introduce el código secreto provisto por el sistema de Findixi.',
     'cupon.labelCodigo': 'Código secreto',
     'cupon.usuario': 'Usuario:',
     'cupon.btnValidar': 'Validar',
@@ -843,7 +843,7 @@ const DICTS = {
 
     'cupon.titulo': 'Redeem Coupon',
     'cupon.subtitulo': 'Fast, secure validation for partner businesses.',
-    'cupon.instruccion': 'Enter the secret code provided by En Pe Erre.',
+    'cupon.instruccion': 'Enter the secret code provided by Findixi.',
     'cupon.labelCodigo': 'Secret code',
     'cupon.usuario': 'User:',
     'cupon.btnValidar': 'Validate',
@@ -1272,7 +1272,7 @@ const DICTS = {
 
     'cupon.titulo': '兑换优惠券',
     'cupon.subtitulo': '为合作商家提供快速安全的验证。',
-    'cupon.instruccion': '输入 En Pe Erre 提供的秘密代码。',
+    'cupon.instruccion': '输入 Findixi 提供的秘密代码。',
     'cupon.labelCodigo': '秘密代码',
     'cupon.usuario': '用户：',
     'cupon.btnValidar': '验证',
@@ -1648,7 +1648,7 @@ const DICTS = {
 
     'cupon.titulo': 'Valider un coupon',
     'cupon.subtitulo': 'Validation rapide et sécurisée pour les partenaires.',
-    'cupon.instruccion': 'Saisissez le code secret fourni par En Pe Erre.',
+    'cupon.instruccion': 'Saisissez le code secret fourni par Findixi.',
     'cupon.labelCodigo': 'Code secret',
     'cupon.usuario': 'Utilisateur :',
     'cupon.btnValidar': 'Valider',
@@ -2077,7 +2077,7 @@ const DICTS = {
 
     'cupon.titulo': 'Validar Cupom',
     'cupon.subtitulo': 'Validação rápida e segura para parceiros.',
-    'cupon.instruccion': 'Insira o código secreto fornecido pela En Pe Erre.',
+    'cupon.instruccion': 'Insira o código secreto fornecido pela Findixi.',
     'cupon.labelCodigo': 'Código secreto',
     'cupon.usuario': 'Usuário:',
     'cupon.btnValidar': 'Validar',
@@ -2508,7 +2508,7 @@ const DICTS = {
 
     'cupon.titulo': 'Coupon einlösen',
     'cupon.subtitulo': 'Schnelle, sichere Validierung für Partner.',
-    'cupon.instruccion': 'Gib den geheimen Code von En Pe Erre ein.',
+    'cupon.instruccion': 'Gib den geheimen Code von Findixi ein.',
     'cupon.labelCodigo': 'Geheimer Code',
     'cupon.usuario': 'Benutzer:',
     'cupon.btnValidar': 'Validieren',
@@ -2935,7 +2935,7 @@ const DICTS = {
 
     'cupon.titulo': 'Riscatta Coupon',
     'cupon.subtitulo': 'Validazione rapida e sicura per i partner.',
-    'cupon.instruccion': 'Inserisci il codice segreto fornito da En Pe Erre.',
+    'cupon.instruccion': 'Inserisci il codice segreto fornito da Findixi.',
     'cupon.labelCodigo': 'Codice segreto',
     'cupon.usuario': 'Utente:',
     'cupon.btnValidar': 'Conferma',
@@ -3364,7 +3364,7 @@ const DICTS = {
 
     'cupon.titulo': '쿠폰 사용',
     'cupon.subtitulo': '파트너를 위한 빠르고 안전한 확인.',
-    'cupon.instruccion': 'En Pe Erre가 제공한 비밀 코드를 입력하세요.',
+    'cupon.instruccion': 'Findixi가 제공한 비밀 코드를 입력하세요.',
     'cupon.labelCodigo': '비밀 코드',
     'cupon.usuario': '사용자:',
     'cupon.btnValidar': '확인',
@@ -3793,7 +3793,7 @@ const DICTS = {
 
     'cupon.titulo': 'クーポンを利用',
     'cupon.subtitulo': 'パートナー向けの迅速で安全な確認。',
-    'cupon.instruccion': 'En Pe Erre から渡された秘密コードを入力してください。',
+    'cupon.instruccion': 'Findixi から渡された秘密コードを入力してください。',
     'cupon.labelCodigo': '秘密コード',
     'cupon.usuario': 'ユーザー：',
     'cupon.btnValidar': '確認',
