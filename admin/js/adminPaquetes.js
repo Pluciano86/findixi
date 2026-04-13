@@ -245,15 +245,17 @@ async function eliminarPlan(plan) {
   await cargarPlanes();
 }
 
-planForm?.addEventListener('submit', guardarPlan);
+(async () => {
+  planForm?.addEventListener('submit', guardarPlan);
 
-cancelarEdicion?.addEventListener('click', () => {
+  cancelarEdicion?.addEventListener('click', () => {
+    resetForm();
+  });
+
+  refreshPlanes?.addEventListener('click', () => {
+    cargarPlanes();
+  });
+
   resetForm();
-});
-
-refreshPlanes?.addEventListener('click', () => {
-  cargarPlanes();
-});
-
-resetForm();
-await cargarPlanes();
+  await cargarPlanes();
+})();
