@@ -694,7 +694,7 @@ async function enriquecerSucursales(lista = []) {
   try {
     const { data: rows, error } = await supabase
       .from('Comercios')
-      .select('id, nombreSucursal, sucursal, esSucursal, es_sucursal')
+      .select('id, nombreSucursal, tieneSucursales')
       .in('id', ids);
     if (error) throw error;
     data = rows;
