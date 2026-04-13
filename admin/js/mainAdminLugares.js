@@ -267,7 +267,7 @@ function inicializarListeners() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+(async () => {
   categoriasGlobales = await cargarCategorias();
   poblarCategoriasSelect(categoriasGlobales);
 
@@ -283,4 +283,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   inicializarListeners();
   aplicarFiltros();
-});
+})();

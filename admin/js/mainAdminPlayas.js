@@ -252,7 +252,7 @@ function inicializarListeners() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+(async () => {
   inicializarListeners();
   await cargarPlayas();
-});
+})();
