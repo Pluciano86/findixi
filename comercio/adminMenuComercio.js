@@ -1461,7 +1461,7 @@ btnGuardarSeccion.onclick = async () => {
 async function obtenerConexionClover() {
   const { data, error } = await supabase
     .from('clover_conexiones')
-    .select('idComercio, clover_merchant_id, access_token')
+    .select('idComercio, clover_merchant_id, estado, expires_at')
     .eq('idComercio', idComercio)
     .maybeSingle();
   if (error) throw error;
