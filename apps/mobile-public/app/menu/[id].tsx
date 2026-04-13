@@ -47,6 +47,7 @@ import type {
 import { useI18n } from '../../src/i18n/provider';
 import type { LanguageCode } from '../../src/i18n/languages';
 import { openExternalUrl } from '../../src/lib/external-link';
+import { openTrackedExternalUrl, trackAnalyticsEvent } from '../../src/lib/analytics';
 import { authStorage } from '../../src/lib/storage';
 import { supabase } from '../../src/lib/supabase';
 import { borderRadius, fonts, shadows, spacing } from '../../src/theme/tokens';
@@ -1051,6 +1052,7 @@ export default function MenuComercioScreen() {
   const groupsCacheRef = useRef<Map<number, ModifierGroup[]>>(new Map());
   const itemsCacheRef = useRef<Map<number, ModifierItem[]>>(new Map());
   const loadedFontAliasesRef = useRef<Set<string>>(new Set());
+  const trackedMenuViewRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     translationCacheRef.current.clear();
@@ -1377,6 +1379,33 @@ export default function MenuComercioScreen() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    const comercioId = Number(comercio?.id || idComercio || 0);
+    if (!Number.isFinite(comercioId) || comercioId <= 0) return;
+
+    const normalizedSource = sourceParam === 'app' ? 'app' : sourceParam === 'web' ? 'web' : sourceParam ? 'qr_table' : 'app';
+    const key = `${comercioId}:${normalizedSource}`;
+    if (trackedMenuViewRef.current.has(key)) return;
+    trackedMenuViewRef.current.add(key);
+
+    void trackAnalyticsEvent({
+      idComercio: comercioId,
+      eventName: 'view_menu',
+      source: normalizedSource,
+      municipio: (comercio as { municipio?: string | null } | null)?.municipio || null,
+      meta: { menu_id: Number(params.id || 0) || null, mode: orderMode },
+    });
+
+    if (normalizedSource === 'qr_table') {
+      void trackAnalyticsEvent({
+        idComercio: comercioId,
+        eventName: 'scan_qr_table',
+        source: normalizedSource,
+        meta: { mesa: mesaParam || null, mode: orderMode },
+      });
+    }
+  }, [comercio, idComercio, mesaParam, orderMode, params.id, sourceParam]);
 
   useEffect(() => {
     if (!comercio) return;
@@ -1819,6 +1848,13 @@ export default function MenuComercioScreen() {
 
     setCheckoutBusy(true);
     try {
+      void trackAnalyticsEvent({
+        idComercio: comercio.id,
+        eventName: 'start_order',
+        source: orderSource,
+        meta: { mode: orderMode, mesa: mesaParam || null, items: cartItems.length },
+      });
+
       const payload: Record<string, unknown> = {
         idComercio: comercio.id,
         items: cartItems.map((item) => ({
@@ -1871,6 +1907,13 @@ export default function MenuComercioScreen() {
       const orderId = Number(orderData.id);
       if (Number.isFinite(orderId)) {
         await rememberOrder(orderId, comercio.id);
+        void trackAnalyticsEvent({
+          idComercio: comercio.id,
+          eventName: 'order_completed',
+          source: orderSource,
+          orderId,
+          meta: { mode: orderMode, mesa: mesaParam || null },
+        });
       }
 
       if (orderMode === 'pickup') {
@@ -2318,7 +2361,15 @@ export default function MenuComercioScreen() {
                     {socialUrls.phone ? (
                       <Pressable
                         style={styles.footerActionBtn}
-                        onPress={() => void openExternalUrl(socialUrls.phone as string, { loggerTag: 'mobile-public/menu' })}
+                        onPress={() =>
+                          void openTrackedExternalUrl({
+                            url: socialUrls.phone as string,
+                            idComercio: comercio.id,
+                            eventName: 'click_call',
+                            source: sourceParam || 'app',
+                            loggerTag: 'mobile-public/menu',
+                          })
+                        }
                       >
                         <FontAwesome6 name="phone" size={13} color="#fff" iconStyle="solid" />
                       </Pressable>
@@ -2326,7 +2377,15 @@ export default function MenuComercioScreen() {
                     {socialUrls.facebook ? (
                       <Pressable
                         style={styles.footerActionBtn}
-                        onPress={() => void openExternalUrl(socialUrls.facebook as string, { loggerTag: 'mobile-public/menu' })}
+                        onPress={() =>
+                          void openTrackedExternalUrl({
+                            url: socialUrls.facebook as string,
+                            idComercio: comercio.id,
+                            eventName: 'click_facebook',
+                            source: sourceParam || 'app',
+                            loggerTag: 'mobile-public/menu',
+                          })
+                        }
                       >
                         <FontAwesome6 name="facebook-f" size={13} color="#fff" iconStyle="brands" />
                       </Pressable>
@@ -2334,7 +2393,15 @@ export default function MenuComercioScreen() {
                     {socialUrls.instagram ? (
                       <Pressable
                         style={styles.footerActionBtn}
-                        onPress={() => void openExternalUrl(socialUrls.instagram as string, { loggerTag: 'mobile-public/menu' })}
+                        onPress={() =>
+                          void openTrackedExternalUrl({
+                            url: socialUrls.instagram as string,
+                            idComercio: comercio.id,
+                            eventName: 'click_instagram',
+                            source: sourceParam || 'app',
+                            loggerTag: 'mobile-public/menu',
+                          })
+                        }
                       >
                         <FontAwesome6 name="instagram" size={13} color="#fff" iconStyle="brands" />
                       </Pressable>

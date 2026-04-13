@@ -53,6 +53,7 @@ import { OPENWEATHER_API_KEY } from '../../src/config/env';
 import { requestUserLocation, type UserLocation } from '../../src/lib/location';
 import { getDrivingDistance } from '../../src/lib/osrm';
 import { supabase } from '../../src/lib/supabase';
+import { openTrackedExternalUrl, trackAnalyticsEvent, type AnalyticsEventName } from '../../src/lib/analytics';
 import { borderRadius, fonts, shadows, spacing } from '../../src/theme/tokens';
 
 const STORAGE_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/';
@@ -363,6 +364,7 @@ export default function ComercioDetailScreen() {
   const clockSpin = useRef(new Animated.Value(0)).current;
   const clockShouldSpinRef = useRef(false);
   const clockAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+  const trackedProfileViewRef = useRef<Set<number>>(new Set());
 
   const plan = useMemo(() => resolverPlanComercio(item || {}), [item]);
   const esJangueo = useMemo(
@@ -457,6 +459,20 @@ export default function ComercioDetailScreen() {
     void loadFavorite();
   }, [loadFavorite]);
 
+  useEffect(() => {
+    const comercioId = Number(item?.id || 0);
+    if (!Number.isFinite(comercioId) || comercioId <= 0) return;
+    if (trackedProfileViewRef.current.has(comercioId)) return;
+    trackedProfileViewRef.current.add(comercioId);
+
+    void trackAnalyticsEvent({
+      idComercio: comercioId,
+      eventName: 'view_profile',
+      source: 'app',
+      municipio: item?.municipio || null,
+    });
+  }, [item?.id, item?.municipio]);
+
   const toggleFavorite = useCallback(async () => {
     if (favoriteBusy || !Number.isFinite(id) || id <= 0) return;
     setFavoriteBusy(true);
@@ -490,17 +506,19 @@ export default function ComercioDetailScreen() {
           .eq('idcomercio', id);
         if (deleteError) throw deleteError;
         setIsFavorite(false);
+        void trackAnalyticsEvent({ idComercio: id, eventName: 'favorite_remove', source: 'app' });
       } else {
         const { error: insertError } = await supabase.from('favoritosusuarios').insert({
           idusuario: user.id,
           idcomercio: id,
         });
         if (insertError) throw insertError;
-      setIsFavorite(true);
-    }
-  } catch (toggleError) {
-    console.warn('[mobile-public] No se pudo actualizar favorito:', toggleError);
-  } finally {
+        setIsFavorite(true);
+        void trackAnalyticsEvent({ idComercio: id, eventName: 'favorite_add', source: 'app' });
+      }
+    } catch (toggleError) {
+      console.warn('[mobile-public] No se pudo actualizar favorito:', toggleError);
+    } finally {
       setFavoriteBusy(false);
     }
   }, [favoriteBusy, id, isFavorite, router, t]);
@@ -1343,7 +1361,15 @@ export default function ComercioDetailScreen() {
               {!esJangueo && phoneHref ? (
                 <Pressable
                   style={({ pressed }) => [styles.phonePill, pressed ? styles.phonePillPressed : null]}
-                  onPress={() => void Linking.openURL(phoneHref)}
+                  onPress={() =>
+                    void openTrackedExternalUrl({
+                      url: phoneHref,
+                      idComercio: id,
+                      eventName: 'click_call',
+                      source: 'app',
+                      loggerTag: 'mobile-public/comercio',
+                    })
+                  }
                 >
                   <FontAwesome name="phone" size={20} color="#fff" />
                   <Text style={styles.phonePillText}>{phoneDisplay}</Text>
@@ -1367,7 +1393,13 @@ export default function ComercioDetailScreen() {
                 disabled={!mapsUrl}
                 onPress={() => {
                   if (!mapsUrl) return;
-                  void Linking.openURL(mapsUrl);
+                  void openTrackedExternalUrl({
+                    url: mapsUrl,
+                    idComercio: id,
+                    eventName: 'click_google_maps',
+                    source: 'app',
+                    loggerTag: 'mobile-public/comercio',
+                  });
                 }}
               >
                 <View style={styles.mapButtonInner}>
@@ -1379,7 +1411,13 @@ export default function ComercioDetailScreen() {
                 disabled={!wazeUrl}
                 onPress={() => {
                   if (!wazeUrl) return;
-                  void Linking.openURL(wazeUrl);
+                  void openTrackedExternalUrl({
+                    url: wazeUrl,
+                    idComercio: id,
+                    eventName: 'click_waze',
+                    source: 'app',
+                    loggerTag: 'mobile-public/comercio',
+                  });
                 }}
               >
                 <View style={styles.mapButtonInner}>
@@ -1396,7 +1434,26 @@ export default function ComercioDetailScreen() {
                     style={styles.socialButton}
                     onPress={() => {
                       if (!entry.href) return;
-                      void Linking.openURL(entry.href);
+                      const eventByKey: Record<string, AnalyticsEventName | null> = {
+                        facebook: 'click_facebook',
+                        instagram: 'click_instagram',
+                        tiktok: 'click_tiktok',
+                        whatsapp: 'click_whatsapp',
+                        webpage: 'click_webpage',
+                        email: null,
+                      };
+                      const eventName = eventByKey[entry.key] || null;
+                      if (!eventName) {
+                        void Linking.openURL(entry.href);
+                        return;
+                      }
+                      void openTrackedExternalUrl({
+                        url: entry.href,
+                        idComercio: id,
+                        eventName,
+                        source: 'app',
+                        loggerTag: 'mobile-public/comercio',
+                      });
                     }}
                   >
                     <Image source={{ uri: entry.image }} style={styles.socialImage} />
@@ -1494,6 +1551,13 @@ export default function ComercioDetailScreen() {
               <Pressable
                 style={styles.menuButton}
                 onPress={() => {
+                  void trackAnalyticsEvent({
+                    idComercio: id,
+                    eventName: 'view_menu',
+                    source: 'app',
+                    municipio: item?.municipio || null,
+                    meta: { trigger: 'open_menu_button' },
+                  });
                   router.push({
                     pathname: '/menu/[id]',
                     params: {

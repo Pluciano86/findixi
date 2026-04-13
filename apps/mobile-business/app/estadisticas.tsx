@@ -1,33 +1,15 @@
 import { DEFAULT_APP_BASE_URLS } from '@findixi/shared';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, G } from 'react-native-svg';
 
 import { BusinessChrome, type FooterItem } from '../src/components/BusinessChrome';
 import { ScreenState } from '../src/components/ScreenState';
 import { getSessionOrReset } from '../src/lib/auth-session';
-import {
-  ANALYTICS_RANGE_PRESETS,
-  fetchBusinessAnalyticsDashboard,
-  type AnalyticsChannelClicks,
-  type AnalyticsDailyRow,
-  type AnalyticsDashboardData,
-  type AnalyticsRangeKey,
-  type AnalyticsSegmentRow,
-} from '../src/lib/business-analytics';
+import { fetchBusinessAnalyticsDashboard, type AnalyticsChannelDrilldown, type AnalyticsSegmentRow } from '../src/lib/business-analytics';
 import { fetchBusinessAccessByUser, type BusinessProfile } from '../src/lib/business-profile';
 import { borderRadius, fonts, primaryBlue, primaryOrange, shadows, spacing } from '../src/theme/tokens';
-
-const CHANNEL_ROWS: Array<{ key: keyof AnalyticsChannelClicks; label: string }> = [
-  { key: 'whatsapp', label: 'WhatsApp' },
-  { key: 'call', label: 'Llamadas' },
-  { key: 'waze', label: 'Waze' },
-  { key: 'googleMaps', label: 'Google Maps' },
-  { key: 'facebook', label: 'Facebook' },
-  { key: 'instagram', label: 'Instagram' },
-  { key: 'tiktok', label: 'TikTok' },
-  { key: 'webpage', label: 'Web' },
-];
 
 type KpiMetricKey =
   | 'favoritesLive'
@@ -36,15 +18,13 @@ type KpiMetricKey =
   | 'clicksTotal'
   | 'ordersCompleted'
   | 'conversionAction';
-type ChartMetricKey = 'viewsProfile' | 'viewsMenu' | 'ordersCompleted' | 'clicksTotal';
 type TrendTone = 'up' | 'down' | 'flat';
-type CompareRow = {
-  key: ChartMetricKey;
+
+type PercentRow = {
   label: string;
+  total: number;
+  percent: number;
   color: string;
-  current: number;
-  previous: number;
-  trend: { pct: number; tone: TrendTone; text: string };
 };
 
 const KPI_CARDS: Array<{ key: KpiMetricKey; label: string; asPercent?: boolean }> = [
@@ -56,19 +36,18 @@ const KPI_CARDS: Array<{ key: KpiMetricKey; label: string; asPercent?: boolean }
   { key: 'conversionAction', label: 'Conversion accion', asPercent: true },
 ];
 
-const CHART_METRICS: Array<{ key: ChartMetricKey; label: string; color: string }> = [
-  { key: 'viewsProfile', label: 'Vistas perfil', color: '#f97316' },
-  { key: 'viewsMenu', label: 'Vistas menu', color: '#219ebc' },
-  { key: 'ordersCompleted', label: 'Ordenes', color: '#16a34a' },
-  { key: 'clicksTotal', label: 'Clicks accion', color: '#7c3aed' },
-];
+const CHANNEL_COLORS: Record<string, string> = {
+  whatsapp: '#22c55e',
+  call: '#ef4444',
+  waze: '#06b6d4',
+  googleMaps: '#3b82f6',
+  facebook: '#2563eb',
+  instagram: '#ec4899',
+  tiktok: '#111827',
+  webpage: '#f59e0b',
+};
 
-const COMPARISON_METRICS: Array<{ key: ChartMetricKey; label: string; color: string }> = [
-  { key: 'viewsProfile', label: 'Perfil', color: '#f97316' },
-  { key: 'viewsMenu', label: 'Menu', color: '#219ebc' },
-  { key: 'ordersCompleted', label: 'Ordenes', color: '#16a34a' },
-  { key: 'clicksTotal', label: 'Clicks', color: '#7c3aed' },
-];
+const PERCENT_COLORS = ['#f97316', '#219ebc', '#7c3aed', '#16a34a', '#ef4444', '#0ea5e9', '#d97706'];
 
 function buildWebUrl(path: string, idComercio: number): string {
   return `${DEFAULT_APP_BASE_URLS.comercio}${path}?id=${idComercio}`;
@@ -81,11 +60,11 @@ function calcTrendPct(current: number, previous: number): number {
   return Number((((current - previous) / previous) * 100).toFixed(1));
 }
 
-function getTrendMeta(current: number, previous: number): { pct: number; tone: TrendTone; text: string } {
+function getTrendMeta(current: number, previous: number): { tone: TrendTone; text: string } {
   const pct = calcTrendPct(current, previous);
-  if (pct >= 0.1) return { pct, tone: 'up', text: `+${pct}%` };
-  if (pct <= -0.1) return { pct, tone: 'down', text: `${pct}%` };
-  return { pct, tone: 'flat', text: '0%' };
+  if (pct >= 0.1) return { tone: 'up', text: `+${pct}%` };
+  if (pct <= -0.1) return { tone: 'down', text: `${pct}%` };
+  return { tone: 'flat', text: '0%' };
 }
 
 function trendColors(tone: TrendTone): { text: string; bg: string; border: string } {
@@ -94,76 +73,126 @@ function trendColors(tone: TrendTone): { text: string; bg: string; border: strin
   return { text: '#475569', bg: '#f8fafc', border: '#cbd5e1' };
 }
 
-function formatDayLabel(isoDay: string): string {
-  const date = new Date(`${isoDay}T00:00:00.000Z`);
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  return `${day}/${month}`;
-}
-
 function formatMetricValue(value: number, asPercent: boolean): string {
   if (!Number.isFinite(value)) return asPercent ? '0%' : '0';
   if (asPercent) return `${Math.round(value)}%`;
   return String(Math.round(value));
 }
 
-function barFlexParts(value: number, maxValue: number): { fill: number; rest: number } {
-  const safeMax = Math.max(1, maxValue);
-  const safeValue = Math.max(0, Number(value) || 0);
-  if (safeValue <= 0) {
-    return { fill: 0.12, rest: safeMax };
-  }
-  return {
-    fill: safeValue,
-    rest: Math.max(safeMax - safeValue, 0.001),
-  };
+function toPercentRows(rows: AnalyticsSegmentRow[], forcedOrder: string[] = [], palette: string[] = PERCENT_COLORS): PercentRow[] {
+  const totals = new Map<string, number>();
+  rows.forEach((row) => totals.set(row.label, Number(row.total) || 0));
+  forcedOrder.forEach((label) => {
+    if (!totals.has(label)) totals.set(label, 0);
+  });
+
+  const total = Array.from(totals.values()).reduce((acc, value) => acc + value, 0);
+  const list = Array.from(totals.entries()).map(([label, value], index) => ({
+    label,
+    total: value,
+    percent: total > 0 ? Number(((value / total) * 100).toFixed(1)) : 0,
+    color: palette[index % palette.length],
+  }));
+
+  return list.sort((a, b) => b.total - a.total);
 }
 
-function DailyBarsChart({
-  rows,
-  metric,
-  color,
-}: {
-  rows: AnalyticsDailyRow[];
-  metric: ChartMetricKey;
-  color: string;
-}) {
-  const visibleRows = rows.length > 14 ? rows.slice(rows.length - 14) : rows;
-  const max = Math.max(
-    1,
-    ...visibleRows.map((row) => {
-      const value = Number(row[metric]);
-      return Number.isFinite(value) ? value : 0;
-    })
-  );
+function normalizeGenderRows(rows: AnalyticsSegmentRow[]): AnalyticsSegmentRow[] {
+  const mapping = new Map<string, number>([
+    ['Hombre', 0],
+    ['Mujer', 0],
+    ['Desconocido', 0],
+  ]);
 
-  if (!visibleRows.length) {
-    return <Text style={styles.emptyInline}>Sin datos diarios para este rango.</Text>;
+  rows.forEach((row) => {
+    const key = String(row.label || '').trim().toLowerCase();
+    const value = Number(row.total) || 0;
+    if (key === 'hombre' || key === 'm' || key === 'masculino') {
+      mapping.set('Hombre', (mapping.get('Hombre') || 0) + value);
+    } else if (key === 'mujer' || key === 'f' || key === 'femenino') {
+      mapping.set('Mujer', (mapping.get('Mujer') || 0) + value);
+    } else {
+      mapping.set('Desconocido', (mapping.get('Desconocido') || 0) + value);
+    }
+  });
+
+  return Array.from(mapping.entries()).map(([label, total]) => ({ label, total }));
+}
+
+function DonutLegendChart({ rows, emptyText }: { rows: PercentRow[]; emptyText: string }) {
+  const nonZeroRows = rows.filter((row) => row.total > 0);
+  const renderRows = nonZeroRows.length ? nonZeroRows : rows;
+
+  if (!renderRows.length) {
+    return <Text style={styles.helperText}>{emptyText}</Text>;
   }
 
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chartColumnsWrap}>
-      {visibleRows.map((row) => {
-        const value = Math.max(0, Number(row[metric]) || 0);
-        const heightPct = value <= 0 ? 0 : Math.max((value / max) * 100, 6);
+  const total = renderRows.reduce((acc, row) => acc + row.total, 0);
+  const size = 138;
+  const stroke = 20;
+  const radius = (size - stroke) / 2;
+  const center = size / 2;
+  const circumference = 2 * Math.PI * radius;
 
-        return (
-          <View key={`${metric}-${row.day}`} style={styles.chartColumn}>
-            <Text style={styles.chartColumnValue}>{value}</Text>
-            <View style={styles.chartColumnTrack}>
-              <View style={[styles.chartColumnFill, { height: `${heightPct}%`, backgroundColor: color }]} />
-            </View>
-            <Text style={styles.chartColumnDay}>{formatDayLabel(row.day)}</Text>
+  let consumed = 0;
+  const segments = renderRows.map((row) => {
+    const ratio = Math.max(0, Math.min(1, row.percent / 100));
+    const arcLength = Math.max(ratio * circumference, row.total > 0 ? 2 : 0);
+    const startOffset = consumed;
+    consumed += arcLength;
+    return {
+      ...row,
+      arcLength,
+      startOffset,
+    };
+  });
+
+  return (
+    <View style={styles.donutChartBlock}>
+      <View style={styles.donutWrap}>
+        <Svg width={size} height={size}>
+          <G rotation="-90" origin={`${center}, ${center}`}>
+            <Circle cx={center} cy={center} r={radius} stroke="#e2e8f0" strokeWidth={stroke} fill="none" />
+            {segments.map((segment) => (
+              <Circle
+                key={`seg-${segment.label}`}
+                cx={center}
+                cy={center}
+                r={radius}
+                stroke={segment.color}
+                strokeWidth={stroke}
+                fill="none"
+                strokeLinecap="butt"
+                strokeDasharray={`${segment.arcLength} ${Math.max(circumference - segment.arcLength, 0)}`}
+                strokeDashoffset={-segment.startOffset}
+              />
+            ))}
+          </G>
+        </Svg>
+        <View style={styles.donutCenter}>
+          <Text style={styles.donutCenterValue}>{total}</Text>
+          <Text style={styles.donutCenterLabel}>Total</Text>
+        </View>
+      </View>
+
+      <View style={styles.donutLegendList}>
+        {renderRows.map((row) => (
+          <View key={`legend-${row.label}`} style={styles.donutLegendRow}>
+            <View style={[styles.legendDot, { backgroundColor: row.color }]} />
+            <Text style={styles.donutLegendLabel}>{row.label}</Text>
+            <Text style={styles.donutLegendValue}>
+              {row.percent}% ({row.total})
+            </Text>
           </View>
-        );
-      })}
-    </ScrollView>
+        ))}
+      </View>
+    </View>
   );
 }
 
 function SegmentList({ rows, emptyText }: { rows: AnalyticsSegmentRow[]; emptyText: string }) {
   if (!rows.length) {
-    return <Text style={styles.emptyInline}>{emptyText}</Text>;
+    return <Text style={styles.helperText}>{emptyText}</Text>;
   }
 
   return (
@@ -178,25 +207,75 @@ function SegmentList({ rows, emptyText }: { rows: AnalyticsSegmentRow[]; emptyTe
   );
 }
 
+function MonthBars({ channel }: { channel: AnalyticsChannelDrilldown }) {
+  const maxValue = Math.max(1, ...channel.monthly.map((row) => row.total));
+
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.monthBarsRow}>
+      {channel.monthly.map((month, index) => {
+        const barHeight = month.total <= 0 ? 6 : Math.max((month.total / maxValue) * 84, 10);
+        return (
+          <View key={`month-${channel.key}-${month.month}`} style={styles.monthBarCol}>
+            <Text style={styles.monthBarValue}>{month.total}</Text>
+            <View style={styles.monthBarTrack}>
+              <View
+                style={[
+                  styles.monthBarFill,
+                  {
+                    height: barHeight,
+                    backgroundColor: CHANNEL_COLORS[channel.key] || PERCENT_COLORS[index % PERCENT_COLORS.length],
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.monthBarLabel}>{month.label}</Text>
+          </View>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+function HorizontalPercentBars({ rows, emptyText }: { rows: PercentRow[]; emptyText: string }) {
+  const nonZeroRows = rows.filter((row) => row.total > 0);
+  const renderRows = nonZeroRows.length ? nonZeroRows : rows;
+
+  if (!renderRows.length) {
+    return <Text style={styles.helperText}>{emptyText}</Text>;
+  }
+
+  return (
+    <View style={styles.hBarList}>
+      {renderRows.map((row) => (
+        <View key={`hbar-${row.label}`} style={styles.hBarRow}>
+          <View style={styles.hBarTopRow}>
+            <View style={[styles.legendDot, { backgroundColor: row.color }]} />
+            <Text style={styles.hBarLabel}>{row.label}</Text>
+            <Text style={styles.hBarValue}>
+              {row.total} ({row.percent}%)
+            </Text>
+          </View>
+          <View style={styles.hBarTrack}>
+            <View style={[styles.hBarFill, { width: `${Math.max(0, Math.min(100, row.percent))}%`, backgroundColor: row.color }]} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function BusinessStatsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ idComercio?: string }>();
   const [loading, setLoading] = useState(true);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [idComercio, setIdComercio] = useState(0);
   const [assignmentCount, setAssignmentCount] = useState(0);
-  const [rangeKey, setRangeKey] = useState<AnalyticsRangeKey>('30d');
-  const [chartMetric, setChartMetric] = useState<ChartMetricKey>('viewsProfile');
-  const [dashboard, setDashboard] = useState<AnalyticsDashboardData | null>(null);
-
-  const selectedRange = useMemo(() => {
-    return ANALYTICS_RANGE_PRESETS.find((item) => item.key === rangeKey) || ANALYTICS_RANGE_PRESETS[1];
-  }, [rangeKey]);
-
-  const selectedChartMetric = useMemo(() => {
-    return CHART_METRICS.find((item) => item.key === chartMetric) || CHART_METRICS[0];
-  }, [chartMetric]);
+  const [expandedChannelKey, setExpandedChannelKey] = useState<string | null>(null);
+  const [dashboard, setDashboard] = useState<Awaited<ReturnType<typeof fetchBusinessAnalyticsDashboard>> | null>(null);
+  const targetComercioId = Number(params.idComercio || 0);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -214,18 +293,23 @@ export default function BusinessStatsScreen() {
       }
 
       const access = await fetchBusinessAccessByUser(session.user.id);
-      setProfile(access.profile);
       setAssignmentCount(access.assignmentCount);
+      const selectedComercio =
+        Number.isFinite(targetComercioId) && targetComercioId > 0
+          ? access.comercios.find((entry) => entry.idComercio === targetComercioId) || null
+          : null;
+      const selectedProfile = selectedComercio?.profile || access.profile;
+      setProfile(selectedProfile);
 
-      const comercioId = Number(access.primaryComercioId || access.profile?.id || 0);
+      const comercioId = Number(selectedComercio?.idComercio || access.primaryComercioId || selectedProfile?.id || 0);
       setIdComercio(comercioId);
 
-      if (!access.profile || !comercioId) {
+      if (!selectedProfile || !comercioId) {
         setDashboard(null);
         return;
       }
 
-      const data = await fetchBusinessAnalyticsDashboard(comercioId, selectedRange.days);
+      const data = await fetchBusinessAnalyticsDashboard(comercioId, 7);
       setDashboard(data);
     } catch (loadError) {
       const message = loadError instanceof Error ? loadError.message : 'No se pudieron cargar las estadisticas.';
@@ -234,7 +318,7 @@ export default function BusinessStatsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [router, selectedRange.days]);
+  }, [router, targetComercioId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -257,21 +341,18 @@ export default function BusinessStatsScreen() {
       {
         key: 'edit-profile',
         label: 'Editar Perfil',
-        onPress: () => router.replace('/perfil'),
+        onPress: () => router.push((idComercio ? `/perfil?idComercio=${idComercio}` : '/perfil') as never),
       },
       {
         key: 'stats',
         label: 'Estadisticas',
-        onPress: () => router.replace('/estadisticas' as never),
+        onPress: () => router.push((idComercio ? `/estadisticas?idComercio=${idComercio}` : '/estadisticas') as never),
         active: true,
       },
       {
         key: 'menu',
         label: 'Admin Menu',
-        onPress: () => {
-          if (!idComercio) return;
-          void Linking.openURL(buildWebUrl('/adminMenuComercio.html', idComercio));
-        },
+        onPress: () => router.push((idComercio ? `/admin-menu?idComercio=${idComercio}` : '/admin-menu') as never),
       },
       {
         key: 'specials',
@@ -300,36 +381,14 @@ export default function BusinessStatsScreen() {
     ];
   }, [idComercio, router]);
 
-  const channelsTotal = useMemo(() => {
-    if (!dashboard) return 0;
-    return CHANNEL_ROWS.reduce((acc, row) => acc + (dashboard.channels[row.key] || 0), 0);
-  }, [dashboard]);
-
   const kpiCards = useMemo(() => {
     if (!dashboard) return [];
 
     return KPI_CARDS.map((item) => {
       const current = Number(dashboard.kpis[item.key] || 0);
       const previous = Number(dashboard.previousKpis[item.key] || 0);
-      const trend = getTrendMeta(current, previous);
       return {
         ...item,
-        current,
-        previous,
-        trend,
-      };
-    });
-  }, [dashboard]);
-
-  const comparisonRows = useMemo<CompareRow[]>(() => {
-    if (!dashboard) return [];
-    return COMPARISON_METRICS.map((metric) => {
-      const current = Number(dashboard.kpis[metric.key] || 0);
-      const previous = Number(dashboard.previousKpis[metric.key] || 0);
-      return {
-        key: metric.key,
-        label: metric.label,
-        color: metric.color,
         current,
         previous,
         trend: getTrendMeta(current, previous),
@@ -337,10 +396,43 @@ export default function BusinessStatsScreen() {
     });
   }, [dashboard]);
 
-  const comparisonMax = useMemo(() => {
-    if (!comparisonRows.length) return 1;
-    return Math.max(1, ...comparisonRows.flatMap((row) => [row.current, row.previous]));
-  }, [comparisonRows]);
+  const channelRows = useMemo(() => {
+    if (!dashboard) return [];
+    const total = dashboard.channelDrilldown.reduce((acc, row) => acc + row.total, 0);
+    return dashboard.channelDrilldown.map((row) => ({
+      ...row,
+      percent: total > 0 ? Number(((row.total / total) * 100).toFixed(1)) : 0,
+      color: CHANNEL_COLORS[row.key] || '#64748b',
+    }));
+  }, [dashboard]);
+
+  const selectedChannel = useMemo(() => {
+    if (!expandedChannelKey) return null;
+    return channelRows.find((row) => row.key === expandedChannelKey) || null;
+  }, [channelRows, expandedChannelKey]);
+
+  const channelRowsGrid = useMemo(() => {
+    const groups: Array<typeof channelRows> = [];
+    for (let index = 0; index < channelRows.length; index += 2) {
+      groups.push(channelRows.slice(index, index + 2));
+    }
+    return groups;
+  }, [channelRows]);
+
+  const selectedChannelGenderRows = useMemo(() => {
+    if (!selectedChannel) return [] as PercentRow[];
+    return toPercentRows(normalizeGenderRows(selectedChannel.genders), ['Hombre', 'Mujer', 'Desconocido'], ['#2563eb', '#ec4899', '#64748b']);
+  }, [selectedChannel]);
+
+  const profileAudienceGenderRows = useMemo(() => {
+    if (!dashboard) return [] as PercentRow[];
+    return toPercentRows(normalizeGenderRows(dashboard.profileAudienceGeneros), ['Hombre', 'Mujer', 'Desconocido'], ['#2563eb', '#ec4899', '#64748b']);
+  }, [dashboard]);
+
+  const profileAudienceAgeRows = useMemo(() => {
+    if (!dashboard) return [] as PercentRow[];
+    return toPercentRows(dashboard.profileAudienceEdades, [], PERCENT_COLORS);
+  }, [dashboard]);
 
   return (
     <BusinessChrome title="Estadisticas" footerItems={footerItems}>
@@ -365,7 +457,7 @@ export default function BusinessStatsScreen() {
         <ScrollView contentContainerStyle={styles.scrollWrap}>
           <View style={[styles.card, shadows.card]}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Rango</Text>
+              <Text style={styles.sectionTitle}>Resumen comparativo de los últimos 7 días</Text>
               <Pressable
                 style={[styles.refreshBtn, manualRefreshing ? styles.refreshBtnDisabled : null]}
                 disabled={manualRefreshing || loading}
@@ -376,27 +468,7 @@ export default function BusinessStatsScreen() {
                 <Text style={styles.refreshBtnText}>{manualRefreshing ? 'Actualizando...' : 'Actualizar'}</Text>
               </Pressable>
             </View>
-            <View style={styles.rangesRow}>
-              {ANALYTICS_RANGE_PRESETS.map((preset) => (
-                <Pressable
-                  key={preset.key}
-                  style={[styles.rangeChip, preset.key === rangeKey ? styles.rangeChipActive : null]}
-                  onPress={() => setRangeKey(preset.key)}
-                >
-                  <Text style={[styles.rangeChipText, preset.key === rangeKey ? styles.rangeChipTextActive : null]}>
-                    {preset.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={styles.rangeHelper}>
-              Del {dashboard.range.from} al {dashboard.range.to}
-            </Text>
-            <Text style={styles.helperText}>Si haces pruebas ahora mismo, pulsa Actualizar para recargar resultados.</Text>
-          </View>
 
-          <View style={[styles.card, shadows.card]}>
-            <Text style={styles.sectionTitle}>Resumen comparativo</Text>
             <View style={styles.kpiGrid}>
               {kpiCards.map((item) => {
                 const tone = trendColors(item.trend.tone);
@@ -409,9 +481,7 @@ export default function BusinessStatsScreen() {
                       </View>
                     </View>
                     <Text style={styles.kpiValue}>{formatMetricValue(item.current, Boolean(item.asPercent))}</Text>
-                    <Text style={styles.kpiPrevious}>
-                      Previo: {formatMetricValue(item.previous, Boolean(item.asPercent))}
-                    </Text>
+                    <Text style={styles.kpiPrevious}>Previo: {formatMetricValue(item.previous, Boolean(item.asPercent))}</Text>
                   </View>
                 );
               })}
@@ -419,101 +489,56 @@ export default function BusinessStatsScreen() {
           </View>
 
           <View style={[styles.card, shadows.card]}>
-            <Text style={styles.sectionTitle}>Tendencia diaria</Text>
-            <View style={styles.chartMetricRow}>
-              {CHART_METRICS.map((metric) => (
-                <Pressable
-                  key={metric.key}
-                  style={[styles.metricChip, chartMetric === metric.key ? styles.metricChipActive : null]}
-                  onPress={() => setChartMetric(metric.key)}
-                >
-                  <View style={[styles.metricDot, { backgroundColor: metric.color }]} />
-                  <Text style={[styles.metricChipText, chartMetric === metric.key ? styles.metricChipTextActive : null]}>
-                    {metric.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <DailyBarsChart rows={dashboard.daily} metric={chartMetric} color={selectedChartMetric.color} />
-          </View>
-
-          <View style={[styles.card, shadows.card]}>
-            <Text style={styles.sectionTitle}>Comparativo actual vs anterior</Text>
-            <View style={styles.compareWrap}>
-              {comparisonRows.map((row) => {
-                const tone = trendColors(row.trend.tone);
-                const currentBar = barFlexParts(row.current, comparisonMax);
-                const previousBar = barFlexParts(row.previous, comparisonMax);
+            <Text style={styles.sectionTitle}>Clicks contacto y redes sociales</Text>
+            <View style={styles.channelGrid}>
+              {channelRowsGrid.map((rowGroup, rowIndex) => {
+                const selectedInRow = rowGroup.find((item) => item.key === expandedChannelKey) || null;
                 return (
-                  <View key={`compare-${row.key}`} style={styles.compareMetricCard}>
-                    <View style={styles.compareHeader}>
-                      <Text style={styles.compareTitle}>{row.label}</Text>
-                      <View style={[styles.compareTrendChip, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-                        <Text style={[styles.compareTrendText, { color: tone.text }]}>{row.trend.text}</Text>
-                      </View>
+                  <View key={`channel-row-${rowIndex}`} style={styles.channelRowGroup}>
+                    <View style={styles.channelRow}>
+                      {rowGroup.map((channel) => (
+                        <View key={`channel-card-${channel.key}`} style={styles.channelCol}>
+                          <View style={[styles.channelCard, expandedChannelKey === channel.key ? styles.channelCardActive : null]}>
+                            <Text style={styles.channelCardTitle}>{channel.label}</Text>
+                            <Text style={styles.channelCardClicks}>{channel.total}</Text>
+                            <Text style={styles.channelCardClicksLabel}>clicks</Text>
+                            <Pressable style={styles.channelCardBtn} onPress={() => setExpandedChannelKey((prev) => (prev === channel.key ? null : String(channel.key)))}>
+                              <Text style={styles.channelCardBtnText}>{expandedChannelKey === channel.key ? 'Ver menos' : 'Ver mas'}</Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ))}
+                      {rowGroup.length === 1 ? <View style={styles.channelCol} /> : null}
                     </View>
 
-                    <View style={styles.compareBarRow}>
-                      <Text style={styles.compareLegend}>Actual</Text>
-                      <View style={styles.compareTrack}>
-                        <View style={styles.compareTrackInner}>
-                          <View style={[styles.compareFill, { flex: currentBar.fill, backgroundColor: row.color }]} />
-                          <View style={[styles.compareRest, { flex: currentBar.rest }]} />
-                        </View>
-                      </View>
-                      <Text style={styles.compareValue}>{row.current}</Text>
-                    </View>
+                    {selectedInRow ? (
+                      <View style={styles.channelDetailBox}>
+                        <Text style={styles.detailSectionTitle}>{selectedInRow.label}: clicks por mes</Text>
+                        <MonthBars channel={selectedInRow} />
 
-                    <View style={styles.compareBarRow}>
-                      <Text style={styles.compareLegend}>Previo</Text>
-                      <View style={styles.compareTrack}>
-                        <View style={styles.compareTrackInner}>
-                          <View style={[styles.compareFillMuted, { flex: previousBar.fill, borderColor: row.color }]} />
-                          <View style={[styles.compareRest, { flex: previousBar.rest }]} />
-                        </View>
+                        <Text style={styles.detailSectionTitle}>Genero (%)</Text>
+                        <HorizontalPercentBars rows={selectedChannelGenderRows} emptyText="Sin datos de genero para este canal." />
                       </View>
-                      <Text style={styles.compareValue}>{row.previous}</Text>
-                    </View>
+                    ) : null}
                   </View>
                 );
               })}
             </View>
+
+            {!selectedChannel ? <Text style={styles.helperText}>Selecciona un canal para ver el detalle por mes y por genero.</Text> : null}
           </View>
 
           <View style={[styles.card, shadows.card]}>
-            <Text style={styles.sectionTitle}>Clicks de contacto y redes</Text>
-            <View style={styles.segmentList}>
-              {CHANNEL_ROWS.map((row) => {
-                const value = dashboard.channels[row.key] || 0;
-                return (
-                  <View key={row.key} style={styles.segmentRow}>
-                    <Text style={styles.segmentLabel}>{row.label}</Text>
-                    <Text style={styles.segmentValue}>{value}</Text>
-                  </View>
-                );
-              })}
-            </View>
-            {channelsTotal <= 0 ? <Text style={styles.helperText}>Aun no hay interacciones registradas en este rango.</Text> : null}
-          </View>
-
-          <View style={[styles.card, shadows.card]}>
-            <Text style={styles.sectionTitle}>Audiencia por origen</Text>
-            <SegmentList rows={dashboard.sourceBreakdown} emptyText="Sin datos de origen en este rango." />
-          </View>
-
-          <View style={[styles.card, shadows.card]}>
-            <Text style={styles.sectionTitle}>Municipios top</Text>
-            <SegmentList rows={dashboard.municipios} emptyText="Sin datos de municipio en este rango." />
-          </View>
-
-          <View style={styles.dualRow}>
-            <View style={[styles.card, styles.halfCard, shadows.card]}>
-              <Text style={styles.sectionTitle}>Genero</Text>
-              <SegmentList rows={dashboard.generos} emptyText="Sin datos de genero." />
-            </View>
-            <View style={[styles.card, styles.halfCard, shadows.card]}>
-              <Text style={styles.sectionTitle}>Edad</Text>
-              <SegmentList rows={dashboard.edades} emptyText="Sin datos de edad." />
+            <Text style={styles.sectionTitle}>Audiencia visitas perfil por usuario</Text>
+            <View style={styles.dualRow}>
+              <View style={[styles.infoCard, styles.halfCard]}>
+                <Text style={styles.infoCardTitle}>Genero</Text>
+                <DonutLegendChart rows={profileAudienceGenderRows} emptyText="Sin datos de genero en visitas de perfil." />
+              </View>
+              <View style={[styles.infoCard, styles.halfCard]}>
+                <Text style={styles.infoCardTitle}>Edad</Text>
+                <DonutLegendChart rows={profileAudienceAgeRows} emptyText="Sin datos de edad en visitas de perfil." />
+              </View>
             </View>
           </View>
 
@@ -573,16 +598,17 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 24,
   },
-  sectionTitle: {
-    color: '#0f172a',
-    fontFamily: fonts.bold,
-    fontSize: 20,
-  },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
+  },
+  sectionTitle: {
+    color: '#0f172a',
+    fontFamily: fonts.bold,
+    fontSize: 20,
+    flex: 1,
   },
   refreshBtn: {
     minHeight: 34,
@@ -601,36 +627,6 @@ const styles = StyleSheet.create({
     color: '#1d4ed8',
     fontFamily: fonts.medium,
     fontSize: 13,
-  },
-  rangesRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  rangeChip: {
-    borderRadius: borderRadius.pill,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#fff',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  rangeChipActive: {
-    borderColor: primaryOrange,
-    backgroundColor: '#fff7ed',
-  },
-  rangeChipText: {
-    color: '#334155',
-    fontFamily: fonts.medium,
-    fontSize: 14,
-  },
-  rangeChipTextActive: {
-    color: '#9a3412',
-    fontFamily: fonts.bold,
-  },
-  rangeHelper: {
-    color: '#64748b',
-    fontFamily: fonts.regular,
-    fontSize: 14,
   },
   kpiGrid: {
     flexDirection: 'row',
@@ -682,151 +678,222 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 13,
   },
-  chartMetricRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  metricChip: {
-    borderRadius: borderRadius.pill,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#fff',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metricChipActive: {
-    borderColor: '#94a3b8',
-    backgroundColor: '#f8fafc',
-  },
-  metricDot: {
-    width: 8,
-    height: 8,
-    borderRadius: borderRadius.pill,
-  },
-  metricChipText: {
-    color: '#475569',
-    fontFamily: fonts.medium,
-    fontSize: 13,
-  },
-  metricChipTextActive: {
-    color: '#0f172a',
-    fontFamily: fonts.bold,
-  },
-  chartColumnsWrap: {
-    gap: 10,
-    paddingVertical: spacing.xs,
-  },
-  chartColumn: {
-    width: 34,
-    alignItems: 'center',
-    gap: 4,
-  },
-  chartColumnValue: {
-    color: '#334155',
-    fontFamily: fonts.medium,
-    fontSize: 11,
-    minHeight: 14,
-  },
-  chartColumnTrack: {
-    width: 18,
-    height: 92,
-    borderRadius: borderRadius.pill,
-    backgroundColor: '#e2e8f0',
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-  },
-  chartColumnFill: {
-    width: '100%',
-    borderRadius: borderRadius.pill,
-    minHeight: 0,
-  },
-  chartColumnDay: {
-    color: '#64748b',
-    fontFamily: fonts.regular,
-    fontSize: 10,
-  },
-  compareWrap: {
+  channelGrid: {
     gap: spacing.sm,
   },
-  compareMetricCard: {
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  channelRowGroup: {
     gap: spacing.xs,
   },
-  compareHeader: {
+  channelRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     gap: spacing.sm,
   },
-  compareTitle: {
+  channelCol: {
+    flex: 1,
+  },
+  channelCard: {
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    backgroundColor: '#f8fbff',
+    padding: spacing.sm,
+    gap: 2,
+    minHeight: 122,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  channelCardActive: {
+    borderColor: primaryOrange,
+    backgroundColor: '#fff7ed',
+  },
+  channelCardTitle: {
     color: '#0f172a',
+    fontFamily: fonts.semibold,
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  channelCardClicks: {
+    color: '#0f172a',
+    fontFamily: fonts.bold,
+    fontSize: 30,
+    lineHeight: 32,
+    textAlign: 'center',
+  },
+  channelCardClicksLabel: {
+    color: '#475569',
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  channelCardBtn: {
+    alignSelf: 'center',
+    marginTop: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  channelCardBtnText: {
+    color: '#1d4ed8',
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    textDecorationLine: 'underline',
+  },
+  channelDetailBox: {
+    marginTop: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc',
+    padding: spacing.sm,
+    gap: spacing.sm,
+  },
+  detailSectionTitle: {
+    color: '#334155',
     fontFamily: fonts.semibold,
     fontSize: 14,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
-  compareTrendChip: {
-    borderRadius: borderRadius.pill,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+  monthBarsRow: {
+    gap: 8,
+    paddingVertical: 4,
   },
-  compareTrendText: {
-    fontFamily: fonts.medium,
-    fontSize: 12,
-  },
-  compareBarRow: {
-    flexDirection: 'row',
+  monthBarCol: {
+    width: 28,
     alignItems: 'center',
+    gap: 4,
+  },
+  monthBarValue: {
+    color: '#334155',
+    fontFamily: fonts.medium,
+    fontSize: 10,
+    minHeight: 12,
+  },
+  monthBarTrack: {
+    width: 16,
+    height: 88,
+    borderRadius: borderRadius.pill,
+    backgroundColor: '#e2e8f0',
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  monthBarFill: {
+    width: '100%',
+    borderRadius: borderRadius.pill,
+  },
+  monthBarLabel: {
+    color: '#64748b',
+    fontFamily: fonts.regular,
+    fontSize: 10,
+  },
+  hBarList: {
     gap: spacing.sm,
   },
-  compareLegend: {
-    width: 44,
-    color: '#64748b',
+  hBarRow: {
+    gap: 6,
+  },
+  hBarTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  hBarLabel: {
+    color: '#334155',
     fontFamily: fonts.medium,
+    fontSize: 13,
+    flex: 1,
+  },
+  hBarValue: {
+    color: '#0f172a',
+    fontFamily: fonts.semibold,
     fontSize: 12,
   },
-  compareTrack: {
-    flex: 1,
+  hBarTrack: {
+    width: '100%',
     height: 10,
     borderRadius: borderRadius.pill,
     backgroundColor: '#e2e8f0',
     overflow: 'hidden',
   },
-  compareTrackInner: {
-    flex: 1,
+  hBarFill: {
+    height: '100%',
+    borderRadius: borderRadius.pill,
+    minWidth: 2,
+  },
+  donutChartBlock: {
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  donutWrap: {
+    width: 138,
+    height: 138,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  donutCenter: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  donutCenterValue: {
+    color: '#0f172a',
+    fontFamily: fonts.bold,
+    fontSize: 20,
+    lineHeight: 22,
+  },
+  donutCenterLabel: {
+    color: '#64748b',
+    fontFamily: fonts.medium,
+    fontSize: 11,
+  },
+  donutLegendList: {
+    width: '100%',
+    gap: 6,
+  },
+  donutLegendRow: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 2,
   },
-  compareFill: {
-    height: '100%',
+  legendDot: {
+    width: 10,
+    height: 10,
     borderRadius: borderRadius.pill,
   },
-  compareFillMuted: {
-    height: '100%',
-    borderRadius: borderRadius.pill,
-    borderWidth: 1,
-    backgroundColor: 'rgba(148,163,184,0.2)',
+  donutLegendLabel: {
+    color: '#334155',
+    fontFamily: fonts.regular,
+    fontSize: 11,
+    flex: 1,
   },
-  compareRest: {
-    height: '100%',
-  },
-  compareValue: {
-    width: 44,
-    textAlign: 'right',
+  donutLegendValue: {
     color: '#0f172a',
     fontFamily: fonts.semibold,
-    fontSize: 13,
+    fontSize: 11,
+  },
+  dualRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  infoCard: {
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+    padding: spacing.sm,
+    gap: spacing.xs,
+  },
+  halfCard: {
+    flex: 1,
+  },
+  infoCardTitle: {
+    color: '#0f172a',
+    fontFamily: fonts.semibold,
+    fontSize: 15,
+    textAlign: 'center',
   },
   segmentList: {
     gap: spacing.xs,
@@ -854,13 +921,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: 18,
   },
-  dualRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  halfCard: {
-    flex: 1,
-  },
   insightRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -883,12 +943,7 @@ const styles = StyleSheet.create({
   helperText: {
     color: '#64748b',
     fontFamily: fonts.regular,
-    fontSize: 14,
-  },
-  emptyInline: {
-    color: '#64748b',
-    fontFamily: fonts.regular,
-    fontSize: 14,
+    fontSize: 13,
   },
   secondaryBtn: {
     minHeight: 42,

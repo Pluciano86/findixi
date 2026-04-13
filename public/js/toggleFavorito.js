@@ -1,6 +1,7 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { t } from './i18n.js';
 import { requireAuth } from './authGuard.js';
+import { trackAnalyticsEvent } from '../shared/analyticsTracker.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const btn = document.getElementById('btnFavorito');
@@ -68,6 +69,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!error) {
         esFavorito = false;
         actualizarUI();
+        void trackAnalyticsEvent({
+          idComercio: Number(idComercio),
+          eventName: 'favorite_remove',
+          source: 'web',
+          dedupeKey: `perfil:favorite_remove:${idComercio}`,
+          dedupeMs: 1500,
+        });
       } else {
         console.error('❌ Error eliminando favorito:', error.message);
       }
@@ -81,6 +89,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!error) {
         esFavorito = true;
         actualizarUI();
+        void trackAnalyticsEvent({
+          idComercio: Number(idComercio),
+          eventName: 'favorite_add',
+          source: 'web',
+          dedupeKey: `perfil:favorite_add:${idComercio}`,
+          dedupeMs: 1500,
+        });
       } else {
         console.error('❌ Error insertando favorito:', error.message);
         alert('Hubo un problema al añadir este comercio a favoritos.');

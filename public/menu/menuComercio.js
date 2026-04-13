@@ -4,6 +4,7 @@ import { getMenuI18n, clearMenuI18nCache } from '../shared/menuI18n.js';
 import { mountLangSelector } from '../shared/langSelector.js';
 import { getLang } from '../js/i18n.js';
 import { resolverPlanComercio } from '../shared/planes.js';
+import { bindTrackedAnchor, trackAnalyticsEvent } from '../shared/analyticsTracker.js';
 
 const params = new URLSearchParams(window.location.search);
 const idComercio = params.get('idComercio') || params.get('id');
@@ -34,6 +35,15 @@ const isDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const ORDER_HISTORY_KEY = 'findixi_orders';
 let planPermiteMenu = true;
 let planPermiteOrdenes = true;
+let trackedMenuView = false;
+
+function analyticsSource() {
+  if (sourceParam === 'app') return 'app';
+  if (sourceParam === 'web') return 'web';
+  if (sourceParam === 'qr' || sourceParam === 'qr_table' || sourceParam === 'mesa') return 'qr_table';
+  if (allowMesa) return 'qr_table';
+  return 'web';
+}
 
 function loadOrderHistory() {
   if (typeof localStorage === 'undefined') return [];
@@ -1074,6 +1084,38 @@ async function cargarDatos() {
     .single();
 
   if (errorComercio || !comercio) return alert('Error cargando comercio');
+  const comercioIdNum = Number(comercio.id || idComercio || 0);
+
+  if (!trackedMenuView && Number.isFinite(comercioIdNum) && comercioIdNum > 0) {
+    trackedMenuView = true;
+    const source = analyticsSource();
+    void trackAnalyticsEvent({
+      idComercio: comercioIdNum,
+      eventName: 'view_menu',
+      source,
+      municipio: comercio.municipio || null,
+      metadata: {
+        mode: orderMode,
+        menuId: Number(params.get('id') || params.get('idComercio') || 0) || null,
+      },
+      dedupeKey: `menu:view:${comercioIdNum}:${source}`,
+      dedupeMs: 30000,
+    });
+    if (source === 'qr_table') {
+      void trackAnalyticsEvent({
+        idComercio: comercioIdNum,
+        eventName: 'scan_qr_table',
+        source,
+        municipio: comercio.municipio || null,
+        metadata: {
+          mesa: mesaParam || null,
+          mode: orderMode,
+        },
+        dedupeKey: `menu:scanqr:${comercioIdNum}:${mesaParam || 'na'}`,
+        dedupeMs: 30000,
+      });
+    }
+  }
 
   const planInfo = resolverPlanComercio(comercio || {});
   planPermiteMenu = planInfo.permite_menu;
@@ -1306,6 +1348,14 @@ async function cargarDatos() {
     if (telefonoRaw && telefonoRaw.toLowerCase() !== 'null') {
       footerTelefono.href = `tel:${telefonoRaw}`;
       footerTelefono.classList.remove('hidden');
+      bindTrackedAnchor(footerTelefono, {
+        idComercio: comercioIdNum,
+        eventName: 'click_call',
+        source: analyticsSource(),
+        municipio: comercio.municipio || null,
+        dedupeKey: `menu:call:${comercioIdNum}`,
+        dedupeMs: 1500,
+      });
     } else {
       footerTelefono.classList.add('hidden');
     }
@@ -1314,6 +1364,14 @@ async function cargarDatos() {
     if (comercio.facebook) {
       footerFacebook.href = comercio.facebook;
       footerFacebook.classList.remove('hidden');
+      bindTrackedAnchor(footerFacebook, {
+        idComercio: comercioIdNum,
+        eventName: 'click_facebook',
+        source: analyticsSource(),
+        municipio: comercio.municipio || null,
+        dedupeKey: `menu:facebook:${comercioIdNum}`,
+        dedupeMs: 1500,
+      });
     } else {
       footerFacebook.classList.add('hidden');
     }
@@ -1322,6 +1380,14 @@ async function cargarDatos() {
     if (comercio.instagram) {
       footerInstagram.href = comercio.instagram;
       footerInstagram.classList.remove('hidden');
+      bindTrackedAnchor(footerInstagram, {
+        idComercio: comercioIdNum,
+        eventName: 'click_instagram',
+        source: analyticsSource(),
+        municipio: comercio.municipio || null,
+        dedupeKey: `menu:instagram:${comercioIdNum}`,
+        dedupeMs: 1500,
+      });
     } else {
       footerInstagram.classList.add('hidden');
     }
@@ -2325,6 +2391,20 @@ async function submitOrder() {
     }
   }
 
+  const commerceIdNum = Number(idComercio);
+  void trackAnalyticsEvent({
+    idComercio: commerceIdNum,
+    eventName: 'start_order',
+    source: analyticsSource(),
+    metadata: {
+      mode: orderMode,
+      mesa: mesaParam || null,
+      items: items.length,
+    },
+    dedupeKey: `menu:start_order:${commerceIdNum}:${Date.now()}`,
+    dedupeMs: 250,
+  });
+
   try {
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token || SUPABASE_ANON_KEY;
@@ -2353,7 +2433,19 @@ async function submitOrder() {
     }
 
     const orderId = json?.order?.id;
-    if (orderId) rememberOrder(orderId, idComercio);
+    if (orderId) {
+      rememberOrder(orderId, idComercio);
+      void trackAnalyticsEvent({
+        idComercio: commerceIdNum,
+        eventName: 'order_completed',
+        source: analyticsSource(),
+        orderId: Number(orderId),
+        metadata: {
+          mode: orderMode,
+          mesa: mesaParam || null,
+        },
+      });
+    }
 
     if (orderMode === 'pickup') {
       const url = json?.checkout_url || json?.order?.checkout_url;

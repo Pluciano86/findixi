@@ -249,7 +249,7 @@ loadAdminHeader();
 <script type="module">
   import { supabase, idComercio } from './shared/supabaseClient.js';
 
-  document.addEventListener('DOMContentLoaded', async () => {
+  (async () => {
     console.log('🟡 Iniciando carga visual de comercio con ID:', idComercio);
 
     if (!idComercio) {
