@@ -101,7 +101,7 @@
       actualizarFiltroSoloActivos
     } from './js/mainAdmin.js';
 
-    document.addEventListener('DOMContentLoaded', async () => {
+    (async () => {
       const toggleActivos = document.getElementById('filter-activo');
       if (toggleActivos) toggleActivos.checked = true;
 
@@ -132,7 +132,7 @@
           }
         });
       }
-    });
+    })();
   </script>
 
 </body>
