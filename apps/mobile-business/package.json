@@ -15,6 +15,9 @@
     "qa:smoke": "npm run health:check && npm run typecheck && npm run route:check",
     "android": "expo run:android",
     "ios": "expo run:ios",
+    "build:preview": "eas build --profile preview --platform all",
+    "build:production": "eas build --profile production --platform all",
+    "submit": "eas submit --profile production",
     "web": "expo start --web"
   },
   "dependencies": {
