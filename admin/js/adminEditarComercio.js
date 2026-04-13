@@ -293,7 +293,7 @@ async function iniciarPlanAdmin(comercio) {
 }
 
 // 🚀 Flujo de carga con logs paso a paso
-document.addEventListener('DOMContentLoaded', async () => {
+(async () => {
   try {
     if (!supabase) {
       console.error('Supabase no disponible en adminEditarComercio');
@@ -317,7 +317,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await verificarSiEsSucursal();
   } catch (err) {
   }
-});
+})();
 
 // ✅ Mostrar botones solo si el comercio es sucursal
 async function verificarSiEsSucursal() {
