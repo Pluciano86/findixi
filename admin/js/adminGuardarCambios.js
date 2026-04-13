@@ -48,7 +48,6 @@ async function sincronizarRelacionesComercio(id, categoriasIds, subcategoriasIds
 
 document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
   e.preventDefault();
-  console.log('👉 Guardar Cambios presionado');
 
   const nombre = document.getElementById('nombre')?.value.trim();
   const direccion = document.getElementById('direccion')?.value.trim();
@@ -70,29 +69,10 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
   }
 
   // ✅ Primero subimos el logo si hay uno nuevo
-  console.log('📤 Verificando si hay logo nuevo...');
   await guardarLogoSiAplica();
-  console.log('✅ Logo procesado');
 
   const categoriasSeleccionadas = normalizarIds(window.categoriasSeleccionadas);
   const subcategoriasSeleccionadas = normalizarIds(window.subcategoriasSeleccionadas);
-
-  console.log('📝 Datos a actualizar:', {
-    nombre,
-    direccion,
-    telefono,
-    whatsapp,
-    descripcion,
-    municipio: idMunicipio,
-    facebook,
-    instagram,
-    tiktok,
-    webpage,
-    colorPrimario,
-    colorSecundario,
-    categoriasSeleccionadas,
-    subcategoriasSeleccionadas,
-  });
 
   try {
     const { error: errorUpdate } = await supabase
@@ -135,20 +115,11 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
     return;
   }
 
-  console.log('📦 Categorías:', categoriasSeleccionadas);
-  console.log('📦 Subcategorías:', subcategoriasSeleccionadas);
-
-  console.log('✅ Información básica actualizada');
-
   // 3. Guardar horarios regulares
-  console.log('🕘 Guardando horarios...');
   await guardarHorarios();
-  console.log('✅ Horarios actualizados');
 
   // 4. Guardar amenidades seleccionadas
-  console.log('🎯 Guardando amenidades seleccionadas...');
   await guardarAmenidadesSeleccionadas();
-  console.log('✅ Amenidades actualizadas');
 
   alert('✅ Comercio actualizado correctamente');
 });
@@ -187,18 +158,14 @@ async function guardarHorarios() {
     })
     .filter(Boolean);
 
-  console.log('📅 Horarios a guardar:', nuevosHorarios);
-
   try {
-    const { error, data } = await supabase
+    const { error } = await supabase
       .from('Horarios')
       .upsert(nuevosHorarios, { onConflict: 'idComercio,diaSemana' });
 
     if (error) {
       console.error('❌ Error guardando horarios:', error);
       alert('Hubo un problema al guardar los horarios');
-    } else {
-      console.log('✅ Horarios guardados', data);
     }
   } catch (err) {
     console.error('❌ Excepción guardando horarios:', err);

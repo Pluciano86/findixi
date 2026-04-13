@@ -820,7 +820,6 @@ function initMap() {
   // ✅ Capa para los marcadores
   markersLayer = L.layerGroup().addTo(map);
 
-  console.log("✅ Mapa inicializado correctamente (zoom máximo 22)");
 }
 
 function updateRadioLabel() {

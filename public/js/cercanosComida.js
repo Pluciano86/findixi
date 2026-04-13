@@ -109,8 +109,6 @@ export async function mostrarCercanosComida(comercioOrigen) {
       !isNaN(c.longitud)
     );
 
-    console.log(`🍽️ ${comerciosConCoords.length} comercios de comida con coordenadas encontrados.`);
-
     // 🔹 Calcular distancia y tiempo en vehículo
     const listaConTiempos = await Promise.all(
       comerciosConCoords.map(async (comercio) => {
@@ -196,8 +194,6 @@ export async function mostrarCercanosComida(comercioOrigen) {
     const cercanos = listaConTiempos
       .filter((c) => c.minutosCrudos !== null && c.minutosCrudos <= 10)
       .sort((a, b) => a.minutosCrudos - b.minutosCrudos);
-
-    console.log(`✅ ${cercanos.length} comercios cercanos encontrados.`);
 
     ultimoCercanos = cercanos;
     renderizarCercanos(cercanos);

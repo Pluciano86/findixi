@@ -97,11 +97,6 @@ async function mostrarBotonMenu() {
     'rounded-full',
     'shadow-lg'
   );
-  if (idParaMenu !== idComercio) {
-    console.log('✅ Menú mostrado usando sucursal relacionada', idParaMenu);
-  } else {
-    console.log('✅ Menú encontrado para este comercio');
-  }
 }
 
 await mostrarBotonMenu();

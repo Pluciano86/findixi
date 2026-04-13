@@ -788,7 +788,6 @@ export function filtrarYMostrarComercios() {
         if (error) {
           throw error;
         }
-        console.log(`✅ Comercio ${id} actualizado a ${nuevoEstado ? 'activo' : 'inactivo'}`);
       } catch (error) {
         alert('Error al actualizar el estado del comercio.');
         target.checked = estadoPrevio;

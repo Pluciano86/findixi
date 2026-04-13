@@ -72,5 +72,4 @@ export async function guardarHorariosComercio() {
     }
   }
 
-  console.log("Horarios guardados ✅");
 }

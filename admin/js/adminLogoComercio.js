@@ -71,7 +71,6 @@ export async function guardarLogoSiAplica() {
   const archivo = archivoLogoSeleccionado;
 
   if (!archivo) {
-    console.log('ℹ️ No se seleccionó un nuevo logo.');
     return;
   }
 
@@ -81,12 +80,6 @@ export async function guardarLogoSiAplica() {
     return;
   }
 
-  console.log('📦 Archivo:', {
-    name: archivo.name,
-    type: archivo.type,
-    size: archivo.size,
-  });
-
   if (archivo.size === 0 || !archivo.type || !archivo.type.startsWith('image/')) {
     alert('Logo inválido. Selecciona un archivo PNG o JPG válido.');
     return;
@@ -95,8 +88,6 @@ export async function guardarLogoSiAplica() {
   const extension = obtenerExtension(archivo.name);
   const nombreArchivo = generarNombreUnico('logo', extension);
   const path = nombreArchivo;
-
-  console.log('📁 Ruta destino en bucket:', path);
 
   try {
     const { error: uploadError } = await supabase.storage
@@ -138,7 +129,6 @@ export async function guardarLogoSiAplica() {
     if (preview) preview.src = publicUrl;
     archivoLogoSeleccionado = null;
 
-    console.log('✅ Logo subido y registrado correctamente:', path);
   } catch (err) {
     console.error('❌ Error inesperado al subir logo:', err);
     alert('Error inesperado al subir el logo');

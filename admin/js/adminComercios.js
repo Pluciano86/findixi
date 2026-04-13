@@ -8,7 +8,6 @@ function getPublicBase() {
 export async function guardarLogoSiAplica() {
   const input = document.getElementById('nuevo-logo');
   if (!input || !input.files || input.files.length === 0) {
-    console.log('📁 No hay nuevo logo para subir');
     return;
   }
 
@@ -30,8 +29,6 @@ export async function guardarLogoSiAplica() {
 
   const categoriaNombre = await obtenerNombreCategoria(categoriaID);
   const path = `${categoriaNombre}/${municipioNombre}/${nombreFolder}/logo_${Date.now()}.jpg`;
-
-  console.log('🛣️ Ruta del logo:', path);
 
   const { error: uploadError } = await supabase.storage
     .from('galeriacomercios')
@@ -57,7 +54,6 @@ export async function guardarLogoSiAplica() {
     orden: 0
   }]);
 
-  console.log('✅ Logo actualizado en DB');
 }
 
 // Limpia texto para usar en rutas

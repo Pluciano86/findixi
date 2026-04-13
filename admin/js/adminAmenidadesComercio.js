@@ -92,7 +92,6 @@ async function guardarAmenidadesSeleccionadas() {
     await supabase.from('comercioAmenidades').insert(nuevas);
   }
 
-  console.log('✅ Amenidades guardadas:', nuevas);
 }
 
 // ✅ Exportaciones únicas y correctas
