@@ -834,8 +834,8 @@ function delegarAcciones(contenedor) {
 delegarAcciones(tablaBanners);
 delegarAcciones(listaBannersMobile);
 
-document.addEventListener('DOMContentLoaded', async () => {
+(async () => {
   await cargarCatalogos();
   toggleCamposTipo(bannerTipo.value);
   await cargarBanners();
-});
+})();
