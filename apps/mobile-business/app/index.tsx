@@ -6,6 +6,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { BusinessChrome } from '../src/components/BusinessChrome';
 import { ScreenState } from '../src/components/ScreenState';
 import { getSessionOrReset } from '../src/lib/auth-session';
+import { fetchBusinessAnalyticsDashboard } from '../src/lib/business-analytics';
 import { fetchBusinessAccessByUser, type BusinessAccess, type BusinessProfile } from '../src/lib/business-profile';
 import { supabase } from '../src/lib/supabase';
 import { borderRadius, fonts, shadows, spacing } from '../src/theme/tokens';
@@ -22,6 +23,7 @@ type CommerceDashboardCard = {
   profile: BusinessProfile;
   logoUrl: string;
   favoriteCount: number;
+  viewsProfile30Days: number;
 };
 
 const AVATAR_FALLBACK = 'https://placehold.co/120x120?text=User';
@@ -149,15 +151,17 @@ export default function BusinessDashboardScreen() {
         fetchDashboardUser(session.user.id, String(session.user.email || ''), roleLabel),
         Promise.all(
           commerceEntries.map(async (entry) => {
-            const [logoUrl, favoriteCount] = await Promise.all([
+            const [logoUrl, favoriteCount, dashboardData] = await Promise.all([
               fetchCommerceLogoUrl(entry.idComercio),
               fetchFavoriteCount(entry.idComercio),
+              fetchBusinessAnalyticsDashboard(entry.idComercio, 30),
             ]);
             return {
               idComercio: entry.idComercio,
               profile: entry.profile,
               logoUrl,
               favoriteCount,
+              viewsProfile30Days: dashboardData.kpis.viewsProfile,
             } satisfies CommerceDashboardCard;
           })
         ),
@@ -180,8 +184,6 @@ export default function BusinessDashboardScreen() {
       return undefined;
     }, [loadData])
   );
-
-  const visitasPerfil30Dias = 127;
 
   const preTitle = userCard ? (
     <View style={[styles.userCard, shadows.card]}>
@@ -271,7 +273,7 @@ export default function BusinessDashboardScreen() {
                   <View style={[styles.statBox, styles.statBoxSecondary]}>
                     <Text style={styles.statLabel}>Ultimos 30 Dias</Text>
                     <View style={styles.statValueRow}>
-                      <Text style={styles.statValueCenter}>{visitasPerfil30Dias}</Text>
+                      <Text style={styles.statValueCenter}>{commerce.viewsProfile30Days}</Text>
                     </View>
                     <Text style={styles.statSuffix}>Visitas</Text>
                   </View>
