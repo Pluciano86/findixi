@@ -26,6 +26,9 @@
     "qa:phase2-close": "npm run qa:phase2-gate && npm run qa:freeze:report",
     "android": "expo run:android",
     "ios": "expo run:ios",
+    "build:preview": "eas build --profile preview --platform all",
+    "build:production": "eas build --profile production --platform all",
+    "submit": "eas submit --profile production",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit"
   },

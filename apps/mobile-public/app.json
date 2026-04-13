@@ -25,7 +25,8 @@
       "expo-web-browser"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.findixi.mobilepublic"
     },
     "android": {
       "package": "com.findixi.mobilepublic"
