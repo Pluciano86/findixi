@@ -74,22 +74,11 @@ async function init() {
   const linkMostrarLogin = document.getElementById('linkMostrarLogin');
   const btnGoogleTop = document.getElementById('btnGoogleTop');
 
-  const fotoInput = document.getElementById('fotoRegistro');
-  const avatarPreview = document.getElementById('avatarPreview');
-  const avatarPlaceholder = document.getElementById('avatarPlaceholder');
-  const avatarText = document.getElementById('avatarText');
-  const previewFoto = document.getElementById('previewFoto');
   const consentimientoSms = document.getElementById('consentimientoSms');
   const telefonoInput = document.getElementById('telefonoRegistro');
-  const telefonoLabel = document.getElementById('telefonoLabel');
   const telefonoError = document.getElementById('telefonoError');
   const passwordRegistroInput = document.getElementById('passwordRegistro');
   const passwordRegistroMensaje = document.getElementById('passwordRegistroMensaje');
-  const tipoCuentaButtons = document.querySelectorAll('.tipo-cuenta-btn');
-  const tipoCuentaInput = document.getElementById('tipoCuentaSeleccion');
-  const membresiaUpInfo = document.getElementById('membresiaUpInfo');
-  const avatarSection = document.getElementById('avatarSection');
-  const tipoCuentaMensaje = document.getElementById('tipoCuentaMensaje');
   const terminosWrapper = document.getElementById('terminosWrapper');
   const terminosCheckbox = document.getElementById('terminosCheckbox');
   const terminosError = document.getElementById('terminosError');
@@ -172,11 +161,6 @@ async function init() {
     });
   });
 
-  // 🔹 Avatar Picker
-  const triggerAvatarPicker = () => fotoInput?.click();
-  avatarPreview?.addEventListener('click', triggerAvatarPicker);
-  avatarText?.addEventListener('click', triggerAvatarPicker);
-
   const setTelefonoErrorState = (visible) => {
     if (!telefonoInput) return;
     if (visible) {
@@ -244,101 +228,7 @@ async function init() {
   cancelarModalTerminos?.addEventListener('click', cerrarModal);
   cerrarModalTerminos?.addEventListener('click', cerrarModal);
 
-  const actualizarUIporTipoCuenta = (tipo) => {
-    if (!tipoCuentaInput) return;
-    const tipoNormalizado = tipo === 'up' ? 'up' : 'regular';
-    tipoCuentaInput.value = tipoNormalizado;
-    const esMembresiaUp = tipoNormalizado === 'up';
-
-    tipoCuentaButtons.forEach((btn) => {
-      const activo = btn.dataset.tipo === tipoNormalizado;
-      const esBtnUp = btn.dataset.tipo === 'up';
-      btn.classList.toggle('bg-white/10', activo && !esBtnUp);
-      btn.classList.toggle('border-celeste/60', activo);
-      btn.classList.toggle('shadow-[0_15px_40px_rgba(35,180,233,0.25)]', activo && esMembresiaUp);
-      btn.classList.toggle('ring-2', activo);
-      btn.classList.toggle('ring-celeste', activo);
-      if (esBtnUp) {
-        btn.classList.toggle('membresia-up-btn-active', activo);
-      }
-    });
-
-    if (tipoCuentaMensaje) {
-      tipoCuentaMensaje.textContent =
-        tipoNormalizado === 'up'
-          ? t('login.registeringUp')
-          : t('login.registeringRegular');
-    }
-
-    if (telefonoInput) {
-      telefonoInput.required = esMembresiaUp;
-      if (telefonoLabel) {
-        telefonoLabel.textContent = esMembresiaUp ? t('login.phoneLabel') : t('login.phoneOptionalLabel');
-      }
-      if (!esMembresiaUp) {
-        setTelefonoErrorState(false);
-      }
-    }
-
-    if (membresiaUpInfo) {
-      if (esMembresiaUp) {
-        membresiaUpInfo.classList.remove('hidden');
-        membresiaUpInfo.classList.add('fade-up-enter');
-      } else {
-        membresiaUpInfo.classList.add('hidden');
-        membresiaUpInfo.classList.remove('fade-up-enter');
-      }
-    }
-
-    if (avatarSection) {
-      if (esMembresiaUp) {
-        avatarSection.classList.remove('hidden');
-        avatarSection.classList.add('fade-up-enter');
-      } else {
-        avatarSection.classList.add('hidden');
-        avatarSection.classList.remove('fade-up-enter');
-      }
-    }
-
-    if (!esMembresiaUp && fotoInput) {
-      fotoInput.value = '';
-      previewFoto?.classList.add('hidden');
-      avatarPlaceholder?.classList.remove('hidden');
-    }
-
-    if (terminosWrapper) {
-      if (esMembresiaUp) {
-        terminosWrapper.classList.remove('hidden');
-      } else {
-        terminosWrapper.classList.add('hidden');
-        resetTerminosAceptados();
-      }
-    }
-  };
-
-  if (tipoCuentaButtons.length) {
-    actualizarUIporTipoCuenta(tipoCuentaInput?.value || 'regular');
-    tipoCuentaButtons.forEach((btn) => {
-      btn.addEventListener('click', () => actualizarUIporTipoCuenta(btn.dataset.tipo));
-    });
-  }
-
-  // 🔹 Preview de imagen
-  fotoInput?.addEventListener('change', () => {
-    const file = fotoInput.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        previewFoto.src = reader.result;
-        previewFoto.classList.remove('hidden');
-        avatarPlaceholder?.classList.add('hidden');
-      };
-      reader.readAsDataURL(file);
-    } else {
-      previewFoto?.classList.add('hidden');
-      avatarPlaceholder?.classList.remove('hidden');
-    }
-  });
+  resetTerminosAceptados();
 
   // 🔹 Login
   formLogin?.addEventListener('submit', async (e) => {
@@ -407,12 +297,9 @@ async function init() {
     const email = document.getElementById('emailRegistro').value.trim();
     const password = document.getElementById('passwordRegistro').value;
     const confirmar = document.getElementById('confirmarPassword').value;
-    const foto = document.getElementById('fotoRegistro').files[0];
     const telefonoDigits = telefonoInput?.dataset.digits || telefonoInput?.value.replace(/\D/g, '') || '';
     const municipio = document.getElementById('municipio').value;
     const notificarText = consentimientoSms?.checked ?? true;
-    const tipoCuentaSeleccion = tipoCuentaInput?.value || 'regular';
-    const esMembresiaUp = tipoCuentaSeleccion === 'up';
 
     if (password.length < 6) {
       passwordRegistroMensaje?.classList.remove('hidden');
@@ -429,16 +316,6 @@ async function init() {
       return;
     }
 
-    if (esMembresiaUp && !telefonoDigits) {
-      errorRegistro.textContent = t('login.phoneRequiredError');
-      errorRegistro.classList.remove('hidden');
-      setTelefonoErrorState(true);
-      telefonoInput?.focus();
-      return;
-    } else {
-      setTelefonoErrorState(false);
-    }
-
     if (telefonoDigits && telefonoDigits.length !== 10) {
       errorRegistro.textContent = t('login.registerErrorPhoneInvalid');
       errorRegistro.classList.remove('hidden');
@@ -447,21 +324,14 @@ async function init() {
     }
     setTelefonoErrorState(false);
 
-    if (esMembresiaUp && !terminosCheckbox?.checked) {
-      errorRegistro.textContent = t('login.termsError');
+    if (!terminosCheckbox?.checked) {
+      errorRegistro.textContent = 'Debes aceptar los Términos y condiciones y la Política de privacidad de Findixi.';
       errorRegistro.classList.remove('hidden');
       setTerminosErrorState(true);
       terminosWrapper?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     } else {
       setTerminosErrorState(false);
-    }
-
-    if (esMembresiaUp && !foto) {
-      errorRegistro.textContent = t('login.registerErrorPhotoRequired');
-      errorRegistro.classList.remove('hidden');
-      avatarSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
     }
 
     try {
@@ -480,37 +350,13 @@ async function init() {
       }
 
       const userId = signup.user.id;
-      let imagen = '';
-
-      // 📸 Subir imagen si existe
-      if (foto) {
-        const extension = foto.name.split('.').pop();
-        const nombreArchivo = `usuarios/${userId}_${Date.now()}.${extension}`;
-
-        const { error: errorUpload } = await supabase.storage
-          .from('imagenesusuarios')
-          .upload(nombreArchivo, foto, {
-            cacheControl: '3600',
-            upsert: true,
-            contentType: foto.type
-          });
-
-        if (!errorUpload) {
-          const { data } = supabase.storage
-            .from('imagenesusuarios')
-            .getPublicUrl(nombreArchivo);
-          imagen = data.publicUrl;
-        }
-      }
 
       const payload = {
         nombre,
         apellido,
         telefono: telefonoDigits || null,
         municipio,
-        imagen,
-        notificartext: notificarText,
-        membresiaUp: esMembresiaUp
+        notificartext: notificarText
       };
       const actualizado = await actualizarPerfilUsuario(userId, payload);
 

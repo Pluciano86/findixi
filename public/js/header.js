@@ -1,3 +1,5 @@
+import './dailyBetaPopup.js';
+
 const container = document.getElementById('headerContainer');
 const headerScrollConfig = {
   threshold: 8,

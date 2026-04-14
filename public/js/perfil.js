@@ -17,47 +17,7 @@ let comercioActual = null;
 const CUPON_PLACEHOLDER = 'https://placehold.co/600x400?text=Cup%C3%B3n';
 const isLocalEnv = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 const LOGIN_URL = isLocalEnv ? '/public/logearse.html' : '/logearse.html';
-const UPGRADE_URL = isLocalEnv ? '/public/upgradeUp.html' : '/upgradeUp.html';
 let perfilUsuarioCache = null;
-
-const modalMembresiaOverlay = document.getElementById('modalMembresiaUp');
-const modalMembresiaCard = document.getElementById('modalMembresiaUpCard');
-const modalUpSubmit = document.getElementById('modalUpSubmit');
-const modalUpClose = document.getElementById('modalUpClose');
-const modalUpCloseIcon = document.getElementById('modalUpCloseIcon');
-
-const ocultarModalMembresia = () => {
-  if (!modalMembresiaOverlay || !modalMembresiaCard) return;
-  modalMembresiaCard.classList.remove('opacity-100', 'scale-100');
-  modalMembresiaCard.classList.add('opacity-0', 'scale-95');
-  setTimeout(() => {
-    modalMembresiaOverlay.classList.add('hidden');
-    modalMembresiaOverlay.classList.remove('flex');
-  }, 200);
-};
-
-const mostrarModalMembresia = () => {
-  if (!modalMembresiaOverlay || !modalMembresiaCard) return;
-  modalMembresiaOverlay.classList.remove('hidden');
-  modalMembresiaCard.classList.add('opacity-0', 'scale-95');
-  modalMembresiaCard.classList.remove('opacity-100', 'scale-100');
-  requestAnimationFrame(() => {
-    modalMembresiaOverlay.classList.add('flex');
-    modalMembresiaCard.classList.remove('opacity-0', 'scale-95');
-    modalMembresiaCard.classList.add('opacity-100', 'scale-100');
-  });
-};
-
-modalUpClose?.addEventListener('click', ocultarModalMembresia);
-modalUpCloseIcon?.addEventListener('click', ocultarModalMembresia);
-modalMembresiaOverlay?.addEventListener('click', (event) => {
-  if (event.target === modalMembresiaOverlay) {
-    ocultarModalMembresia();
-  }
-});
-modalUpSubmit?.addEventListener('click', () => {
-  window.location.href = UPGRADE_URL;
-});
 
 const obtenerUsuarioActual = async () => {
   try {
@@ -91,7 +51,7 @@ const obtenerPerfilUsuario = async (userId) => {
   try {
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id, telefono, imagen, membresiaUp')
+      .select('id, telefono, imagen')
       .eq('id', userId)
       .single();
 
@@ -105,12 +65,6 @@ const obtenerPerfilUsuario = async (userId) => {
     console.error('Error inesperado obteniendo perfil del usuario:', err);
     return null;
   }
-};
-
-const asegurarMembresiaUp = async (perfil) => {
-  if (perfil?.membresiaUp) return true;
-  mostrarModalMembresia();
-  return false;
 };
 
 const procesarGuardadoCupon = async ({
@@ -129,7 +83,8 @@ const procesarGuardadoCupon = async ({
   if (!user) {
     btnGuardar.disabled = false;
     btnGuardar.textContent = 'Guardar cupón';
-    mostrarModalMembresia();
+    const currentPath = `${window.location.pathname}${window.location.search}`;
+    window.location.href = `${LOGIN_URL}?redirect=${encodeURIComponent(currentPath)}`;
     return;
   }
 
@@ -141,14 +96,7 @@ const procesarGuardadoCupon = async ({
     return;
   }
 
-  const membershipOk = await asegurarMembresiaUp(perfil);
   perfil = perfilUsuarioCache || perfil;
-
-  if (!membershipOk) {
-    btnGuardar.disabled = false;
-    btnGuardar.textContent = 'Guardar cupón';
-    return;
-  }
 
   try {
     const codigoqr = crypto.randomUUID();

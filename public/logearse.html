@@ -61,17 +61,6 @@
       0% { opacity: 0.5; }
       100% { opacity: 1; }
     }
-    .membresia-up-btn {
-      background-color: rgba(0, 200, 255, 0.25);
-      border: 1px solid rgba(0, 200, 255, 0.35);
-      color: #fff;
-      font-weight: 400;
-      animation: pulseGlow 2.5s ease-in-out infinite;
-    }
-    .membresia-up-btn-active {
-      background-color: rgba(0, 200, 255, 0.4);
-      border-color: #00C8FF;
-    }
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <script type="module" src="./js/i18n.js"></script>
@@ -125,51 +114,6 @@
 
   <!-- Formulario de Registro -->
   <form id="formRegistro" class="hidden w-full max-w-xs text-left" enctype="multipart/form-data">
-    <div class="bg-white/5 border border-white/20 rounded-2xl p-4 mb-6 text-center">
-      <p class="text-[11px] uppercase tracking-[0.35em] text-white/60 mb-3 font-normal" data-i18n="login.accountType">Tipo de cuenta</p>
-      <div id="tipoCuentaSelector" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button type="button" data-tipo="regular" class="tipo-cuenta-btn border border-white/20 rounded-xl bg-white/5 px-4 py-3 text-center transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-celeste/60">
-          <span class="text-white font-normal block" data-i18n="login.regularAccount">Cuenta Regular</span>
-          <span class="text-white/70 text-sm font-normal" data-i18n="login.regularDesc">Ideal para explorar Findixi.</span>
-        </button>
-        <button type="button" data-tipo="up" class="tipo-cuenta-btn membresia-up-btn border border-white/20 rounded-xl px-4 py-3 text-center transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-celeste/60">
-          <span class="text-white font-normal block" data-i18n="login.upMembership">Membresía Up</span>
-          <span class="text-celeste text-sm font-normal" data-i18n="login.upFreeUntilShort">Gratis hasta el 31 de marzo.</span>
-        </button>
-      </div>
-      <input type="hidden" id="tipoCuentaSeleccion" value="regular" />
-    </div>
-
-    <div class="text-center text-white text-base font-medium mb-4" id="tipoCuentaMensaje" data-i18n="login.registeringRegular">
-      Registrándote con una Cuenta Regular
-    </div>
-
-    <div id="membresiaUpInfo" class="hidden flex-col items-center text-center gap-4 bg-white/5 border border-celeste/40 rounded-2xl p-5 mb-6 shadow-[0_15px_40px_rgba(35,180,233,0.25)] transition-all duration-300">
-      <div class="flex items-center justify-center">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/UpFondoOscuro.png" alt="Logo Membresía Up" data-i18n-alt="login.upLogoAlt" class="max-w-[100px] w-full h-auto object-contain select-none pointer-events-none" />
-      </div>
-      <div class="space-y-2">
-        <p class="text-lg font-normal text-white" data-i18n="login.upTitle">💎 Membresía Up — Gratis hasta el 31 de marzo de 2026</p>
-        <p class="text-sm text-[#CCCCCC] font-normal" data-i18n="login.upPriceAfter">A partir del 1 de abril de 2026 el costo será de $9.95 al mes.</p>
-        <p class="text-sm text-white/90 font-normal" data-i18n="login.upBenefits">Disfruta todos los privilegios Findixi sin costo por tiempo limitado.</p>
-      </div>
-      <ul class="text-white/90 text-sm space-y-2 w-full max-w-sm font-normal">
-        <li class="flex items-center gap-2 justify-center"><i class="fas fa-ticket-alt text-celeste"></i><span data-i18n="login.benefitCoupons">Acceso a cupones exclusivos</span></li>
-        <li class="flex items-center gap-2 justify-center"><i class="fas fa-tags text-celeste"></i><span data-i18n="login.benefitDiscounts">Descuentos especiales</span></li>
-        <li class="flex items-center gap-2 justify-center"><i class="fas fa-bell text-celeste"></i><span data-i18n="login.benefitNotifications">Notificaciones personalizadas</span></li>
-      </ul>
-    </div>
-
-    <div id="avatarSection" class="hidden flex flex-col items-center mb-6 transition-all duration-300">
-      <div id="avatarPreview" class="relative flex items-center justify-center rounded-full border border-white cursor-pointer overflow-hidden shadow-lg shadow-celeste/20" style="width: 150px; height: 150px;">
-        <span id="avatarPlaceholder" class="text-5xl text-white">+</span>
-        <img id="previewFoto" class="hidden w-full h-full object-cover" alt="Preview foto" />
-      </div>
-      <p id="avatarText" class="text-white text-sm font-light mt-2 cursor-pointer" data-i18n="login.addImage">Añadir imagen</p>
-      <p class="text-xs text-white/70 mt-1 text-center" data-i18n="login.imageRequired">Obligatorio para Membresía Up</p>
-      <input type="file" id="fotoRegistro" accept="image/*" class="hidden" />
-    </div>
-
     <label class="block text-white text-sm mb-1" data-i18n="login.firstName">Nombre</label>
     <input type="text" id="nombreRegistro" class="w-full px-3 py-2 rounded bg-white text-black mb-3" required />
 
@@ -181,7 +125,7 @@
 
     <label id="telefonoLabel" class="block text-white text-sm mb-1" data-i18n="login.phoneOptionalLabel">Teléfono (opcional)</label>
     <input type="tel" id="telefonoRegistro" class="w-full px-3 py-2 rounded bg-white text-black mb-1 border border-transparent" placeholder="(787) 123-4567" data-i18n-placeholder="login.phonePlaceholder" />
-    <p id="telefonoError" class="text-red-500 text-sm mt-1 hidden" data-i18n="login.phoneRequiredError">El número de teléfono es obligatorio para activar tu Membresía Up.</p>
+    <p id="telefonoError" class="text-red-500 text-sm mt-1 hidden">El número de teléfono debe tener 10 dígitos.</p>
     <div class="mb-3"></div>
 
     <label class="flex items-start gap-2 text-white text-sm mb-3">
@@ -189,16 +133,15 @@
       <span data-i18n="login.smsConsent">Recibir notificaciones por texto de ofertas exclusivas de Findixi y de tus comercios favoritos.</span>
     </label>
 
-    <div id="terminosWrapper" class="hidden flex-col gap-2 mb-4 text-left">
+    <div id="terminosWrapper" class="flex flex-col gap-2 mb-4 text-left">
       <label class="flex items-start gap-2 text-white text-sm">
         <input type="checkbox" id="terminosCheckbox" class="mt-1 accent-celeste" disabled />
         <span>
-          <span data-i18n="login.termsAcceptPrefix">Aceptar</span>
-          <button type="button" id="abrirTerminos" class="text-celeste underline" data-i18n="login.termsLink">Términos y Condiciones</button>
-          <span data-i18n="login.termsAcceptSuffix">de la Membresía UP.</span>
+          He leído y acepto los
+          <button type="button" id="abrirTerminos" class="text-celeste underline">Términos y condiciones y la Política de privacidad de Findixi.</button>
         </span>
       </label>
-      <p id="terminosError" class="text-red-500 text-sm hidden" data-i18n="login.termsError">Debes aceptar los Términos y Condiciones de la Membresía UP.</p>
+      <p id="terminosError" class="text-red-500 text-sm hidden">Debes aceptar los Términos y condiciones y la Política de privacidad de Findixi.</p>
     </div>
 
     <label class="block text-white text-sm mb-1" data-i18n="login.municipioOptional">Municipio (opcional)</label>
@@ -327,42 +270,71 @@
   <div id="modalTerminos" class="fixed inset-0 bg-black/50 z-[10000] hidden items-center justify-center px-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
       <div class="text-center flex items-center justify-between px-6 py-4 border-b">
-        <h2 class="text-center text-lg font-semibold text-gray-800" data-i18n="login.termsModalTitle">Términos y Condiciones</h2>
+        <h2 class="text-center text-lg font-semibold text-gray-800">Términos y condiciones y Política de privacidad</h2>
         <button type="button" id="cerrarModalTerminos" class="text-gray-500 hover:text-gray-700">
           <i class="fas fa-times"></i>
         </button>
       </div>
       <div id="modalContenido" class="px-6 py-4 overflow-y-auto text-sm text-gray-700 space-y-4" style="max-height: 60vh;">
-        <p><strong data-i18n="login.termsHeading">Términos y Condiciones de la Membresía UP</strong></p>
-        <p data-i18n="login.termsIntro">Al crear tu cuenta y activar tu Membresía UP, aceptas los siguientes términos:</p>
+        <p><strong>TÉRMINOS Y CONDICIONES — FINDIXI</strong></p>
+        <p>Última actualización: abril 2025</p>
+        <p>Al crear una cuenta en Findixi, aceptas los siguientes términos:</p>
         <ol class="text-start list-decimal pl-5 space-y-3">
           <li>
-            <strong data-i18n="login.termsCostTitle">Costo y renovación automática:</strong><br />
-            <span data-i18n="login.termsCostBody1">La Membresía UP tiene un costo de $9.95 mensuales, con renovación automática cada mes a través del método de pago registrado.</span><br />
-            <span data-i18n="login.termsCostBody2">Actualmente, el servicio es gratis hasta el 31 de marzo de 2026. A partir del 1 de abril de 2026 comenzará el cobro mensual sin interrupción, salvo que el usuario cancele su suscripción antes de la fecha de facturación.</span>
+            <strong>Uso de la plataforma</strong><br />
+            Findixi conecta usuarios con comercios locales. Debes usar la plataforma solo para fines legales y respetar estas condiciones en todo momento.
           </li>
           <li>
-            <strong data-i18n="login.termsCancelTitle">Cancelación:</strong><br />
-            <span data-i18n="login.termsCancelBody">Puedes cancelar tu membresía en cualquier momento desde tu perfil o comunicándote con nuestro equipo de soporte. No se emitirán reembolsos parciales por periodos no utilizados.</span>
+            <strong>Tu cuenta</strong><br />
+            Eres responsable de proteger tus credenciales y de toda actividad que ocurra en tu cuenta. Notifícanos de inmediato ante cualquier uso no autorizado.
           </li>
           <li>
-            <strong data-i18n="login.termsCommsTitle">Promociones y comunicaciones:</strong><br />
-            <span data-i18n="login.termsCommsBody">Al aceptar estos términos, autorizas a Findixi a enviarte mensajes de texto, correos electrónicos o notificaciones con promociones, descuentos, actualizaciones o información relacionada con tu cuenta y comercios afiliados.</span>
+            <strong>Listados de comercios</strong><br />
+            Cada comercio es responsable de la exactitud de su información. Findixi puede remover contenido que incumpla nuestras políticas sin previo aviso.
           </li>
           <li>
-            <strong data-i18n="login.termsUseTitle">Uso responsable:</strong><br />
-            <span data-i18n="login.termsUseBody">La membresía es personal e intransferible. El uso indebido, la reventa o el intento de fraude con beneficios o cupones puede conllevar la cancelación inmediata de la cuenta.</span>
+            <strong>Comunicaciones</strong><br />
+            Al crear tu cuenta, aceptas recibir comunicaciones de Findixi relacionadas con tu cuenta y actividad en la plataforma, incluyendo SMS.
+            <p class="mt-2">La frecuencia de SMS puede variar · Pueden aplicar cargos de mensajes y datos · Responde STOP para cancelar · Responde HELP para asistencia</p>
           </li>
           <li>
-            <strong data-i18n="login.termsChangesTitle">Modificaciones:</strong><br />
-            <span data-i18n="login.termsChangesBody">Findixi se reserva el derecho de modificar estos términos, precios o beneficios en cualquier momento. Cualquier cambio será notificado con antelación a los usuarios activos.</span>
+            <strong>Propiedad intelectual</strong><br />
+            El contenido, marca y materiales de la plataforma pertenecen a Findixi, salvo indicación contraria. No puedes reproducirlos sin autorización escrita.
+          </li>
+          <li>
+            <strong>Limitación de responsabilidad</strong><br />
+            Findixi no se responsabiliza por acciones, servicios o productos ofrecidos por los comercios listados en la plataforma.
+          </li>
+          <li>
+            <strong>Cambios a estos términos</strong><br />
+            Podemos actualizar estos términos en cualquier momento. El uso continuo de la plataforma implica aceptación de los cambios.
+          </li>
+          <li>
+            <strong>Contacto</strong><br />
+            Para preguntas sobre estos términos escríbenos a info@findixi.com
           </li>
         </ol>
-        <p data-i18n="login.termsConfirm">Al continuar, confirmas que has leído y aceptas estos términos y condiciones.</p>
+
+        <p><strong>POLÍTICA DE PRIVACIDAD — FINDIXI</strong></p>
+        <p>Última actualización: abril 2025</p>
+        <p>En Findixi respetamos tu privacidad. Esta política explica qué información recopilamos, cómo la usamos y cómo la protegemos.</p>
+        <ol class="text-start list-decimal pl-5 space-y-3">
+          <li><strong>Información que recopilamos</strong><br />Cuando creas una cuenta o usas Findixi, podemos recopilar: nombre, dirección de correo electrónico, número de teléfono, ubicación aproximada, y datos de uso de la plataforma.</li>
+          <li><strong>Cómo usamos tu información</strong><br />Usamos tu información para: operar y mejorar la plataforma, enviarte comunicaciones relacionadas con tu cuenta, conectarte con comercios locales relevantes, y cumplir con obligaciones legales.</li>
+          <li><strong>Comunicaciones por SMS</strong><br />Al registrarte, aceptas recibir mensajes de texto (SMS) de Findixi relacionados con tu cuenta y actividad en la plataforma. La frecuencia puede variar. Pueden aplicar cargos de mensajes y datos según tu plan. Responde STOP en cualquier momento para cancelar. Responde HELP para asistencia.</li>
+          <li><strong>Compartir información</strong><br />No vendemos tu información personal a terceros. Podemos compartirla con proveedores de servicios que nos ayudan a operar la plataforma, siempre bajo acuerdos de confidencialidad. También podemos divulgarla si la ley lo requiere.</li>
+          <li><strong>Cookies y tecnologías similares</strong><br />Findixi puede usar cookies para mejorar tu experiencia, analizar el uso de la plataforma y personalizar contenido. Puedes configurar tu navegador para rechazar cookies, aunque esto puede afectar algunas funciones.</li>
+          <li><strong>Seguridad de tu información</strong><br />Aplicamos medidas técnicas y organizativas razonables para proteger tu información. Sin embargo, ningún sistema es completamente seguro. Te recomendamos usar contraseñas únicas y mantener tus credenciales protegidas.</li>
+          <li><strong>Retención de datos</strong><br />Conservamos tu información mientras tu cuenta esté activa o según sea necesario para cumplir con obligaciones legales. Puedes solicitar la eliminación de tu cuenta y datos en cualquier momento escribiéndonos.</li>
+          <li><strong>Tus derechos</strong><br />Tienes derecho a: acceder a tu información personal, corregir datos incorrectos, solicitar la eliminación de tu cuenta, y oponerte al uso de tu información para comunicaciones de marketing.</li>
+          <li><strong>Menores de edad</strong><br />Findixi no está dirigido a menores de 13 años. No recopilamos intencionalmente información de menores. Si crees que un menor ha creado una cuenta, contáctanos para eliminarla.</li>
+          <li><strong>Cambios a esta política</strong><br />Podemos actualizar esta política en cualquier momento. Te notificaremos por correo electrónico o mediante un aviso en la plataforma ante cambios importantes. El uso continuo de Findixi implica aceptación de la política actualizada.</li>
+          <li><strong>Contacto</strong><br />Para ejercer tus derechos o hacer preguntas sobre esta política:<br />Correo: info@findixi.com</li>
+        </ol>
       </div>
       <div class="px-6 py-4 border-t flex justify-end gap-3">
-        <button type="button" id="cancelarModalTerminos" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100" data-i18n="login.modalCancel">Cancelar</button>
-        <button type="button" id="aceptarTerminosBtn" class="px-4 py-2 rounded-lg bg-celeste text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed" disabled data-i18n="login.modalAccept">Aceptar</button>
+        <button type="button" id="cancelarModalTerminos" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100">Cancelar</button>
+        <button type="button" id="aceptarTerminosBtn" class="px-4 py-2 rounded-lg bg-celeste text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed" disabled>Aceptar</button>
       </div>
     </div>
   </div>

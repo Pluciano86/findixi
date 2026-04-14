@@ -27,17 +27,6 @@ const emailUsuario = document.getElementById('emailUsuario');
 const municipioUsuario = document.getElementById('municipioUsuario');
 const fechaRegistro = document.getElementById('fechaRegistro');
 const fotoPerfil = document.getElementById('fotoPerfil');
-const membresiaBadge = document.getElementById('membresiaUpBadge');
-const upgradeBox = document.getElementById('upgradeMembresiaBox');
-const btnUpgradeUp = document.getElementById('btnUpgradeUp');
-const upgradeDetails = document.getElementById('upgradeDetails');
-const toggleUpgradeDetailsBtn = document.getElementById('toggleUpgradeDetails');
-const modalMembresiaOverlay = document.getElementById('modalMembresiaUp');
-const modalMembresiaCard = document.getElementById('modalMembresiaUpCard');
-const modalUpSubmit = document.getElementById('modalUpSubmit');
-const modalUpClose = document.getElementById('modalUpClose');
-const modalUpCloseIcon = document.getElementById('modalUpCloseIcon');
-const upgradeUrl = `${basePath}/upgradeUp.html`;
 
 const modal = document.getElementById('modalEditar');
 const btnEditar = document.getElementById('btnEditarPerfil');
@@ -151,64 +140,6 @@ const opcionesFiltrosCupones = {
   guardados: { comercios: [], municipios: [], categorias: [] },
   redimidos: { comercios: [], municipios: [], categorias: [] }
 };
-
-const ocultarModalMembresia = () => {
-  if (!modalMembresiaOverlay || !modalMembresiaCard) return;
-  modalMembresiaCard.classList.remove('opacity-100', 'scale-100');
-  modalMembresiaCard.classList.add('opacity-0', 'scale-95');
-  setTimeout(() => {
-    modalMembresiaOverlay.classList.add('hidden');
-    modalMembresiaOverlay.classList.remove('flex');
-  }, 200);
-};
-
-const mostrarModalMembresia = () => {
-  if (!modalMembresiaOverlay || !modalMembresiaCard) return;
-  modalMembresiaOverlay.classList.remove('hidden');
-  modalMembresiaCard.classList.add('opacity-0', 'scale-95');
-  modalMembresiaCard.classList.remove('opacity-100', 'scale-100');
-  requestAnimationFrame(() => {
-    modalMembresiaOverlay.classList.add('flex');
-    modalMembresiaCard.classList.remove('opacity-0', 'scale-95');
-    modalMembresiaCard.classList.add('opacity-100', 'scale-100');
-  });
-};
-
-btnUpgradeUp?.addEventListener('click', mostrarModalMembresia);
-modalUpClose?.addEventListener('click', ocultarModalMembresia);
-modalUpCloseIcon?.addEventListener('click', ocultarModalMembresia);
-modalMembresiaOverlay?.addEventListener('click', (event) => {
-  if (event.target === modalMembresiaOverlay) {
-    ocultarModalMembresia();
-  }
-});
-modalUpSubmit?.addEventListener('click', () => {
-  window.location.href = upgradeUrl;
-});
-
-const toggleUpgradeDetails = () => {
-  if (!upgradeDetails || !toggleUpgradeDetailsBtn) return;
-  const expanded = upgradeDetails.classList.toggle('open');
-  if (expanded) {
-    upgradeDetails.style.maxHeight = `${upgradeDetails.scrollHeight}px`;
-    upgradeDetails.style.opacity = '1';
-    toggleUpgradeDetailsBtn.textContent = 'Ver menos';
-  } else {
-    upgradeDetails.style.maxHeight = '0px';
-    upgradeDetails.style.opacity = '0';
-    toggleUpgradeDetailsBtn.textContent = 'Ver más';
-  }
-};
-
-toggleUpgradeDetailsBtn?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  toggleUpgradeDetails();
-});
-
-upgradeBox?.addEventListener('click', (e) => {
-  if (e.target === btnUpgradeUp || e.target.closest('#btnUpgradeUp')) return;
-  toggleUpgradeDetails();
-});
 
 async function restaurarSesionDesdeHash() {
   const hash = window.location.hash;
@@ -1458,7 +1389,7 @@ async function cargarPerfil(uid) {
   console.log('Ejecutando operación select en tabla usuarios', { filtro: { id: uid } });
   const { data, error } = await supabase
     .from('usuarios')
-.select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio, notificartext, membresiaUp')
+    .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio, notificartext')
     .eq('id', uid)
     .maybeSingle();
 
@@ -2022,18 +1953,6 @@ async function init() {
 
   const nombreCompleto = `${perfilOriginal.nombre || ''} ${perfilOriginal.apellido || ''}`.trim();
   nombreUsuario.textContent = nombreCompleto || authUser.email;
-  if (perfilOriginal.membresiaUp) {
-    membresiaBadge?.classList.remove('hidden');
-    upgradeBox?.classList.add('hidden');
-  } else {
-    membresiaBadge?.classList.add('hidden');
-    upgradeBox?.classList.remove('hidden');
-    if (upgradeDetails) {
-      upgradeDetails.style.maxHeight = '0px';
-      upgradeDetails.style.opacity = '0';
-      toggleUpgradeDetailsBtn.textContent = 'Ver más';
-    }
-  }
 
   inputNombre.value = perfilOriginal.nombre || '';
   inputApellido.value = perfilOriginal.apellido || '';
