@@ -73,6 +73,54 @@ function clampMonth(value, fallback = 0) {
   return Math.max(0, Math.min(11, Math.round(parsed)));
 }
 
+function errorCode(error) {
+  return String(error?.code || '').trim().toUpperCase();
+}
+
+function isMissingRelationError(error) {
+  const message = String(error?.message || '');
+  return errorCode(error) === '42P01' || /relation\s+["']?[\w.]+["']?\s+does not exist/i.test(message);
+}
+
+function isMissingColumnError(error) {
+  const source = `${String(error?.message || '')} ${String(error?.details || '')}`;
+  return errorCode(error) === '42703' || /column\s+["']?[\w.]+["']?\s+does not exist/i.test(source) || /Could not find the ['"][^'"]+['"] column/i.test(source);
+}
+
+function mapUnhandledError(error) {
+  const message = String(error?.message || '').trim();
+
+  if (message.includes('SUPABASE_URL') || message.includes('SUPABASE_SERVICE_ROLE_KEY')) {
+    return {
+      statusCode: 500,
+      error: 'Configuración incompleta del backend de Proyecciones.',
+      detalle: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Netlify Environment Variables.',
+    };
+  }
+
+  if (isMissingRelationError(error)) {
+    return {
+      statusCode: 500,
+      error: 'No existen tablas del módulo de proyecciones en la base de datos.',
+      detalle: 'Ejecuta las migraciones de proyecciones en Supabase y vuelve a desplegar.',
+    };
+  }
+
+  if (isMissingColumnError(error)) {
+    return {
+      statusCode: 500,
+      error: 'El schema de proyecciones está desactualizado.',
+      detalle: 'Ejecuta la migración 20260414120000_projections_compensation_model.sql en Supabase.',
+    };
+  }
+
+  return {
+    statusCode: 500,
+    error: 'No se pudo procesar la solicitud de proyecciones.',
+    detalle: message || String(error),
+  };
+}
+
 function parseProjectionPathSegments(event) {
   const fallbackPath = String(event?.path || '');
   const rawUrl = String(event?.rawUrl || '').trim();
@@ -101,14 +149,27 @@ async function resolveUserRole(supabaseAdmin, user) {
   const metaRole = toRoleText(user?.user_metadata?.rol_app || user?.app_metadata?.rol_app || user?.role);
   if (metaRole && ALLOWED_ROLES.has(metaRole)) return metaRole;
 
-  const { data, error } = await supabaseAdmin
-    .from('usuarios')
-    .select('rol_app')
-    .eq('id', user?.id)
-    .maybeSingle();
+  const roleColumns = ['rol_app', 'rol', 'role'];
 
-  if (error) throw error;
-  return toRoleText(data?.rol_app);
+  for (const column of roleColumns) {
+    const { data, error } = await supabaseAdmin
+      .from('usuarios')
+      .select(column)
+      .eq('id', user?.id)
+      .maybeSingle();
+
+    if (error) {
+      if (isMissingRelationError(error)) return metaRole;
+      if (isMissingColumnError(error)) continue;
+      throw error;
+    }
+
+    const resolvedRole = toRoleText(data?.[column]);
+    if (resolvedRole) return resolvedRole;
+    return metaRole;
+  }
+
+  return metaRole;
 }
 
 async function requireAdminOrOwner(event, supabaseAdmin) {
@@ -544,9 +605,11 @@ export const handler = async (event) => {
     return await routeRequest(event, supabaseAdmin);
   } catch (error) {
     console.error('[projections] error', error);
-    return apiResponse(500, {
-      error: 'No se pudo procesar la solicitud de proyecciones.',
-      detalle: error?.message || String(error),
+    const mapped = mapUnhandledError(error);
+    return apiResponse(mapped.statusCode, {
+      error: mapped.error,
+      detalle: mapped.detalle,
+      code: errorCode(error) || undefined,
     });
   }
 };

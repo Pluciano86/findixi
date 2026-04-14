@@ -580,9 +580,7 @@ async function getAccessToken() {
 }
 
 async function apiRequest(method, path = '', body = undefined) {
-  if (isLocalLiveServerRuntime()) {
-    return apiRequestViaSupabase(method, path, body);
-  }
+  if (isLocalLiveServerRuntime()) return apiRequestViaSupabase(method, path, body);
 
   const token = await getAccessToken();
   const urls = getApiCandidateUrls(path);
@@ -602,7 +600,11 @@ async function apiRequest(method, path = '', body = undefined) {
       const payload = await response.json().catch(() => ({}));
       if (response.ok) return payload;
 
-      const message = payload?.error || payload?.detalle || `HTTP ${response.status}`;
+      const detail = String(payload?.detalle || '').trim();
+      const base = String(payload?.error || '').trim();
+      const message = detail
+        ? (base ? `${base} (${detail})` : detail)
+        : (base || `HTTP ${response.status}`);
       const error = new Error(message);
       error.status = response.status;
 
@@ -617,7 +619,22 @@ async function apiRequest(method, path = '', body = undefined) {
     }
   }
 
-  throw lastError || new Error('No se pudo completar la solicitud API.');
+  // Fallback universal: si Netlify Functions falla, intenta operar directo con Supabase browser.
+  // Esto mantiene el módulo utilizable en entornos donde la función API no esté disponible todavía.
+  try {
+    return await apiRequestViaSupabase(method, path, body);
+  } catch (fallbackError) {
+    if (!lastError) throw fallbackError;
+
+    const primaryMessage = String(lastError?.message || '').trim();
+    const fallbackMessage = String(fallbackError?.message || '').trim();
+    const joined = fallbackMessage
+      ? `${primaryMessage || 'Error API'} · fallback Supabase: ${fallbackMessage}`
+      : (primaryMessage || 'No se pudo completar la solicitud API.');
+    const composite = new Error(joined);
+    composite.status = lastError?.status || fallbackError?.status;
+    throw composite;
+  }
 }
 
 function getCurrentSummary() {
