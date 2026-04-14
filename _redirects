@@ -4,3 +4,4 @@
 /comercio/adminmenucomercio /comercio/adminMenuComercio.html 200
 /comercio/vincularClover    /comercio/vincularClover.html    200
 /comercio/adminMenuComercio /comercio/adminMenuComercio.html 200
+/api/*                       /.netlify/functions/:splat       200

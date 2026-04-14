@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proyecciones Financieras</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+    input, select, textarea, button { font-size: 16px; }
+    .tab-btn.active { background: #23b4e9; color: white; border-color: #23b4e9; }
+    .sticky-col { position: sticky; left: 0; z-index: 12; background: #fff; }
+    .month-chip.active { box-shadow: 0 0 0 2px #23b4e9 inset; }
+    .month-chip[data-tone='positive'] { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+    .month-chip[data-tone='negative'] { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .month-chip[data-tone='prestart'] { background: #f3f4f6; border-color: #d1d5db; color: #4b5563; }
+    .kpi-positive { color: #047857; }
+    .kpi-negative { color: #b91c1c; }
+    .mini-bar { min-height: 8px; border-radius: 6px; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <div id="headerContainer"></div>
+  <script type="module">
+    import { loadAdminHeader } from './js/loadAdminHeader.js';
+    loadAdminHeader();
+  </script>
+
+  <main class="p-4 md:p-6 lg:p-8">
+    <div class="max-w-7xl mx-auto space-y-5">
+      <section class="bg-white border border-gray-100 rounded-xl shadow-sm p-4 md:p-5">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 class="text-2xl font-semibold text-[#23b4e9]">Proyecciones Financieras</h1>
+            <p class="text-sm text-gray-500">Modelo de excedente, reserva mínima y bonos semestrales.</p>
+          </div>
+          <div class="flex flex-wrap gap-2 items-center">
+            <label for="projectionSelect" class="text-sm text-gray-600">Proyección:</label>
+            <select id="projectionSelect" class="border rounded-lg px-3 py-2 min-w-[220px]"></select>
+            <button id="btnNewProjection" class="px-3 py-2 rounded-lg bg-cyan-600 text-white font-semibold hover:bg-cyan-700">Nueva proyección</button>
+            <button id="btnExportCsv" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100">Exportar CSV</button>
+          </div>
+        </div>
+        <p id="projectionStatus" class="text-xs text-gray-500 mt-3"></p>
+      </section>
+
+      <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
+        <article class="bg-white rounded-xl border border-gray-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-gray-500">Ingresos año</p>
+          <p id="kpiIngresosAno" class="text-xl font-semibold text-teal-700">$0</p>
+        </article>
+        <article class="bg-white rounded-xl border border-gray-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-gray-500">Caja final</p>
+          <p id="kpiCajaFinal" class="text-xl font-semibold">$0</p>
+        </article>
+        <article class="bg-white rounded-xl border border-gray-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-gray-500">MRR diciembre</p>
+          <p id="kpiMrrDic" class="text-xl font-semibold text-teal-700">$0</p>
+        </article>
+        <article class="bg-white rounded-xl border border-gray-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-gray-500">Meses positivos</p>
+          <p id="kpiMesesPositivos" class="text-xl font-semibold">0/12</p>
+        </article>
+        <article class="bg-white rounded-xl border border-gray-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-gray-500">Punto equilibrio</p>
+          <p id="kpiPuntoEq" class="text-xl font-semibold text-amber-700">—</p>
+        </article>
+        <article class="bg-white rounded-xl border border-gray-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-gray-500">Total bonos</p>
+          <p id="kpiBonos" class="text-xl font-semibold text-violet-700">$0</p>
+        </article>
+      </section>
+
+      <section class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="border-b border-gray-100 p-3 flex gap-2 overflow-x-auto">
+          <button class="tab-btn active px-3 py-2 text-sm rounded-lg border border-gray-200 whitespace-nowrap" data-tab="annual">Resumen anual</button>
+          <button class="tab-btn px-3 py-2 text-sm rounded-lg border border-gray-200 whitespace-nowrap" data-tab="month">Por mes</button>
+          <button class="tab-btn px-3 py-2 text-sm rounded-lg border border-gray-200 whitespace-nowrap" data-tab="data">Datos</button>
+          <button class="tab-btn px-3 py-2 text-sm rounded-lg border border-gray-200 whitespace-nowrap" data-tab="partners">Socios</button>
+          <button class="tab-btn px-3 py-2 text-sm rounded-lg border border-gray-200 whitespace-nowrap" data-tab="settings">Configuración</button>
+        </div>
+
+        <div id="tabAnnual" class="p-3 md:p-4 space-y-4">
+          <section class="grid lg:grid-cols-2 gap-4">
+            <article class="bg-gray-50 rounded-xl border border-gray-200 p-4">
+              <h3 class="font-semibold text-gray-900 mb-2">MRR por mes</h3>
+              <div id="annualMrrChart" class="space-y-2"></div>
+            </article>
+            <article class="bg-gray-50 rounded-xl border border-gray-200 p-4">
+              <h3 class="font-semibold text-gray-900 mb-2">Resultado neto empresa</h3>
+              <div id="annualNetChart" class="space-y-2"></div>
+            </article>
+          </section>
+          <section>
+            <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
+              <p class="text-sm text-gray-500">★ meses de bono · columnas pre-inicio en tono apagado.</p>
+              <p id="annualHint" class="text-xs text-gray-500"></p>
+            </div>
+            <div id="annualTableContainer" class="overflow-x-auto"></div>
+          </section>
+        </div>
+
+        <div id="tabMonth" class="p-3 md:p-4 hidden space-y-4">
+          <div id="monthChipsDetail" class="flex gap-2 overflow-x-auto pb-1"></div>
+          <div id="monthDetailContainer" class="space-y-3"></div>
+        </div>
+
+        <div id="tabData" class="p-3 md:p-4 hidden space-y-4">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div id="monthChipsData" class="flex gap-2 overflow-x-auto pb-1"></div>
+            <p id="dataDirtyState" class="text-xs text-gray-500">Guardado ✓</p>
+          </div>
+
+          <section class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-4">
+            <h3 class="font-semibold text-gray-900">Comercios nuevos este mes</h3>
+            <div class="space-y-2">
+              <div class="grid grid-cols-3 gap-2 items-center">
+                <span class="text-sm text-gray-700">Regular</span>
+                <input id="dataRegApp" type="number" min="0" step="1" class="border rounded px-3 py-2" placeholder="App">
+                <input id="dataRegCgo" type="number" min="0" step="1" class="border rounded px-3 py-2" placeholder="CGO">
+              </div>
+              <div class="grid grid-cols-3 gap-2 items-center">
+                <span class="text-sm text-gray-700">Plus</span>
+                <input id="dataPlusApp" type="number" min="0" step="1" class="border rounded px-3 py-2" placeholder="App">
+                <input id="dataPlusCgo" type="number" min="0" step="1" class="border rounded px-3 py-2" placeholder="CGO">
+              </div>
+              <div class="grid grid-cols-3 gap-2 items-center">
+                <span class="text-sm text-gray-700">Premium</span>
+                <input id="dataPremApp" type="number" min="0" step="1" class="border rounded px-3 py-2" placeholder="App">
+                <input id="dataPremCgo" type="number" min="0" step="1" class="border rounded px-3 py-2" placeholder="CGO">
+              </div>
+            </div>
+          </section>
+
+          <section class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 class="font-semibold text-gray-900">Otros ingresos y ads</h3>
+            <div class="grid md:grid-cols-3 gap-3">
+              <label class="text-sm">Sponsors ($)
+                <input id="dataSponsors" type="number" min="0" step="1" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+              <label class="text-sm">Municipios ($)
+                <input id="dataMunicipios" type="number" min="0" step="1" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+              <label class="text-sm">Publicidad / Ads ($)
+                <input id="dataAds" type="number" min="0" step="1" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+            </div>
+          </section>
+
+          <section class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">Ingresos extraordinarios</h3>
+              <button id="addDataIncomeBtn" type="button" class="text-sm text-cyan-700 font-semibold">+ Añadir ingreso extraordinario</button>
+            </div>
+            <div id="dataExtraIncomeList" class="space-y-2"></div>
+          </section>
+
+          <section class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">Gastos extraordinarios</h3>
+              <button id="addDataExpenseBtn" type="button" class="text-sm text-cyan-700 font-semibold">+ Añadir gasto extraordinario</button>
+            </div>
+            <div id="dataExtraExpenseList" class="space-y-2"></div>
+          </section>
+
+          <section class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 class="font-semibold text-gray-900">Notas del mes</h3>
+            <textarea id="dataNotes" rows="3" class="w-full border rounded px-3 py-2" placeholder="Notas internas del mes..."></textarea>
+          </section>
+
+          <section class="bg-white rounded-xl border border-gray-200 p-4">
+            <h3 class="font-semibold text-gray-900 mb-2">Resumen calculado</h3>
+            <div class="grid sm:grid-cols-3 gap-3">
+              <p class="text-sm text-gray-700">MRR acumulado: <strong id="dataSummaryMrr">$0</strong></p>
+              <p class="text-sm text-gray-700">Excedente: <strong id="dataSummaryExcedente">$0</strong></p>
+              <p class="text-sm text-gray-700">Resultado empresa: <strong id="dataSummaryResultado">$0</strong></p>
+            </div>
+            <p id="dataPrestartHint" class="text-xs text-gray-500 mt-2"></p>
+          </section>
+
+          <div class="flex items-center gap-3">
+            <button id="saveDataMonthBtn" class="px-4 py-2 rounded-lg bg-cyan-600 text-white font-semibold hover:bg-cyan-700">Guardar mes</button>
+            <span id="dataSaveStatus" class="text-sm text-gray-500"></span>
+          </div>
+        </div>
+
+        <div id="tabPartners" class="p-3 md:p-4 hidden space-y-4">
+          <section id="partnerCards" class="grid lg:grid-cols-3 gap-3"></section>
+          <section>
+            <h3 class="font-semibold text-gray-900 mb-2">Tabla anual de compensación</h3>
+            <div id="partnersTableContainer" class="overflow-x-auto"></div>
+          </section>
+        </div>
+
+        <div id="tabSettings" class="p-3 md:p-4 hidden space-y-4">
+          <p id="settingsDirtyState" class="text-xs text-gray-500">Guardado ✓</p>
+
+          <section class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 class="font-semibold text-gray-900">Precios de planes</h3>
+            <div class="grid md:grid-cols-4 gap-3">
+              <label class="text-sm">Basic
+                <input type="text" class="mt-1 w-full border rounded px-3 py-2 bg-gray-100 text-gray-500" value="$0 (Siempre gratis)" disabled>
+              </label>
+              <label class="text-sm">Regular / mes ($)
+                <input id="cfgPriceRegular" type="number" min="0" step="1" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+              <label class="text-sm">Plus / mes ($)
+                <input id="cfgPricePlus" type="number" min="0" step="1" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+              <label class="text-sm">Premium / mes ($)
+                <input id="cfgPricePremium" type="number" min="0" step="1" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+            </div>
+          </section>
+
+          <section class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 class="font-semibold text-gray-900">Inicio del proyecto</h3>
+            <label class="text-sm">Mes de inicio
+              <select id="cfgStartMonth" class="mt-1 w-full border rounded px-3 py-2"></select>
+            </label>
+            <p class="text-xs text-gray-500">Antes de este mes: sueldos y gastos fijos = $0. Los ingresos aplican siempre.</p>
+          </section>
+
+          <section class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 class="font-semibold text-gray-900">Distribución del excedente (%)</h3>
+            <div class="grid md:grid-cols-3 gap-3">
+              <label class="text-sm">CEO %
+                <input id="cfgDistCeo" type="number" min="0" step="0.01" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+              <label class="text-sm">COO %
+                <input id="cfgDistCoo" type="number" min="0" step="0.01" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+              <label class="text-sm">CGO %
+                <input id="cfgDistCgo" type="number" min="0" step="0.01" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+            </div>
+            <p id="distPctHint" class="text-xs text-gray-500"></p>
+          </section>
+
+          <section class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 class="font-semibold text-gray-900">Sueldos mínimos garantizados</h3>
+            <div class="grid md:grid-cols-4 gap-3">
+              <label class="text-sm">CEO / mes ($)
+                <input id="cfgSalMinCeo" type="number" min="0" step="1" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+              <label class="text-sm">COO / mes ($)
+                <input id="cfgSalMinCoo" type="number" min="0" step="1" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+              <label class="text-sm">CGO / mes ($)
+                <input id="cfgSalMinCgo" type="number" min="0" step="1" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+              <label class="text-sm">Reserva mínima ($)
+                <input id="cfgReservaMinima" type="number" min="0" step="1" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+            </div>
+            <p class="text-xs text-gray-500">Si la caja acumulada está por debajo de la reserva, no se distribuye excedente.</p>
+          </section>
+
+          <section class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">Posiciones adicionales (nómina fija)</h3>
+              <button id="addPositionBtn" type="button" class="text-sm text-cyan-700 font-semibold">+ Añadir posición</button>
+            </div>
+            <div id="positionsList" class="space-y-2"></div>
+          </section>
+
+          <section class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 class="font-semibold text-gray-900">Bonos de productividad (cada 6 meses)</h3>
+            <div class="grid md:grid-cols-4 gap-3">
+              <label class="text-sm">Meta MRR ($)
+                <input id="cfgMetaMrrBono" type="number" min="0" step="1" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+              <label class="text-sm">Bono CEO (% excedente)
+                <input id="cfgBonoPctCeo" type="number" min="0" step="0.01" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+              <label class="text-sm">Bono COO (% excedente)
+                <input id="cfgBonoPctCoo" type="number" min="0" step="0.01" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+              <label class="text-sm">Bono CGO (% excedente)
+                <input id="cfgBonoPctCgo" type="number" min="0" step="0.01" class="mt-1 w-full border rounded px-3 py-2">
+              </label>
+            </div>
+            <p id="bonusPeriodHint" class="text-xs text-gray-500"></p>
+          </section>
+
+          <section class="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">Gastos fijos mensuales</h3>
+              <button id="addFixedExpenseBtn" type="button" class="text-sm text-cyan-700 font-semibold">+ Añadir gasto fijo</button>
+            </div>
+            <div id="fixedExpensesList" class="space-y-2"></div>
+          </section>
+
+          <div class="flex items-center gap-3">
+            <button id="saveSettingsBtn" class="px-4 py-2 rounded-lg bg-cyan-600 text-white font-semibold hover:bg-cyan-700">Guardar configuración</button>
+            <span id="settingsSaveStatus" class="text-sm text-gray-500"></span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="./js/adminProyecciones.js"></script>
+</body>
+</html>

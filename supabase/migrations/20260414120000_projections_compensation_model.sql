@@ -1,0 +1,29 @@
+BEGIN;
+
+ALTER TABLE public.projection_settings
+  ADD COLUMN IF NOT EXISTS price_regular INTEGER DEFAULT 65,
+  ADD COLUMN IF NOT EXISTS price_plus INTEGER DEFAULT 95,
+  ADD COLUMN IF NOT EXISTS price_premium INTEGER DEFAULT 155,
+  ADD COLUMN IF NOT EXISTS dist_pct_ceo NUMERIC(5,2) DEFAULT 60,
+  ADD COLUMN IF NOT EXISTS dist_pct_coo NUMERIC(5,2) DEFAULT 25,
+  ADD COLUMN IF NOT EXISTS dist_pct_cgo NUMERIC(5,2) DEFAULT 15,
+  ADD COLUMN IF NOT EXISTS sal_min_ceo INTEGER DEFAULT 800,
+  ADD COLUMN IF NOT EXISTS sal_min_coo INTEGER DEFAULT 700,
+  ADD COLUMN IF NOT EXISTS sal_min_cgo INTEGER DEFAULT 400,
+  ADD COLUMN IF NOT EXISTS reserva_minima INTEGER DEFAULT 3000,
+  ADD COLUMN IF NOT EXISTS bono_pct_ceo NUMERIC(5,2) DEFAULT 10,
+  ADD COLUMN IF NOT EXISTS bono_pct_coo NUMERIC(5,2) DEFAULT 5,
+  ADD COLUMN IF NOT EXISTS bono_pct_cgo NUMERIC(5,2) DEFAULT 3,
+  ADD COLUMN IF NOT EXISTS positions JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS fixed_expenses JSONB DEFAULT '[
+    {"label":"Hosting / infra","amount":120},
+    {"label":"Herramientas SaaS","amount":130},
+    {"label":"Misceláneos","amount":80}
+  ]'::jsonb;
+
+ALTER TABLE public.projection_months
+  ADD COLUMN IF NOT EXISTS extra_income JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS extra_expense JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+
+COMMIT;

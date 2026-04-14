@@ -2,7 +2,8 @@
   "type": "module",
   "scripts": {
     "sync:shared": "node tools/sync-shared-package.mjs",
-    "qa:web-public": "node tools/check-web-public-smoke.mjs"
+    "qa:web-public": "node tools/check-web-public-smoke.mjs",
+    "test:projections": "node --test shared/projectionsCalculator.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.0",
