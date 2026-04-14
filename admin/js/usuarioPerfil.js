@@ -2,6 +2,7 @@ import { supabase } from '../shared/supabaseClient.js';
 
 const params = new URLSearchParams(window.location.search);
 const idUsuario = params.get('id');
+let autoAbrirEdicion = ['1', 'true', 'yes', 'si'].includes(String(params.get('edit') || '').toLowerCase());
 
 const fotoEl = document.getElementById('user-foto');
 const nombreEl = document.getElementById('user-nombre');
@@ -147,6 +148,7 @@ async function cargarUsuario() {
   const fotoModal = document.getElementById('editFotoPreview');
   if (fotoModal) fotoModal.src = data.imagen || PLACEHOLDER_FOTO;
 
+  await autoAbrirEdicionSiAplica();
   await cargarFavoritos();
 }
 
@@ -407,6 +409,13 @@ function abrirModalEditar() {
 function cerrarModalEditar() {
   modalEditarUsuario?.classList.add('hidden');
   modalEditarUsuario?.classList.remove('flex');
+}
+
+async function autoAbrirEdicionSiAplica() {
+  if (!autoAbrirEdicion || !usuarioPerfil) return;
+  autoAbrirEdicion = false;
+  await cargarMunicipiosSelect();
+  abrirModalEditar();
 }
 
 async function guardarEdicion() {

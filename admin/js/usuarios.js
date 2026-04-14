@@ -8,6 +8,7 @@ const filtroMunicipio = document.getElementById('search-municipio');
 const filtroTipo = document.getElementById('search-tipo');
 
 const PLACEHOLDER_FOTO = 'https://placehold.co/80x80?text=User';
+const APP_ADMIN_ROLES = new Set(['admin', 'superadmin', 'app_admin', 'app_superadmin', 'owner', 'app_owner']);
 
 let usuariosOriginales = [];
 let comerciosModal = [];
@@ -39,107 +40,189 @@ function formatearFecha(iso) {
   });
 }
 
-function determinarTipo(usuario) {
-  if (!usuario.comercios?.length) return 'Regular';
-  const roles = usuario.comercios.map(c => (c.rol || '').toLowerCase());
-  if (roles.includes('colaborador') || roles.includes('colaborador de comercio')) {
-    return 'Colaborador de Comercio';
+function normalizarRol(valor = '') {
+  return String(valor || '').trim();
+}
+
+function formatearRol(rolRaw = '') {
+  const raw = normalizarRol(rolRaw);
+  if (!raw) return 'regular';
+
+  const key = raw.toLowerCase();
+  const map = {
+    admin: 'admin',
+    superadmin: 'superadmin',
+    app_admin: 'admin app',
+    app_superadmin: 'superadmin app',
+    owner: 'owner',
+    app_owner: 'owner app',
+    dueno: 'dueno',
+    dueño: 'dueno',
+    comercio_admin: 'admin comercio',
+    comercio_editor: 'editor comercio',
+    colaborador: 'colaborador',
+    'colaborador de comercio': 'colaborador',
+    regular: 'regular',
+  };
+
+  return map[key] || raw.replaceAll('_', ' ');
+}
+
+function formatearRolApp(rolRaw = '') {
+  const key = normalizarRol(rolRaw).toLowerCase();
+  if (!key) return 'admin app';
+  if (['superadmin', 'app_superadmin'].includes(key)) return 'superadmin app';
+  if (['owner', 'app_owner'].includes(key)) return 'owner app';
+  return 'admin app';
+}
+
+function formatearRolComercio(rolRaw = '') {
+  const key = normalizarRol(rolRaw).toLowerCase();
+  if (!key) return 'regular';
+
+  if (['dueno', 'dueño', 'owner', 'admin', 'comercio_admin'].includes(key)) {
+    return 'admin comercio';
   }
-  return 'Admin Comercio';
+
+  if (['editor', 'comercio_editor', 'colaborador', 'colaborador de comercio'].includes(key)) {
+    return 'editor comercio';
+  }
+
+  return formatearRol(rolRaw);
+}
+
+function esAdminApp(usuario) {
+  const rol = normalizarRol(usuario.rol_app).toLowerCase();
+  return APP_ADMIN_ROLES.has(rol);
+}
+
+function obtenerRolesComercio(usuario) {
+  if (!Array.isArray(usuario.comercios)) return [];
+  const unicos = new Set();
+  usuario.comercios.forEach((comercio) => {
+    const rol = normalizarRol(comercio?.rol);
+    if (rol) unicos.add(rol);
+  });
+  return Array.from(unicos);
+}
+
+function obtenerRolPrincipalComercio(usuario) {
+  const roles = obtenerRolesComercio(usuario);
+  if (!roles.length) return '';
+
+  const priority = [
+    'dueño',
+    'dueno',
+    'owner',
+    'admin',
+    'comercio_admin',
+    'comercio_editor',
+    'colaborador',
+    'colaborador de comercio',
+  ];
+
+  const lowerRoles = roles.map((r) => normalizarRol(r).toLowerCase());
+  for (const key of priority) {
+    const idx = lowerRoles.indexOf(key);
+    if (idx !== -1) return roles[idx];
+  }
+
+  return roles[0];
+}
+
+function obtenerRolPrincipal(usuario) {
+  if (esAdminApp(usuario)) {
+    return { tipo: 'admin-app', texto: formatearRolApp(usuario.rol_app) };
+  }
+
+  const rolComercio = obtenerRolPrincipalComercio(usuario);
+  if (rolComercio) {
+    return { tipo: 'rol-comercio', texto: formatearRolComercio(rolComercio) };
+  }
+
+  return { tipo: 'regular', texto: 'regular' };
 }
 
 function obtenerBadges(usuario) {
-  const badges = [];
-  const tipo = determinarTipo(usuario);
-
-  if (usuario.membresiaUp) {
-    badges.push({
-      tipo: 'up',
-      logo: 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo%20UP_FondoOscuro.png'
-    });
+  const rol = obtenerRolPrincipal(usuario);
+  if (rol.tipo === 'admin-app') {
+    return [{
+      tipo: 'admin-app',
+      texto: rol.texto,
+      clase: 'bg-[#ffb703]/25 text-[#ffb703] border border-[#ffb703]/60'
+    }];
   }
 
-  if (tipo === 'Admin Comercio') {
-    badges.push({
-      tipo: 'admin',
-      texto: 'Admin',
-      emoji: '🧑‍💼',
+  if (rol.tipo === 'rol-comercio') {
+    return [{
+      tipo: 'rol-comercio',
+      texto: rol.texto,
       clase: 'bg-cyan-500/15 text-cyan-100 border border-cyan-400/40'
-    });
-  } else if (tipo.includes('colaborador')) {
-    badges.push({
-      tipo: 'editor',
-      texto: 'Editor',
-      emoji: '✏️',
-      clase: 'bg-amber-400/15 text-amber-100 border border-amber-300/40'
-    });
+    }];
   }
 
-  return badges;
+  return [{
+    tipo: 'regular',
+    texto: 'regular',
+    clase: 'bg-white/10 text-gray-200 border border-white/20'
+  }];
 }
 
 function renderizarBadges(badges) {
   if (!badges?.length) return '';
   return badges
-    .map((b) => {
-      if (b.tipo === 'up') {
-        return `<img src="${b.logo}" alt="Membresía Up" class="h-6 w-auto drop-shadow-md inline-block align-middle">`;
-      }
-      return `<span class="px-2 py-1 rounded-full text-[11px] font-semibold inline-flex items-center gap-1 ${b.clase}">
-        ${b.emoji || ''} ${b.texto || ''}
-      </span>`;
-    })
+    .map((b) => `<span class="px-2 py-1 rounded-full text-[11px] font-semibold inline-flex items-center gap-1 whitespace-nowrap ${b.clase}">
+      ${b.texto || ''}
+    </span>`)
     .join('');
 }
 
 function renderizarBadgesCorner(badges) {
   if (!badges?.length) return '';
   return badges
-    .map((b) => {
-      if (b.tipo === 'up') {
-        return `<img src="${b.logo}" alt="Membresía Up" class="h-9 w-auto drop-shadow-xl">`;
-      }
-      return `<span class="px-3 py-1 rounded-full text-[12px] font-semibold inline-flex items-center gap-1 ${b.clase}">
-        ${b.emoji || ''} ${b.texto || ''}
-      </span>`;
-    })
+    .map((b) => `<span class="px-3 py-1 rounded-full text-[12px] font-semibold inline-flex items-center gap-1 whitespace-nowrap ${b.clase}">
+      ${b.texto || ''}
+    </span>`)
     .join('');
 }
 
 function crearFila(usuario) {
   const fila = document.createElement('tr');
-  fila.className = 'hover:bg-gray-50';
+  const adminApp = esAdminApp(usuario);
+  fila.className = adminApp
+    ? 'bg-[#ffb703]/10 hover:bg-[#ffb703]/15'
+    : 'hover:bg-white/5';
 
-  const tipo = determinarTipo(usuario);
   const foto = usuario.imagen || PLACEHOLDER_FOTO;
   const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Sin nombre';
 
   const perfilUrl = resolvePath(`usuarioPerfil.html?id=${usuario.id}`);
+  const editarUrl = resolvePath(`usuarioPerfil.html?id=${usuario.id}&edit=1`);
 
   const badgesHtml = renderizarBadges(obtenerBadges(usuario));
 
   fila.innerHTML = `
     <td class="px-4 py-3">
-      <img src="${foto}" alt="Foto" class="w-12 h-12 rounded-full object-cover border" />
+      <img src="${foto}" alt="Foto" class="avatar-circle border border-white/15" />
     </td>
-    <td class="px-4 py-3 font-medium text-gray-800">${nombreCompleto}</td>
-    <td class="px-4 py-3 text-gray-600">${usuario.municipio || '—'}</td>
-    <td class="px-4 py-3 text-gray-600">–</td>
+    <td class="px-4 py-3 font-medium ${adminApp ? 'text-[#ffb703]' : 'text-white'}">${nombreCompleto}</td>
+    <td class="px-4 py-3 text-gray-200">${usuario.municipio || '—'}</td>
+    <td class="px-4 py-3 text-gray-200">${usuario.email || '—'}</td>
     <td class="px-4 py-3">
       <div class="flex flex-wrap gap-1">${badgesHtml}</div>
     </td>
-    <td class="px-4 py-3 text-gray-600">${formatearFecha(usuario.creado_en)}</td>
+    <td class="px-4 py-3 text-gray-300">${formatearFecha(usuario.creado_en)}</td>
     <td class="px-4 py-3 text-center">
       <div class="flex items-center justify-center gap-2">
         <a href="${perfilUrl}" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-cyan-500 hover:bg-cyan-600 text-white rounded">
           <i class="fas fa-eye"></i>
           Ver
         </a>
-        <a href="${resolvePath(`usuarioEditar.html?id=${usuario.id}`)}" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded">
+        <a href="${editarUrl}" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded">
           <i class="fas fa-pen"></i>
           Editar
         </a>
-        <button data-id="${usuario.id}" class="btn-eliminar inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded">
+        <button data-id="${usuario.id}" data-nombre="${nombreCompleto}" class="btn-eliminar inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded">
           <i class="fas fa-trash"></i>
           Eliminar
         </button>
@@ -152,7 +235,10 @@ function crearFila(usuario) {
 
 function crearTarjeta(usuario) {
   const tarjeta = document.createElement('div');
-  tarjeta.className = 'relative bg-white/5 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow p-4 flex items-center gap-4';
+  const adminApp = esAdminApp(usuario);
+  tarjeta.className = adminApp
+    ? 'relative bg-[#ffb703]/10 backdrop-blur-xl border border-[#ffb703]/35 text-white rounded-2xl shadow p-4 flex items-center gap-4'
+    : 'relative bg-white/5 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow p-4 flex items-center gap-4';
 
   const badgesData = obtenerBadges(usuario);
   const badgesCorner = renderizarBadgesCorner(badgesData);
@@ -160,24 +246,26 @@ function crearTarjeta(usuario) {
   const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Sin nombre';
 
   const perfilUrl = resolvePath(`usuarioPerfil.html?id=${usuario.id}`);
+  const editarUrl = resolvePath(`usuarioPerfil.html?id=${usuario.id}&edit=1`);
 
   tarjeta.innerHTML = `
     <div class="absolute top-2 right-2 flex gap-2">${badgesCorner}</div>
-    <img src="${foto}" alt="Foto" class="w-16 h-16 rounded-full object-cover border border-white/10" />
+    <img src="${foto}" alt="Foto" class="avatar-circle-lg border border-white/10" />
     <div class="flex-1">
-      <h3 class="text-lg font-semibold text-white">${nombreCompleto}</h3>
+      <h3 class="text-lg font-semibold ${adminApp ? 'text-[#ffb703]' : 'text-white'}">${nombreCompleto}</h3>
       <p class="text-sm text-gray-300">${usuario.municipio || '—'}</p>
+      <p class="text-sm text-gray-300">${usuario.email || '—'}</p>
       <p class="text-sm text-gray-300 mt-1">${formatearFecha(usuario.creado_en)}</p>
       <div class="flex gap-2 mt-3 flex-wrap">
         <a href="${perfilUrl}" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-cyan-500 hover:bg-cyan-600 text-white rounded">
           <i class="fas fa-eye"></i>
           Ver
         </a>
-        <a href="${resolvePath(`usuarioEditar.html?id=${usuario.id}`)}" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded">
+        <a href="${editarUrl}" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded">
           <i class="fas fa-pen"></i>
           Editar
         </a>
-        <button data-id="${usuario.id}" class="btn-eliminar inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded">
+        <button data-id="${usuario.id}" data-nombre="${nombreCompleto}" class="btn-eliminar inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded">
           <i class="fas fa-trash"></i>
           Eliminar
         </button>
@@ -204,6 +292,18 @@ async function eliminarUsuario(id, nombre = '') {
   await cargarUsuarios();
 }
 
+function ordenarUsuariosParaVista(lista = []) {
+  return [...lista].sort((a, b) => {
+    const aAdmin = esAdminApp(a) ? 1 : 0;
+    const bAdmin = esAdminApp(b) ? 1 : 0;
+    if (aAdmin !== bAdmin) return bAdmin - aAdmin;
+
+    const aNombre = `${a.nombre || ''} ${a.apellido || ''}`.trim().toLowerCase();
+    const bNombre = `${b.nombre || ''} ${b.apellido || ''}`.trim().toLowerCase();
+    return aNombre.localeCompare(bNombre, 'es');
+  });
+}
+
 function renderizarUsuarios(lista) {
   if (!lista.length) {
     tablaUsuarios.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-gray-500">No se encontraron usuarios</td></tr>';
@@ -211,10 +311,12 @@ function renderizarUsuarios(lista) {
     return;
   }
 
+  const listaOrdenada = ordenarUsuariosParaVista(lista);
+
   tablaUsuarios.innerHTML = '';
   tablaMobile.innerHTML = '';
 
-  lista.forEach(usuario => {
+  listaOrdenada.forEach(usuario => {
     tablaUsuarios.appendChild(crearFila(usuario));
     tablaMobile.appendChild(crearTarjeta(usuario));
   });
@@ -241,12 +343,10 @@ function aplicarFiltros() {
 
     const coincideMunicipio = !municipioSeleccionado || usuario.municipio === municipioSeleccionado;
 
-    const tipo = determinarTipo(usuario).toLowerCase();
     let coincideTipo = true;
-    if (tipoSeleccionado === 'up') coincideTipo = usuario.membresiaUp === true;
-    else if (tipoSeleccionado === 'regulares') coincideTipo = !usuario.membresiaUp && tipo.includes('regular');
-    else if (tipoSeleccionado === 'admins-comercio') coincideTipo = tipo.includes('admin');
-    else if (tipoSeleccionado === 'colaboradores-comercio') coincideTipo = tipo.includes('colaborador');
+    if (tipoSeleccionado === 'regulares') coincideTipo = !esAdminApp(usuario) && obtenerRolesComercio(usuario).length === 0;
+    else if (tipoSeleccionado === 'admins-app') coincideTipo = esAdminApp(usuario);
+    else if (tipoSeleccionado === 'con-comercio') coincideTipo = obtenerRolesComercio(usuario).length > 0;
 
     return coincideNombre && coincideMunicipio && coincideTipo;
   });
@@ -449,7 +549,7 @@ async function cargarUsuarios() {
       id,
       nombre,
       apellido,
-      membresiaUp,
+      rol_app,
       email,
       imagen,
       creado_en,
@@ -470,7 +570,7 @@ async function cargarUsuarios() {
     id: usuario.id,
     nombre: usuario.nombre,
     apellido: usuario.apellido,
-    membresiaUp: usuario.membresiaUp === true,
+    rol_app: usuario.rol_app,
     email: usuario.email,
     imagen: usuario.imagen,
     creado_en: usuario.creado_en,
