@@ -73,7 +73,7 @@ container.innerHTML = `
         <span class="text-lg" aria-hidden="true">🌐</span>
         <span id="langCurrent" class="text-xl leading-none">🇵🇷</span>
       </button>
-      <div id="langMenu" class="bg-white text-[#231F20] border border-black/10 rounded shadow-lg hidden min-w-[120px]" style="z-index: 1300;"></div>
+      <div id="langMenu" class="bg-white text-[#231F20] border border-black/10 rounded shadow-lg hidden min-w-[120px]" style="z-index: 12000;"></div>
     </div>
   </header>
 `;
@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.appendChild(langMenu);
       langMenu.dataset.portal = '1';
       langMenu.style.position = 'fixed';
-      langMenu.style.zIndex = '2000';
+      langMenu.style.zIndex = '12000';
       langMenu.style.marginTop = '0';
     };
 
