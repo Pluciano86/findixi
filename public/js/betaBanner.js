@@ -5,20 +5,15 @@ import { supabase } from '../shared/supabaseClient.js';
 const BETA_MODE = true; // Cambiar a false para desactivar el banner
 
 const BETA_MESSAGES = {
-  es: 'Findixi está en modo beta — versión de prueba',
-  en: 'Findixi is in beta mode — test version',
+  es: 'Findixi está en modo beta',
+  en: 'Findixi is in beta mode',
   zh: 'Findixi 处于测试模式',
-  fr: 'Findixi est en mode bêta — version de test',
-  pt: 'Findixi está em modo beta — versão de teste',
-  de: 'Findixi ist im Beta-Modus — Testversion',
-  it: 'Findixi è in modalità beta — versione di test',
-  ko: 'Findixi 베타 모드 — 테스트 버전',
+  fr: 'Findixi est en mode bêta',
+  pt: 'Findixi está em modo beta',
+  de: 'Findixi ist im Beta-Modus',
+  it: 'Findixi è in modalità beta',
+  ko: 'Findixi 베타 모드',
   ja: 'Findixiはベータモードです',
-};
-
-const FEEDBACK_LABEL = {
-  es: 'Opinión', en: 'Feedback', zh: '反馈', fr: 'Avis',
-  pt: 'Opinião', de: 'Feedback', it: 'Feedback', ko: '의견', ja: 'フィードバック',
 };
 
 const FEEDBACK_MODAL = {
@@ -44,6 +39,9 @@ const THANKS_TEXT = {
   ko: '의견 감사합니다',
   ja: 'フィードバックありがとうございます',
 };
+
+const BETA_SUBMESSAGE =
+  '¡Cuéntanos tu experiencia en la app, tu opinión es importante!';
 
 function getLang() {
   const lang = (localStorage.getItem('lang') || 'es').toLowerCase().split('-')[0];
@@ -74,15 +72,25 @@ function injectStyles() {
       left: 0;
       right: 0;
       color: #a8d8ff;
-      font-size: 12px;
-      padding: 5px 16px;
+      font-size: 13px;
+      padding: 6px 16px 7px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      gap: 3px;
+      min-height: 56px;
+      box-sizing: border-box;
+      font-family: 'Kanit', sans-serif;
+    }
+
+    #findixi-beta-banner .beta-main-row {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      height: 32px;
-      box-sizing: border-box;
-      font-family: 'Kanit', sans-serif;
+      width: 100%;
+      min-width: 0;
     }
 
     #findixi-beta-banner .beta-pill {
@@ -93,27 +101,38 @@ function injectStyles() {
       padding: 2px 8px;
       border-radius: 10px;
       line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      align-self: center;
       flex-shrink: 0;
     }
 
     #findixi-beta-banner .beta-message {
+      flex: 0 1 auto;
+      text-align: left;
+      font-size: 15px;
+      font-weight: 400;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       min-width: 0;
     }
 
-    #findixi-beta-banner .beta-feedback {
+    #findixi-beta-banner .beta-submessage-link {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 300;
       color: #23b4e9;
-      text-decoration: underline;
-      cursor: pointer;
-      margin-left: auto;
-      font-size: 11px;
+      line-height: 1.15;
+      margin: 0;
+      width: 100%;
       border: 0;
       background: transparent;
+      text-decoration: underline;
+      cursor: pointer;
       padding: 0;
       font-family: inherit;
-      flex-shrink: 0;
     }
 
     #findixi-feedback-overlay {
@@ -224,12 +243,16 @@ function createBanner(lang) {
   banner.style.cssText = `
     max-width: 480px;
     margin: 0 auto;
-    padding: 5px 16px;
+    padding: 6px 16px 7px;
     display: flex;
-    align-items: center;
-    height: 32px;
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 56px;
     box-sizing: border-box;
   `;
+
+  const mainRow = document.createElement('div');
+  mainRow.className = 'beta-main-row';
 
   const pill = document.createElement('span');
   pill.className = 'beta-pill';
@@ -239,13 +262,14 @@ function createBanner(lang) {
   message.className = 'beta-message';
   message.textContent = BETA_MESSAGES[lang] || BETA_MESSAGES.es;
 
-  const feedback = document.createElement('button');
-  feedback.type = 'button';
-  feedback.className = 'beta-feedback';
-  feedback.textContent = FEEDBACK_LABEL[lang] || FEEDBACK_LABEL.es;
+  const submessage = document.createElement('button');
+  submessage.type = 'button';
+  submessage.className = 'beta-submessage-link';
+  submessage.textContent = BETA_SUBMESSAGE;
 
-  banner.append(pill, message, feedback);
-  return { banner, feedback };
+  mainRow.append(pill, message);
+  banner.append(mainRow, submessage);
+  return { banner, feedbackTrigger: submessage };
 }
 
 function createBannerWrapper(banner) {
@@ -429,13 +453,13 @@ function closeModal(overlay, ui, starsCtrl, lang) {
   starsCtrl.reset();
 }
 
-function wireModal(lang, feedbackButton) {
+function wireModal(lang, feedbackTrigger) {
   const ui = createModal();
   const starsCtrl = setupStars(ui.starsWrap);
 
   setModalLanguage(lang, ui);
 
-  feedbackButton.addEventListener('click', () => {
+  feedbackTrigger.addEventListener('click', () => {
     setModalLanguage(getLang(), ui);
     openModal(ui.overlay);
   });
@@ -499,13 +523,13 @@ function initBetaBanner() {
 
   injectStyles();
 
-  const { banner, feedback } = createBanner(lang);
+  const { banner, feedbackTrigger } = createBanner(lang);
   const wrapper = createBannerWrapper(banner);
   injectBanner(wrapper);
   waitForHeader((header) => {
     adjustBannerTop(wrapper, header);
   });
-  wireModal(lang, feedback);
+  wireModal(lang, feedbackTrigger);
 }
 
 if (document.readyState === 'loading') {

@@ -17,6 +17,18 @@ const SERVICIOS_LABELS = {
   ja: 'サービスを見る',
 };
 
+const TIENDA_LABELS = {
+  es: 'Ver Tienda',
+  en: 'View Store',
+  zh: '查看商店',
+  fr: 'Voir la boutique',
+  pt: 'Ver loja',
+  de: 'Shop ansehen',
+  it: 'Vedi negozio',
+  ko: '스토어 보기',
+  ja: 'ストアを見る',
+};
+
 const CATEGORIAS_SERVICIOS_FALLBACK = new Set([
   'salon de belleza',
   'tecnicas de unas',
@@ -37,18 +49,22 @@ function normalizeText(value) {
     .trim();
 }
 
-function getServiciosLabel() {
+function getLabelByPerfil(tipoPerfil) {
   const lang = normalizeLang(document.documentElement.lang || localStorage.getItem('lang') || 'es');
-  return SERVICIOS_LABELS[lang] || SERVICIOS_LABELS.es;
+  if (tipoPerfil === 'tienda') return TIENDA_LABELS[lang] || TIENDA_LABELS.es;
+  if (tipoPerfil === 'servicios') return SERVICIOS_LABELS[lang] || SERVICIOS_LABELS.es;
+  return null;
 }
 
-function aplicarTextoServiciosSiCorresponde(esServicios) {
-  if (!btnVerMenu || !esServicios) return;
-  btnVerMenu.dataset.i18n = 'perfilComercio.verServicios';
-  btnVerMenu.textContent = getServiciosLabel();
+function aplicarTextoPerfilSiCorresponde(tipoPerfil) {
+  if (!btnVerMenu || !tipoPerfil || tipoPerfil === 'menu') return;
+  btnVerMenu.dataset.i18n = tipoPerfil === 'tienda'
+    ? 'perfilComercio.verTienda'
+    : 'perfilComercio.verServicios';
+  btnVerMenu.textContent = getLabelByPerfil(tipoPerfil) || btnVerMenu.textContent;
 
   window.addEventListener('lang:changed', () => {
-    btnVerMenu.textContent = getServiciosLabel();
+    btnVerMenu.textContent = getLabelByPerfil(tipoPerfil) || btnVerMenu.textContent;
   });
 }
 
@@ -93,15 +109,19 @@ async function obtenerCategoriasComercio(idComercioParam) {
   return Array.isArray(data) ? data : [];
 }
 
-function comercioUsaServicios(categorias = []) {
+function resolveTipoPerfilComercio(categorias = []) {
+  let hasServicios = false;
+
   for (const categoria of categorias) {
     const tipoPerfil = normalizeText(categoria?.tipo_perfil);
-    if (tipoPerfil === 'servicios') return true;
+    if (tipoPerfil === 'tienda') return 'tienda';
+    if (tipoPerfil === 'servicios') hasServicios = true;
 
     const nombre = normalizeText(categoria?.nombre);
-    if (CATEGORIAS_SERVICIOS_FALLBACK.has(nombre)) return true;
+    if (CATEGORIAS_SERVICIOS_FALLBACK.has(nombre)) hasServicios = true;
   }
-  return false;
+
+  return hasServicios ? 'servicios' : 'menu';
 }
 
 async function tieneMenuActivo(id) {
@@ -160,7 +180,8 @@ async function mostrarBotonMenu() {
   if (!btnVerMenu || !idComercio) return;
 
   const categoriasComercio = await obtenerCategoriasComercio(idComercio);
-  aplicarTextoServiciosSiCorresponde(comercioUsaServicios(categoriasComercio));
+  const tipoPerfil = resolveTipoPerfilComercio(categoriasComercio);
+  aplicarTextoPerfilSiCorresponde(tipoPerfil);
 
   const planActual = await obtenerPlanComercio(idComercio);
   if (planActual && !planActual.permite_menu) {

@@ -163,7 +163,9 @@ function fillTranslationFields(row, { onlyEmpty = false } = {}) {
 function mapCategoriaRow(row) {
   return {
     ...row,
-    tipo_perfil: row?.tipo_perfil || 'menu',
+    tipo_perfil: ['menu', 'servicios', 'tienda'].includes(String(row?.tipo_perfil || '').toLowerCase())
+      ? String(row.tipo_perfil).toLowerCase()
+      : 'menu',
     nombre_es: row?.nombre_es || row?.nombre || '',
     orden: parseOrden(row?.orden),
   };
@@ -218,7 +220,13 @@ function renderTabla() {
           <td class="px-3 py-2 font-medium text-gray-900">${escapeHtml(cat.nombre_es || cat.nombre || '—')}</td>
           <td class="px-3 py-2 text-gray-600">${escapeHtml(cat.slug || '—')}</td>
           <td class="px-3 py-2">
-            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs ${cat.tipo_perfil === 'servicios' ? 'bg-fuchsia-100 text-fuchsia-700' : 'bg-emerald-100 text-emerald-700'}">
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs ${
+              cat.tipo_perfil === 'servicios'
+                ? 'bg-fuchsia-100 text-fuchsia-700'
+                : cat.tipo_perfil === 'tienda'
+                  ? 'bg-cyan-100 text-cyan-700'
+                  : 'bg-emerald-100 text-emerald-700'
+            }">
               ${escapeHtml(cat.tipo_perfil || 'menu')}
             </span>
           </td>
@@ -348,7 +356,8 @@ function buildPayloadFromForm() {
   };
 
   if (schemaHasTipoPerfil) {
-    payload.tipo_perfil = (tipoPerfilInput.value || 'menu') === 'servicios' ? 'servicios' : 'menu';
+    const selected = String(tipoPerfilInput.value || 'menu').trim().toLowerCase();
+    payload.tipo_perfil = ['menu', 'servicios', 'tienda'].includes(selected) ? selected : 'menu';
   }
 
   return payload;
