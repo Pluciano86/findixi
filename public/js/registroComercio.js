@@ -109,6 +109,7 @@ const MATCH_MEDIUM_DISTANCE_M = 400;
 const PIN_MOVE_ALLOW_NEW_M = 250;
 const DUPLICATE_DISTANCE_M = 200;
 let selectedNivel = null;
+let planesCatalogo = [...PLANES_PRELIMINARES];
 let mapPickerInstance = null;
 let mapPickerMarker = null;
 let mapAutocomplete = null;
@@ -1810,6 +1811,59 @@ function buildFeaturesList(features) {
   `;
 }
 
+function normalizeDisponibilidadPlan(value) {
+  const raw = String(value || 'disponible').trim().toLowerCase();
+  if (raw === 'no_disponible') return 'no_disponible';
+  if (raw === 'proximamente') return 'proximamente';
+  return 'disponible';
+}
+
+function getPrecioPlanDisplay(plan, base) {
+  const precioBase = Number(plan.precio ?? base.precio ?? 0) || 0;
+  const ofertaActiva = plan.oferta_activa === true;
+  const ofertaTipo =
+    String(plan.oferta_tipo || '').trim() === 'gratis_limitado' || plan.oferta_gratis === true
+      ? 'gratis_limitado'
+      : 'precio_especial';
+  const precioOferta = Number(plan.precio_oferta);
+
+  if (!ofertaActiva) {
+    return {
+      isGratis: precioBase <= 0,
+      precioHtml: `<p class="text-3xl font-semibold">${formatoPrecio(precioBase)}</p>`,
+      metaHtml: precioBase <= 0 ? '' : '<p class="text-[11px] uppercase tracking-[0.2em] text-gray-400">Plan mensual</p>',
+    };
+  }
+
+  if (ofertaTipo === 'gratis_limitado') {
+    return {
+      isGratis: true,
+      precioHtml: `
+        <p class="text-sm text-gray-400 line-through">${formatoPrecio(precioBase)}</p>
+        <p class="text-3xl font-semibold text-emerald-600">GRATIS</p>
+      `,
+      metaHtml: '<p class="text-[11px] uppercase tracking-[0.2em] text-emerald-600">Por tiempo limitado</p>',
+    };
+  }
+
+  if (Number.isFinite(precioOferta)) {
+    return {
+      isGratis: precioOferta <= 0,
+      precioHtml: `
+        <p class="text-sm text-gray-400 line-through">${formatoPrecio(precioBase)}</p>
+        <p class="text-3xl font-semibold text-amber-600">${formatoPrecio(precioOferta)}</p>
+      `,
+      metaHtml: '<p class="text-[11px] uppercase tracking-[0.2em] text-amber-600">Oferta especial</p>',
+    };
+  }
+
+  return {
+    isGratis: precioBase <= 0,
+    precioHtml: `<p class="text-3xl font-semibold">${formatoPrecio(precioBase)}</p>`,
+    metaHtml: precioBase <= 0 ? '' : '<p class="text-[11px] uppercase tracking-[0.2em] text-gray-400">Plan mensual</p>',
+  };
+}
+
 const PLAN_COPY = {
   basic: {
     badge: 'Arranca hoy',
@@ -1864,18 +1918,27 @@ function createPlanCard(plan, selectedPlanNivel) {
   const nivel = Number(plan.nivel ?? plan.plan_nivel ?? 0);
   const base = obtenerPlanPorNivel(nivel);
   const nombre = plan.nombre || base.nombre;
-  const isGratis = Number(plan.precio ?? base.precio) <= 0;
-  const precio = formatoPrecio(plan.precio ?? base.precio);
   const features = Array.isArray(plan.features) ? plan.features : base.features;
   const isSelected = Number(selectedPlanNivel) === Number(nivel);
   const slug = plan.slug || base.slug || '';
   const copy = PLAN_COPY[slug] || PLAN_COPY.basic;
   const tone = TONE_CLASSES[copy.tone] || TONE_CLASSES.gray;
+  const disponibilidad = normalizeDisponibilidadPlan(plan.disponibilidad || plan.estado_disponibilidad || 'disponible');
+  const bloqueado = disponibilidad === 'no_disponible' || disponibilidad === 'proximamente';
+  const priceDisplay = getPrecioPlanDisplay(plan, base);
+  const stateBadge = disponibilidad === 'proximamente'
+    ? '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Próximamente disponible</span>'
+    : disponibilidad === 'no_disponible'
+      ? '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-700">No disponible</span>'
+      : '';
+  const stateNote = disponibilidad === 'proximamente'
+    ? '<p class="text-xs text-amber-700 font-semibold">No disponible por el momento</p>'
+    : '';
 
   const card = document.createElement('button');
   card.type = 'button';
   card.className = `text-center border rounded-3xl p-5 transition shadow-md ${tone.card} ${
-    isSelected ? 'ring-2 ring-gray-900/15' : 'hover:border-gray-400'
+    isSelected ? 'ring-2 ring-gray-900/15' : bloqueado ? 'opacity-90 cursor-not-allowed' : 'hover:border-gray-400'
   }`;
   card.innerHTML = `
     <div class="flex flex-col items-center gap-2">
@@ -1884,16 +1947,25 @@ function createPlanCard(plan, selectedPlanNivel) {
       </span>
       <h3 class="text-xl font-semibold text-gray-900">${nombre}</h3>
       <p class="text-base text-gray-700">${copy.tagline}</p>
-      <p class="text-3xl font-semibold ${tone.price}">${precio}</p>
-      ${isGratis ? '' : '<p class="text-[11px] uppercase tracking-[0.2em] text-gray-400">Plan mensual</p>'}
+      <div class="${tone.price}">
+        ${priceDisplay.precioHtml}
+      </div>
+      ${priceDisplay.metaHtml}
+      ${stateBadge}
+      ${stateNote}
     </div>
     ${buildFeaturesList(features)}
     <p class="text-sm text-gray-700 mt-3 text-center">${copy.desc}</p>
   `;
 
-  card.addEventListener('click', () => {
-    selectPlan(plan);
-  });
+  if (bloqueado) {
+    card.disabled = true;
+    card.setAttribute('aria-disabled', 'true');
+  } else {
+    card.addEventListener('click', () => {
+      selectPlan(plan);
+    });
+  }
 
   return card;
 }
@@ -1901,9 +1973,32 @@ function createPlanCard(plan, selectedPlanNivel) {
 function renderPlanes(selectedPlanNivel = null) {
   if (!planesGrid) return;
   planesGrid.innerHTML = '';
-  PLANES_PRELIMINARES.forEach((plan) => {
+  planesCatalogo.forEach((plan) => {
     planesGrid.appendChild(createPlanCard(plan, selectedPlanNivel));
   });
+}
+
+async function cargarPlanesCatalogo() {
+  try {
+    const { data, error } = await supabase
+      .from('planes')
+      .select('*')
+      .order('orden', { ascending: true });
+    if (error) throw error;
+    if (Array.isArray(data) && data.length) {
+      const visibles = data.filter((plan) => {
+        const disponibilidad = normalizeDisponibilidadPlan(
+          plan.disponibilidad || plan.estado_disponibilidad || 'disponible'
+        );
+        return plan.activo === true || disponibilidad === 'proximamente';
+      });
+      planesCatalogo = visibles.length ? visibles : [...PLANES_PRELIMINARES];
+      return;
+    }
+  } catch (error) {
+    console.warn('No se pudieron cargar planes desde Supabase:', error?.message || error);
+  }
+  planesCatalogo = [...PLANES_PRELIMINARES];
 }
 
 function openFormModal() {
@@ -1929,6 +2024,16 @@ function selectPlan(plan) {
   if (!authState.loggedIn) {
     loginModal?.classList.remove('hidden');
     loginModal?.classList.add('flex');
+    return;
+  }
+
+  const disponibilidad = normalizeDisponibilidadPlan(plan.disponibilidad || plan.estado_disponibilidad || 'disponible');
+  if (disponibilidad === 'proximamente') {
+    showFeedback('info', 'Este paquete estará disponible próximamente.');
+    return;
+  }
+  if (disponibilidad === 'no_disponible') {
+    showFeedback('warning', 'Este paquete no está disponible en este momento.');
     return;
   }
 
@@ -3329,6 +3434,7 @@ async function init() {
   wireEvents();
   await cargarUsuario();
   await cargarMunicipios();
+  await cargarPlanesCatalogo();
   renderPlanes(selectedNivel);
   hideOtpVerificationBox({ clearSession: false });
   restoreOtpStateFromSession();

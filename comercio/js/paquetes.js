@@ -32,14 +32,61 @@ function buildFeaturesList(features) {
   `;
 }
 
+function normalizeDisponibilidad(value) {
+  const raw = String(value || 'disponible').trim().toLowerCase();
+  if (raw === 'no_disponible') return 'no_disponible';
+  if (raw === 'proximamente') return 'proximamente';
+  return 'disponible';
+}
+
+function buildPrecioPlan(plan, base) {
+  const precioBase = Number(plan.precio ?? base.precio ?? 0) || 0;
+  const ofertaActiva = plan.oferta_activa === true;
+  const ofertaTipo =
+    String(plan.oferta_tipo || '').trim() === 'gratis_limitado' || plan.oferta_gratis === true
+      ? 'gratis_limitado'
+      : 'precio_especial';
+  const precioOferta = Number(plan.precio_oferta);
+
+  if (!ofertaActiva) {
+    return { html: `<p class="text-2xl font-bold text-gray-900">${formatoPrecio(precioBase)}</p>`, mensual: true };
+  }
+
+  if (ofertaTipo === 'gratis_limitado') {
+    return {
+      html: `
+        <p class="text-sm text-gray-400 line-through">${formatoPrecio(precioBase)}</p>
+        <p class="text-2xl font-bold text-emerald-600">GRATIS</p>
+      `,
+      mensual: false,
+    };
+  }
+
+  if (Number.isFinite(precioOferta)) {
+    return {
+      html: `
+        <p class="text-sm text-gray-400 line-through">${formatoPrecio(precioBase)}</p>
+        <p class="text-2xl font-bold text-amber-600">${formatoPrecio(precioOferta)}</p>
+      `,
+      mensual: true,
+    };
+  }
+
+  return { html: `<p class="text-2xl font-bold text-gray-900">${formatoPrecio(precioBase)}</p>`, mensual: true };
+}
+
 function createPlanCard(plan, planInfo) {
   const nivel = Number(plan.nivel ?? plan.plan_nivel ?? 0);
   const base = obtenerPlanPorNivel(nivel);
   const nombre = plan.nombre || base.nombre;
   const descripcion = plan.descripcion_corta || plan.descripcion || base.descripcion_corta || '';
-  const precio = formatoPrecio(plan.precio ?? base.precio);
   const features = Array.isArray(plan.features) ? plan.features : base.features;
   const esActual = Number(planInfo.nivel) === Number(nivel);
+  const disponibilidad = normalizeDisponibilidad(plan.disponibilidad || plan.estado_disponibilidad || 'disponible');
+  const noDisponible = disponibilidad === 'no_disponible';
+  const proximamente = disponibilidad === 'proximamente';
+  const bloqueado = noDisponible || proximamente;
+  const precioInfo = buildPrecioPlan(plan, base);
 
   const card = document.createElement('div');
   card.className = `border rounded-2xl p-5 shadow-sm bg-white flex flex-col gap-4 ${
@@ -52,26 +99,28 @@ function createPlanCard(plan, planInfo) {
         <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Nivel ${nivel}</p>
         <h3 class="text-xl font-semibold text-gray-900">${nombre}</h3>
         ${descripcion ? `<p class="text-sm text-gray-500">${descripcion}</p>` : ''}
+        ${proximamente ? '<p class="text-xs mt-1 text-amber-700 font-semibold">Próximamente disponible</p>' : ''}
+        ${noDisponible ? '<p class="text-xs mt-1 text-rose-700 font-semibold">No disponible</p>' : ''}
       </div>
       <div class="text-right">
-        <p class="text-2xl font-bold text-gray-900">${precio}</p>
-        <p class="text-xs text-gray-400">mensual</p>
+        ${precioInfo.html}
+        <p class="text-xs text-gray-400">${precioInfo.mensual ? 'mensual' : 'oferta temporal'}</p>
       </div>
     </div>
     ${buildFeaturesList(features)}
     <button
       type="button"
       class="mt-2 w-full px-4 py-2 rounded-lg font-semibold ${
-        esActual ? 'bg-gray-200 text-gray-500 cursor-default' : 'bg-cyan-600 hover:bg-cyan-700 text-white'
+        esActual || bloqueado ? 'bg-gray-200 text-gray-500 cursor-default' : 'bg-cyan-600 hover:bg-cyan-700 text-white'
       }"
-      ${esActual ? 'disabled' : ''}
+      ${esActual || bloqueado ? 'disabled' : ''}
     >
-      ${esActual ? 'Plan actual' : 'Seleccionar plan'}
+      ${esActual ? 'Plan actual' : proximamente ? 'Próximamente disponible' : noDisponible ? 'No disponible' : 'Seleccionar plan'}
     </button>
   `;
 
   const btn = card.querySelector('button');
-  if (btn && !esActual) {
+  if (btn && !esActual && !bloqueado) {
     btn.addEventListener('click', () => seleccionarPlan(plan));
   }
 
