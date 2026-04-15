@@ -23,6 +23,7 @@ async function initCategoriasIndex() {
 
   let todasCategorias = [];
   let mostrandoTodas = false;
+  let lastScrollY = window.scrollY || window.pageYOffset || 0;
 
   async function cargarCategorias() {
     const queryAttempts = [
@@ -87,14 +88,29 @@ async function initCategoriasIndex() {
     renderizarCategorias();
   });
 
-  window.addEventListener('scroll', () => {
-    const rect = section.getBoundingClientRect();
-    const visible = rect.top >= 0 && rect.bottom <= window.innerHeight;
-    if (!visible && mostrandoTodas) {
-      mostrandoTodas = false;
-      renderizarCategorias();
-    }
-  });
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (!mostrandoTodas) {
+        lastScrollY = window.scrollY || window.pageYOffset || 0;
+        return;
+      }
+
+      const currentScrollY = window.scrollY || window.pageYOffset || 0;
+      const scrollingDown = currentScrollY > lastScrollY;
+      lastScrollY = currentScrollY;
+
+      if (!scrollingDown) return;
+
+      const rect = section.getBoundingClientRect();
+      const categoriaYaNoVisible = rect.bottom <= 0;
+      if (categoriaYaNoVisible) {
+        mostrandoTodas = false;
+        renderizarCategorias();
+      }
+    },
+    { passive: true }
+  );
 
   cargarCategorias();
   window.addEventListener('lang:changed', cargarCategorias);
