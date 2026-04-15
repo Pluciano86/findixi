@@ -1,6 +1,20 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { t } from './i18n.js';
 
+function toOrderValue(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return Number.MAX_SAFE_INTEGER;
+  return Math.floor(parsed);
+}
+
+function ordenarCategorias(categorias = []) {
+  return [...categorias].sort((a, b) => {
+    const orderDiff = toOrderValue(a?.orden) - toOrderValue(b?.orden);
+    if (orderDiff !== 0) return orderDiff;
+    return Number(a?.id || 0) - Number(b?.id || 0);
+  });
+}
+
 async function initCategoriasIndex() {
   const contenedor = document.getElementById('categoriasContainer');
   const toggleBtn = document.getElementById('toggleCategorias');
@@ -10,23 +24,9 @@ async function initCategoriasIndex() {
   let todasCategorias = [];
   let mostrandoTodas = false;
 
-  // 🔹 Orden personalizado de categorías
-  const ordenPersonalizado = [
-    "Restaurantes",
-    "Coffee Shops",
-    "Jangueo",
-    "Antojitos Dulces",
-    "Food Trucks",
-    "Dispensarios",
-    "Panaderías",
-    "Playground",
-    "Bares"
-  ];
-
-  // 🔹 Cargar categorías desde Supabase
   async function cargarCategorias() {
     const queryAttempts = [
-      'id, imagen, nombre, nombre_es, nombre_en, nombre_zh, nombre_fr, nombre_pt, nombre_de, nombre_it, nombre_ko, nombre_ja',
+      'id, orden, imagen, nombre, nombre_es, nombre_en, nombre_zh, nombre_fr, nombre_pt, nombre_de, nombre_it, nombre_ko, nombre_ja',
       'id, imagen, nombre, nombre_es, nombre_en, nombre_pt',
       'id, nombre',
     ];
@@ -51,26 +51,10 @@ async function initCategoriasIndex() {
       return;
     }
 
-    // 🧩 Aplicar el orden personalizado
-    todasCategorias = (data || []).sort((a, b) => {
-      // Ordenar siempre según el nombre en español para mantener el orden original,
-      // pero luego se renderiza usando el label del idioma activo.
-      const baseA = a.nombre_es || a.nombre;
-      const baseB = b.nombre_es || b.nombre;
-      const indexA = ordenPersonalizado.indexOf(baseA);
-      const indexB = ordenPersonalizado.indexOf(baseB);
-
-      // Si alguna categoría no está en la lista, se manda al final
-      if (indexA === -1 && indexB === -1) return 0;
-      if (indexA === -1) return 1;
-      if (indexB === -1) return -1;
-      return indexA - indexB;
-    });
-
+    todasCategorias = ordenarCategorias(data || []);
     renderizarCategorias();
   }
 
-  // 🔹 Renderizar categorías
   function renderizarCategorias() {
     contenedor.innerHTML = '';
 
@@ -80,7 +64,7 @@ async function initCategoriasIndex() {
       .split('-')[0];
     const col = `nombre_${lang}`;
 
-    categoriasAMostrar.forEach(cat => {
+    categoriasAMostrar.forEach((cat) => {
       const card = document.createElement('a');
       card.href = `listadoComercios.html?idCategoria=${cat.id}`;
       card.className = 'flex flex-col items-center';
@@ -94,18 +78,15 @@ async function initCategoriasIndex() {
       contenedor.appendChild(card);
     });
 
-    // 🔸 Cambiar texto y color del botón
     toggleBtn.textContent = mostrandoTodas ? t('home.verMenosCategorias') : t('home.verTodasCategorias');
     toggleBtn.className = 'text-gray-500 text-sm font-medium hover:text-gray-700 mt-2';
   }
 
-  // 🔹 Alternar entre ver todas / solo las principales
   toggleBtn.addEventListener('click', () => {
     mostrandoTodas = !mostrandoTodas;
     renderizarCategorias();
   });
 
-  // 🔹 Ocultar al pasar la sección con scroll
   window.addEventListener('scroll', () => {
     const rect = section.getBoundingClientRect();
     const visible = rect.top >= 0 && rect.bottom <= window.innerHeight;

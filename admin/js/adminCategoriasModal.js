@@ -1,7 +1,8 @@
 import { supabase } from '../shared/supabaseClient.js';
 
 const MODAL_ROOT_ID = 'adminModalRoot';
-const CATEGORIAS_BUCKET = 'categorias';
+const CATEGORIAS_BUCKET = 'findixi';
+const CATEGORIAS_PREFIX = 'categorias';
 
 function getModalRoot() {
   return document.getElementById(MODAL_ROOT_ID) || document.body;
@@ -61,6 +62,22 @@ function obtenerExtension(nombreArchivo = '') {
   return partes.pop().toLowerCase() || 'jpg';
 }
 
+function normalizarTextoBase(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function slugify(value = '') {
+  return normalizarTextoBase(value)
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 async function verificarCategoriaDuplicada(nombre) {
   const { data, error } = await supabase
     .from('Categorias')
@@ -96,11 +113,12 @@ async function subirImagenCategoria(archivo) {
   if (!archivo) return null;
   const extension = obtenerExtension(archivo.name);
   const nombre = generarNombreUnico('categoria', extension);
+  const path = `${CATEGORIAS_PREFIX}/${nombre}`;
 
   const { error } = await supabase
     .storage
     .from(CATEGORIAS_BUCKET)
-    .upload(nombre, archivo, {
+    .upload(path, archivo, {
       cacheControl: '3600',
       upsert: true,
       contentType: archivo.type || 'image/jpeg'
@@ -111,7 +129,8 @@ async function subirImagenCategoria(archivo) {
     throw new Error('No se pudo subir la imagen.');
   }
 
-  return nombre;
+  const { data } = supabase.storage.from(CATEGORIAS_BUCKET).getPublicUrl(path);
+  return data?.publicUrl || null;
 }
 
 export function abrirModalNuevaCategoria({ onCreated } = {}) {
@@ -151,7 +170,7 @@ export function abrirModalNuevaCategoria({ onCreated } = {}) {
 
     const formData = new FormData(form);
     const nombre = (formData.get('nombreCategoria') || '').toString().trim();
-    const color = (formData.get('colorCategoria') || '#0ea5e9').toString();
+    const colorHex = (formData.get('colorCategoria') || '#0ea5e9').toString();
     const archivo = formData.get('imagenCategoria');
 
     if (!nombre) {
@@ -175,7 +194,10 @@ export function abrirModalNuevaCategoria({ onCreated } = {}) {
         .from('Categorias')
         .insert({
           nombre,
-          color,
+          nombre_es: nombre,
+          slug: slugify(nombre),
+          color_hex: colorHex,
+          tipo_perfil: 'menu',
           imagen: imagenPath
         })
         .select()

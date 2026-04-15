@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Categorías</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div id="headerContainer"></div>
+
+  <script type="module">
+    import { loadAdminHeader } from './js/loadAdminHeader.js';
+    loadAdminHeader();
+  </script>
+
+  <main class="px-4 py-6 lg:px-8">
+    <div class="max-w-6xl mx-auto space-y-6">
+      <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div class="flex flex-col gap-1 mb-4">
+          <h1 class="text-2xl font-semibold text-[#23b4e9]">Categorías</h1>
+          <p class="text-sm text-gray-500">
+            CRUD de <code>Categorias</code> y clasificación de perfil (<code>menu</code> o <code>servicios</code>).
+          </p>
+        </div>
+
+        <div id="feedback" class="hidden rounded-md px-3 py-2 text-sm mb-4"></div>
+
+        <form id="categoriaForm" class="space-y-4">
+          <input type="hidden" id="categoriaId" />
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="space-y-1">
+              <span class="text-sm text-gray-700 font-medium">Nombre base (español) *</span>
+              <input id="nombreEs" type="text" required class="w-full border rounded px-3 py-2" placeholder="Ej. Salón de Belleza" />
+            </label>
+
+            <label class="space-y-1">
+              <span class="text-sm text-gray-700 font-medium">Slug</span>
+              <input id="slug" type="text" class="w-full border rounded px-3 py-2" placeholder="salon-de-belleza" />
+            </label>
+
+            <label class="space-y-1">
+              <span class="text-sm text-gray-700 font-medium">Tipo de perfil *</span>
+              <select id="tipoPerfil" class="w-full border rounded px-3 py-2" required>
+                <option value="menu">menu</option>
+                <option value="servicios">servicios</option>
+              </select>
+            </label>
+
+            <label class="space-y-1">
+              <span class="text-sm text-gray-700 font-medium">Orden (opcional)</span>
+              <input id="orden" type="number" min="1" step="1" class="w-full border rounded px-3 py-2" placeholder="Ej. 1" />
+            </label>
+
+            <label class="space-y-1">
+              <span class="text-sm text-gray-700 font-medium">Color (hex)</span>
+              <input id="colorHex" type="text" class="w-full border rounded px-3 py-2" placeholder="#23b4e9" />
+            </label>
+
+            <label class="space-y-1">
+              <span class="text-sm text-gray-700 font-medium">Icono (Font Awesome)</span>
+              <input id="icono" type="text" class="w-full border rounded px-3 py-2" placeholder="fa-scissors" />
+            </label>
+
+            <label class="space-y-1">
+              <span class="text-sm text-gray-700 font-medium">Imagen (URL pública)</span>
+              <input id="imagen" type="url" class="w-full border rounded px-3 py-2" placeholder="https://.../storage/v1/object/public/findixi/..." />
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <label class="space-y-1 md:col-span-2">
+              <span class="text-sm text-gray-700 font-medium">Subir imagen al bucket <code>findixi</code></span>
+              <input id="imagenFile" type="file" accept="image/*" class="w-full border rounded px-3 py-2" />
+            </label>
+            <button type="button" id="btnSubirImagen" class="px-4 py-2 rounded bg-slate-700 text-white hover:bg-slate-800">
+              Subir imagen
+            </button>
+          </div>
+
+          <div class="border border-gray-100 rounded-lg p-4 bg-gray-50">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <h2 class="text-base font-semibold text-gray-800">Traducciones automáticas</h2>
+              <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input id="traducirAuto" type="checkbox" checked>
+                Traducir automáticamente al guardar
+              </label>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <label class="space-y-1"><span class="text-xs text-gray-600">EN</span><input id="nombreEn" class="w-full border rounded px-2 py-1.5 text-sm" /></label>
+              <label class="space-y-1"><span class="text-xs text-gray-600">ZH</span><input id="nombreZh" class="w-full border rounded px-2 py-1.5 text-sm" /></label>
+              <label class="space-y-1"><span class="text-xs text-gray-600">FR</span><input id="nombreFr" class="w-full border rounded px-2 py-1.5 text-sm" /></label>
+              <label class="space-y-1"><span class="text-xs text-gray-600">PT</span><input id="nombrePt" class="w-full border rounded px-2 py-1.5 text-sm" /></label>
+              <label class="space-y-1"><span class="text-xs text-gray-600">DE</span><input id="nombreDe" class="w-full border rounded px-2 py-1.5 text-sm" /></label>
+              <label class="space-y-1"><span class="text-xs text-gray-600">IT</span><input id="nombreIt" class="w-full border rounded px-2 py-1.5 text-sm" /></label>
+              <label class="space-y-1"><span class="text-xs text-gray-600">KO</span><input id="nombreKo" class="w-full border rounded px-2 py-1.5 text-sm" /></label>
+              <label class="space-y-1"><span class="text-xs text-gray-600">JA</span><input id="nombreJa" class="w-full border rounded px-2 py-1.5 text-sm" /></label>
+            </div>
+
+            <div class="flex flex-wrap gap-2 mt-3">
+              <button type="button" id="btnTraducir" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700">
+                Traducir con OpenAI
+              </button>
+              <span class="text-xs text-gray-500 self-center">La traducción usa el nombre en español como base.</span>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button type="submit" id="btnGuardar" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Guardar categoría</button>
+            <button type="button" id="btnLimpiar" class="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">Limpiar formulario</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900">Listado de categorías</h2>
+            <p class="text-xs text-gray-500">Arrastra filas para reordenar. Las primeras 6 se muestran primero en el index.</p>
+          </div>
+          <input id="searchCategoria" type="text" placeholder="Buscar por nombre o slug..." class="border rounded px-3 py-2 w-full md:w-72" />
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-100 text-xs text-gray-700">
+              <tr>
+                <th class="px-3 py-2 text-center">Mover</th>
+                <th class="px-3 py-2 text-left">ID</th>
+                <th class="px-3 py-2 text-left">Orden</th>
+                <th class="px-3 py-2 text-left">Nombre</th>
+                <th class="px-3 py-2 text-left">Slug</th>
+                <th class="px-3 py-2 text-left">Perfil</th>
+                <th class="px-3 py-2 text-left">Imagen</th>
+                <th class="px-3 py-2 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tablaCategorias" class="divide-y divide-gray-100 text-sm"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="./js/adminCategorias.js"></script>
+</body>
+</html>
