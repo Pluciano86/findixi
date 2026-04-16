@@ -7,8 +7,28 @@ dotenv.config();
 const API_KEY = process.env.GOOGLE_API_KEY;
 
 // === CONFIGURACIÓN ===
-const municipios = ["Adjuntas", "Aguada", "Aguadilla", "Aguas Buenas", "Aibonito", "Añasco", "Arecibo", "Arroyo"];
-const categorias = ["Restaurantes", "Coffee Shops", "Panaderías", "Pubs", "Food Trucks", "Postres", "Playgrounds", "Discotecas", "Barras"];
+const municipios = [
+  "Morovis",
+  "Naguabo",
+  "Vieques",
+  "Trujillo Alto",
+  "Toa Alta",
+  "Cataño",
+  "Ceiba",
+  "Ciales",
+  "Yabucoa",
+  "Culebra",
+  "Guánica",
+  "Lajas",
+  "Las Piedras",
+  "Loíza",
+  "Luquillo",
+  "Manatí",
+  "Maricao",
+  "Maunabo",
+  "Villalba",
+];
+const categorias = ["Restaurantes", "Coffee Shops", "Panaderías", "Pubs", "Food Trucks", "Postres", "Discotecas", "Barras"];
 const excluirFastFood = ["McDonald", "Burger King", "Subway", "Wendy", "KFC", "Popeyes", "Church", "Domino", "Pizza Hut", "Taco Bell"];
 
 const csvWriter = createObjectCsvWriter({

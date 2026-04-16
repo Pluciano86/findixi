@@ -1,4 +1,9 @@
-import { getPublicBase, calcularTiempoEnVehiculo, formatearTelefonoDisplay, formatearTelefonoHref } from '../shared/utils.js';
+import { calcularTiempoEnVehiculo, formatearTelefonoDisplay, formatearTelefonoHref } from '../shared/utils.js';
+
+function resolveAppBase() {
+  const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+  return isLocal ? '/public/' : '/';
+}
 
 export function cardComercioNoActivo(comercio) {
   const div = document.createElement('div');
@@ -13,8 +18,11 @@ export function cardComercioNoActivo(comercio) {
     textoTiempoEstimado = minutos < 60 ? `a ${minutos} minutos` : `a ${texto}`;
   }
 
-  const portadaUrl = getPublicBase('galeriacomercios/NoActivoPortada.jpg');
-  const logoUrl = getPublicBase('galeriacomercios/NoActivoLogo.png');
+  const portadaUrl =
+    'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/portadaNoActivo.png';
+  const logoUrl =
+    'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/logoNoActivo.png';
+  const reclamarPerfilUrl = `${resolveAppBase()}registroComercio.html`;
 
   div.innerHTML = `
     <div class="relative">
@@ -25,8 +33,8 @@ export function cardComercioNoActivo(comercio) {
         <img src="${logoUrl}"
           alt="Logo"
           class="w-20 h-20 rounded-full absolute left-1/2 -top-10 transform -translate-x-1/2 
-                 bg-gray-100 object-contain shadow-[0px_-17px_11px_-5px_rgba(0,_0,_0,_0.3)] 
-                 z-20" />
+                 bg-white object-contain shadow-[0px_-17px_11px_-5px_rgba(0,_0,_0,_0.3)] 
+                 border-4 border-white z-20" />
 
         <div class="relative h-12 w-full">
           <div class="absolute inset-0 flex items-center justify-center px-2 text-center">
@@ -45,19 +53,23 @@ ${
     : `<div class="text-[15px] text-gray-600 mt-1 mb-1 h-[22px]">&nbsp;</div>`
 }
 
-        <span class="mt-2 px-4 py-1 text-xs bg-gray-300 text-gray-700 rounded-full whitespace-nowrap">
-          Perfil no disponible
-        </span>
-
-        <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-[#9c9c9c] mt-2">
+        <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-[#9c9c9c] mt-1">
           <i class="fas fa-map-pin"></i> ${comercio.pueblo}
         </div>
 
         ${textoTiempoEstimado ? `
-          <div class="flex justify-center items-center gap-1 text-[#9c9c9c] font-medium text-sm mb-4">
+          <div class="flex justify-center items-center gap-1 text-[#9c9c9c] font-medium text-sm mb-3">
             <i class="fas fa-car"></i> ${textoTiempoEstimado}
           </div>` : ''
         }
+
+        <a
+          href="${reclamarPerfilUrl}"
+          class="block text-center text-[12px] leading-4 text-black font-semibold mb-3 underline max-w-[170px]"
+        >
+          <span class="block">¿Eres el propietario?</span>
+          <span class="block">Reclama tu Comercio hoy</span>
+        </a>
       </div>
     </div>
   `;
