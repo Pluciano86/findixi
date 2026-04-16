@@ -1,0 +1,10 @@
+idComercio,orden,titulo,subtitulo,descripcion,activo,no_traducir
+7,1,Aperitivos,,,true,false
+7,2,Empanadillas,,,true,false
+7,3,Tostones rellenos,,,true,false
+7,4,Menu de ninos,,,true,false
+7,5,Mofongo,,,true,false
+7,6,Ensaldas,,,true,false
+7,7,Asopaos,,,true,false
+7,8,Recomendaciones del Chef,,,true,false
+7,9,Acompanantes adicionales,,,true,false

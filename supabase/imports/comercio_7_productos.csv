@@ -1,0 +1,65 @@
+idMenu,orden,nombre,descripcion,precio,precio_texto,activo,no_traducir_nombre
+299,1,Sopa del dia,,6.99,,true,false
+299,2,Sampler criollo,,25,,true,false
+299,3,Chorizo al vino,,12,,true,false
+299,4,Queso frito,,10,,true,false
+299,5,Sorullitos,,10,,true,false
+299,6,Tuna tartar,,25,,true,false
+299,7,Jalea tabla,,25,,true,false
+299,8,Tabla cortes frios,,20,,true,false
+299,9,Honey garlic wings,,12,,true,false
+299,10,Parmesan garlic wings,,12,,true,false
+299,11,Deditos de pescado con tostones,,20,,true,false
+299,12,Setas rellenas de manchego y prosciutto,,15,,true,false
+299,13,Kan kan strips guacamole tostones,,25,,true,false
+300,1,Pollo,,5,,true,false
+300,2,Camarones,,7,,true,false
+300,3,Pulpo,,7,,true,false
+300,4,Langosta,,8,,true,false
+300,5,Churrasco,,7,,true,false
+300,6,Pescado,,7,,true,false
+300,7,Jueyes,,7,,true,false
+300,8,Carrucho,,10,,true,false
+301,1,Pollo,,15,,true,false
+301,2,Churrasco,,20,,true,false
+301,3,Camarones,,20,,true,false
+301,4,Pulpo,,20,,true,false
+301,5,Carrucho,,25,,true,false
+302,1,Cheeseburger papas fritas,,9,,true,false
+302,2,Tenders fritas o arroz habichuelas,,9,,true,false
+302,3,Deditos de pescado papas fritas o arroz haichuelas,,9,,true,false
+303,1,Churrasco,,29.99,,true,false
+303,2,Pulpo,,29.99,,true,false
+303,3,Camarones,,29.99,,true,false
+303,4,Langosta,,55,,true,false
+303,5,Carrucho,,29.99,,true,false
+303,6,Pollo,,20,,true,false
+303,7,Mixto,,45,,true,false
+304,1,Carrucho,,29.99,,true,false
+304,2,Camarones,,29.99,,true,false
+304,3,Pulpo,,29.99,,true,false
+304,4,Langosta,,55,,true,false
+304,5,Mixta,,45,,true,false
+305,1,Pollo,,20,,true,false
+305,2,Camarones,,29.99,,true,false
+305,3,8 potencias,,45,,true,false
+305,4,Langosta,,55,,true,false
+306,1,Pechuga rellena de amarillo y chorizo con arroz con cilantro,,25,,true,false
+306,2,Pechuga rellena de manchego y prosciutto con arroz con cebolla,,30,,true,false
+306,3,Bistec encebollado de filete mignon con arroz blanco y habichuelas,,29.99,,true,false
+306,4,Dorado relleno de camarones con papa y batata salteada,,40,,true,false
+306,5,Salmon en crema de alcaparra con papa y batata salteada,,29.99,,true,false
+306,6,Churrasco chimichurri con arroz mamposteao jibaro,,29.99,,true,false
+306,7,Rabo de langosta con mofongo,,0,Precio según peso,true,false
+306,8,Chillo entero con tostones,,0,Precio según peso,true,false
+306,9,Chicharrones de pollo con tostones,,15,,true,false
+306,10,Carne frita con tostones,,15,,true,false
+307,1,Arroz con habichuelas,,5,,true,false
+307,2,Arroz mamposteao,,7,,true,false
+307,3,Arroz con cebolla,,5,,true,false
+307,4,Mofongo,,6,,true,false
+307,5,Arroz cilantro,,5,,true,false
+307,6,Amarillos,,5,,true,false
+307,7,Truffle fries,,6,,true,false
+307,8,Tostones,,5,,true,false
+307,9,Ensalda verde,,5,,true,false

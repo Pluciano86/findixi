@@ -1017,7 +1017,13 @@ function renderMenuProducts(menuId) {
   const textAlign = alignVal === 'center' ? 'center' : 'left';
 
   for (const p of productos) {
-    const priceTxt = Number.isFinite(Number(p.precio)) ? Number(p.precio).toFixed(2) : (p.precio ?? '');
+    const customPriceText = typeof p.precio_texto === 'string' ? p.precio_texto.trim() : '';
+    const hasCustomPrice = customPriceText.length > 0;
+    const hasNumericPrice = Number.isFinite(Number(p.precio));
+    const priceTxt = hasNumericPrice ? Number(p.precio).toFixed(2) : (p.precio ?? '');
+    const priceLabel = hasCustomPrice
+      ? customPriceText
+      : (hasNumericPrice ? `$${priceTxt}` : 'Precio no disponible');
     productosById.set(p.id, p);
     const div = document.createElement('div');
     div.className = 'rounded-lg shadow p-4 mb-2 flex gap-4';
@@ -1041,12 +1047,12 @@ function renderMenuProducts(menuId) {
           <p class="text-base leading-5 font-light" style="color:${temaActual.colortexto};${fontBody ? `font-family:${fontBody};` : ''}">${p.descripcion || ''}</p>
         </div>
         <div class="mt-2 w-full flex items-center justify-between gap-2 product-actions">
-          <div class="font-bold text-xl" style="color:${temaActual.colorprecio};${fontBody ? `font-family:${fontBody};` : ''}">$${priceTxt}</div>
+          <div class="font-bold text-xl" style="color:${temaActual.colorprecio};${fontBody ? `font-family:${fontBody};` : ''}">${priceLabel}</div>
         </div>
       </div>
     `;
 
-    if (allowOrdering && planPermiteOrdenes) {
+    if (allowOrdering && planPermiteOrdenes && !hasCustomPrice && hasNumericPrice) {
       const actions = div.querySelector('.product-actions');
       if (actions) {
         const btn = document.createElement('button');

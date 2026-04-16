@@ -1,0 +1,65 @@
+idComercio,seccion_orden,seccion_titulo,orden,nombre,descripcion,precio,activo,no_traducir_nombre
+7,1,Aperitivos,1,Sopa del dia,,6.99,true,false
+7,1,Aperitivos,2,Sampler criollo,,25,true,false
+7,1,Aperitivos,3,Chorizo al vino,,12,true,false
+7,1,Aperitivos,4,Queso frito,,10,true,false
+7,1,Aperitivos,5,Sorullitos,,10,true,false
+7,1,Aperitivos,6,Tuna tartar,,25,true,false
+7,1,Aperitivos,7,Jalea tabla,,25,true,false
+7,1,Aperitivos,8,Tabla cortes frios,,20,true,false
+7,1,Aperitivos,9,Honey garlic wings,,12,true,false
+7,1,Aperitivos,10,Parmesan garlic wings,,12,true,false
+7,1,Aperitivos,11,Deditos de pescado con tostones,,20,true,false
+7,1,Aperitivos,12,Setas rellenas de manchego y prosciutto,,15,true,false
+7,1,Aperitivos,13,Kan kan strips guacamole tostones,,25,true,false
+7,2,Empanadillas,1,Pollo,,5,true,false
+7,2,Empanadillas,2,Camarones,,7,true,false
+7,2,Empanadillas,3,Pulpo,,7,true,false
+7,2,Empanadillas,4,Langosta,,8,true,false
+7,2,Empanadillas,5,Churrasco,,7,true,false
+7,2,Empanadillas,6,Pescado,,7,true,false
+7,2,Empanadillas,7,Jueyes,,7,true,false
+7,2,Empanadillas,8,Carrucho,,10,true,false
+7,3,Tostones rellenos,1,Pollo,,15,true,false
+7,3,Tostones rellenos,2,Churrasco,,20,true,false
+7,3,Tostones rellenos,3,Camarones,,20,true,false
+7,3,Tostones rellenos,4,Pulpo,,20,true,false
+7,3,Tostones rellenos,5,Carrucho,,25,true,false
+7,4,Menu de ninos,1,Cheeseburger papas fritas,,9,true,false
+7,4,Menu de ninos,2,Tenders fritas o arroz habichuelas,,9,true,false
+7,4,Menu de ninos,3,Deditos de pescado papas fritas o arroz haichuelas,,9,true,false
+7,5,Mofongo,1,Churrasco,,29.99,true,false
+7,5,Mofongo,2,Pulpo,,29.99,true,false
+7,5,Mofongo,3,Camarones,,29.99,true,false
+7,5,Mofongo,4,Langosta,,55,true,false
+7,5,Mofongo,5,Carrucho,,29.99,true,false
+7,5,Mofongo,6,Pollo,,20,true,false
+7,5,Mofongo,7,Mixto,,45,true,false
+7,6,Ensaldas,1,Carrucho,,29.99,true,false
+7,6,Ensaldas,2,Camarones,,29.99,true,false
+7,6,Ensaldas,3,Pulpo,,29.99,true,false
+7,6,Ensaldas,4,Langosta,,55,true,false
+7,6,Ensaldas,5,Mixta,,45,true,false
+7,7,Asopaos,1,Pollo,,20,true,false
+7,7,Asopaos,2,Camarones,,29.99,true,false
+7,7,Asopaos,3,8 potencias,,45,true,false
+7,7,Asopaos,4,Langosta,,55,true,false
+7,8,Recomendaciones del Chef,1,Pechuga rellena de amarillo y chorizo con arroz con cilantro,,25,true,false
+7,8,Recomendaciones del Chef,2,Pechuga rellena de manchego y prosciutto con arroz con cebolla,,30,true,false
+7,8,Recomendaciones del Chef,3,Bistec encebollado de filete mignon con arroz blanco y habichuelas,,29.99,true,false
+7,8,Recomendaciones del Chef,4,Dorado relleno de camarones con papa y batata salteada,,40,true,false
+7,8,Recomendaciones del Chef,5,Salmon en crema de alcaparra con papa y batata salteada,,29.99,true,false
+7,8,Recomendaciones del Chef,6,Churrasco chimichurri con arroz mamposteao jibaro,,29.99,true,false
+7,8,Recomendaciones del Chef,7,Rabo de langosta con mofongo,Precio por peso,,true,false
+7,8,Recomendaciones del Chef,8,Chillo entero con tostones,Precio por peso,,true,false
+7,8,Recomendaciones del Chef,9,Chicharrones de pollo con tostones,,15,true,false
+7,8,Recomendaciones del Chef,10,Carne frita con tostones,,15,true,false
+7,9,Acompanantes adicionales,1,Arroz con habichuelas,,5,true,false
+7,9,Acompanantes adicionales,2,Arroz mamposteao,,7,true,false
+7,9,Acompanantes adicionales,3,Arroz con cebolla,,5,true,false
+7,9,Acompanantes adicionales,4,Mofongo,,6,true,false
+7,9,Acompanantes adicionales,5,Arroz cilantro,,5,true,false
+7,9,Acompanantes adicionales,6,Amarillos,,5,true,false
+7,9,Acompanantes adicionales,7,Truffle fries,,6,true,false
+7,9,Acompanantes adicionales,8,Tostones,,5,true,false
+7,9,Acompanantes adicionales,9,Ensalda verde,,5,true,false

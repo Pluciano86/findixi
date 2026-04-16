@@ -1078,8 +1078,9 @@ function crearProductoCard(idSeccion, producto) {
 
   const precio = document.createElement('p');
   precio.className = 'text-sm font-semibold text-blue-600';
+  const precioTexto = String(producto?.precio_texto || '').trim();
   const precioNumber = Number.parseFloat(producto?.precio);
-  precio.textContent = Number.isFinite(precioNumber) ? `$${precioNumber.toFixed(2)}` : '';
+  precio.textContent = precioTexto || (Number.isFinite(precioNumber) ? `$${precioNumber.toFixed(2)}` : '');
 
   const eliminar = document.createElement('button');
   eliminar.type = 'button';
@@ -1373,7 +1374,7 @@ async function cargarSecciones() {
   for (const seccion of data) {
     const { data: productos } = await supabase
       .from('productos')
-      .select('id, nombre, descripcion, precio, imagen, orden, activo, no_traducir_nombre, idMenu')
+      .select('id, nombre, descripcion, precio, precio_texto, imagen, orden, activo, no_traducir_nombre, idMenu')
       .eq('idMenu', seccion.id)
       .order('orden', { ascending: true });
 
@@ -1674,6 +1675,7 @@ const modalProducto = document.getElementById('modalProducto');
 const inputNombreProducto = document.getElementById('inputNombreProducto');
 const inputDescripcionProducto = document.getElementById('inputDescripcionProducto');
 const inputPrecioProducto = document.getElementById('inputPrecioProducto');
+const inputPrecioTextoProducto = document.getElementById('inputPrecioTextoProducto');
 const inputOrdenProducto = document.getElementById('inputOrdenProducto');
 const inputImagenProducto = document.getElementById('inputImagenProducto');
 const previewImagenProducto = document.getElementById('previewImagenProducto');
@@ -1687,7 +1689,9 @@ window.abrirEditarProducto = (idMenu, producto = null) => {
   productoEditandoId = producto?.id || null;
   inputNombreProducto.value = producto?.nombre || '';
   inputDescripcionProducto.value = producto?.descripcion || '';
-  inputPrecioProducto.value = producto?.precio || '';
+  const precioTexto = String(producto?.precio_texto || '').trim();
+  inputPrecioProducto.value = precioTexto ? '' : (producto?.precio ?? '');
+  if (inputPrecioTextoProducto) inputPrecioTextoProducto.value = precioTexto;
   inputOrdenProducto.value = producto?.orden || 1;
   if (productoNoTraducirNombre) productoNoTraducirNombre.checked = !!producto?.no_traducir_nombre;
   inputImagenProducto.value = ''; // nunca prellena file input
@@ -1708,6 +1712,7 @@ window.abrirNuevoProducto = (idMenu) => {
   inputNombreProducto.value = '';
   inputDescripcionProducto.value = '';
   inputPrecioProducto.value = '';
+  if (inputPrecioTextoProducto) inputPrecioTextoProducto.value = '';
   inputOrdenProducto.value = 1;
   if (productoNoTraducirNombre) productoNoTraducirNombre.checked = false;
   previewImagenProducto.src = '';
@@ -1759,18 +1764,23 @@ btnGuardarProducto.onclick = async () => {
   if (!idMenuActivo) {
     return alert('Selecciona una sección antes de guardar el producto.');
   }
+  const precioRaw = inputPrecioProducto.value.trim();
+  const precioNumero = precioRaw === '' ? Number.NaN : Number.parseFloat(precioRaw);
+  const precioTexto = inputPrecioTextoProducto?.value?.trim() || '';
+  const hasPrecioNumero = Number.isFinite(precioNumero);
   const nuevo = {
     nombre: inputNombreProducto.value.trim(),
     descripcion: inputDescripcionProducto.value.trim(),
-    precio: parseFloat(inputPrecioProducto.value),
+    precio: hasPrecioNumero ? precioNumero : 0,
+    precio_texto: precioTexto || null,
     orden: parseInt(inputOrdenProducto.value) || 1,
     activo: true,
     idMenu: parseInt(idMenuActivo, 10),
     no_traducir_nombre: productoNoTraducirNombre?.checked || false
   };
 
-  if (!nuevo.nombre || isNaN(nuevo.precio)) {
-    return alert('Nombre y precio son requeridos');
+  if (!nuevo.nombre || (!hasPrecioNumero && !precioTexto)) {
+    return alert('Nombre y precio (o texto de precio) son requeridos');
   }
 
   let productoId = productoEditandoId;
