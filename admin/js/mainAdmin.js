@@ -60,12 +60,19 @@ function buildPlanKey(plan) {
   return 'nivel:0';
 }
 
+function normalizePlanDisponibilidad(value) {
+  const raw = toNonEmptyString(value).toLowerCase();
+  if (raw === 'no_disponible') return 'no_disponible';
+  if (raw === 'proximamente') return 'proximamente';
+  return 'disponible';
+}
+
 async function cargarPlanesCatalogo() {
   try {
     const { data, error } = await supabase
       .from('planes')
       .select('*')
-      .eq('activo', true)
+      .order('activo', { ascending: false })
       .order('orden', { ascending: true });
     if (error) throw error;
     if (Array.isArray(data) && data.length) return data;
@@ -144,8 +151,15 @@ function buildPlanControl(comercio, { compact = false } = {}) {
   select.className = 'plan-select border rounded px-2 py-1 text-xs bg-white w-full';
   planesOptions.forEach(opt => {
     const option = document.createElement('option');
+    const activo = opt.plan?.activo !== false;
+    const disponibilidad = normalizePlanDisponibilidad(opt.plan?.disponibilidad || opt.plan?.estado_disponibilidad);
+    const badges = [];
+    if (!activo) badges.push('Inactivo');
+    if (disponibilidad === 'no_disponible') badges.push('No disponible');
+    if (disponibilidad === 'proximamente') badges.push('Próximamente');
+    const suffix = badges.length ? ` [${badges.join(' · ')}]` : '';
     option.value = opt.key;
-    option.textContent = `${opt.nombre} — Nivel ${opt.nivel} (${formatoPrecio(opt.precio)})`;
+    option.textContent = `${opt.nombre} — Nivel ${opt.nivel} (${formatoPrecio(opt.precio)})${suffix}`;
     select.appendChild(option);
   });
   if (selectedKey) select.value = selectedKey;

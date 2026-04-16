@@ -179,6 +179,63 @@ function normalizeComparableText(value) {
   return String(value ?? '').trim();
 }
 
+let hasPrecioTextoColumn = true;
+
+function isMissingPrecioTextoColumnError(error) {
+  const code = String(error?.code || '').toUpperCase();
+  const message = String(error?.message || '').toLowerCase();
+  const details = String(error?.details || '').toLowerCase();
+  const combined = `${message} ${details}`;
+  return (
+    code === '42703' ||
+    (combined.includes('precio_texto') && combined.includes('does not exist')) ||
+    (combined.includes('column') && combined.includes('precio_texto'))
+  );
+}
+
+function withoutPrecioTexto(payload) {
+  const copy = { ...(payload || {}) };
+  delete copy.precio_texto;
+  return copy;
+}
+
+async function fetchProductosByMenuId(menuId) {
+  const fullSelect = 'id, nombre, descripcion, precio, precio_texto, imagen, orden, activo, no_traducir_nombre, idMenu';
+  const fallbackSelect = 'id, nombre, descripcion, precio, imagen, orden, activo, no_traducir_nombre, idMenu';
+
+  if (hasPrecioTextoColumn === false) {
+    const fallback = await supabase
+      .from('productos')
+      .select(fallbackSelect)
+      .eq('idMenu', menuId)
+      .order('orden', { ascending: true });
+    if (fallback.error) throw fallback.error;
+    return (fallback.data || []).map((p) => ({ ...p, precio_texto: null }));
+  }
+
+  const full = await supabase
+    .from('productos')
+    .select(fullSelect)
+    .eq('idMenu', menuId)
+    .order('orden', { ascending: true });
+
+  if (!full.error) {
+    hasPrecioTextoColumn = true;
+    return full.data || [];
+  }
+
+  if (!isMissingPrecioTextoColumnError(full.error)) throw full.error;
+  hasPrecioTextoColumn = false;
+
+  const fallback = await supabase
+    .from('productos')
+    .select(fallbackSelect)
+    .eq('idMenu', menuId)
+    .order('orden', { ascending: true });
+  if (fallback.error) throw fallback.error;
+  return (fallback.data || []).map((p) => ({ ...p, precio_texto: null }));
+}
+
 async function invokeTranslateMenuInvalidate(payload) {
   const { data: { session } } = await supabase.auth.getSession();
   const accessToken = session?.access_token || SUPABASE_ANON_KEY;
@@ -1372,11 +1429,13 @@ async function cargarSecciones() {
 
   let primera = true;
   for (const seccion of data) {
-    const { data: productos } = await supabase
-      .from('productos')
-      .select('id, nombre, descripcion, precio, precio_texto, imagen, orden, activo, no_traducir_nombre, idMenu')
-      .eq('idMenu', seccion.id)
-      .order('orden', { ascending: true });
+    let productos = [];
+    try {
+      productos = await fetchProductosByMenuId(seccion.id);
+    } catch (productosErr) {
+      console.error('Error cargando productos de sección:', { seccionId: seccion.id, productosErr });
+      productos = [];
+    }
 
     const card = crearSeccionAccordion(seccion, productos || [], false);
     seccionesEl.appendChild(card);
@@ -1796,7 +1855,17 @@ btnGuardarProducto.onclick = async () => {
       if (prevErr) throw prevErr;
       previousProduct = prevData || null;
 
-      const { error } = await supabase.from('productos').update(nuevo).eq('id', productoId);
+      const shouldTryPrecioTextoFirst = !!precioTexto || hasPrecioTextoColumn !== false;
+      let payloadToSave = shouldTryPrecioTextoFirst ? { ...nuevo } : withoutPrecioTexto(nuevo);
+      let { error } = await supabase.from('productos').update(payloadToSave).eq('id', productoId);
+      if (error && isMissingPrecioTextoColumnError(error)) {
+        hasPrecioTextoColumn = false;
+        payloadToSave = withoutPrecioTexto(nuevo);
+        const retry = await supabase.from('productos').update(payloadToSave).eq('id', productoId);
+        error = retry.error;
+      } else if (!error && shouldTryPrecioTextoFirst) {
+        hasPrecioTextoColumn = true;
+      }
       if (error) throw error;
 
       const nameChanged =
@@ -1807,7 +1876,18 @@ btnGuardarProducto.onclick = async () => {
 
       await invalidateProductTranslationCells(productoId, { nameChanged, descriptionChanged });
     } else {
-      const { data, error } = await supabase.from('productos').insert(nuevo).select().single();
+      const shouldTryPrecioTextoFirst = !!precioTexto || hasPrecioTextoColumn !== false;
+      let payloadToSave = shouldTryPrecioTextoFirst ? { ...nuevo } : withoutPrecioTexto(nuevo);
+      let { data, error } = await supabase.from('productos').insert(payloadToSave).select().single();
+      if (error && isMissingPrecioTextoColumnError(error)) {
+        hasPrecioTextoColumn = false;
+        payloadToSave = withoutPrecioTexto(nuevo);
+        const retry = await supabase.from('productos').insert(payloadToSave).select().single();
+        data = retry.data;
+        error = retry.error;
+      } else if (!error && shouldTryPrecioTextoFirst) {
+        hasPrecioTextoColumn = true;
+      }
       if (error) throw error;
       productoId = data.id;
     }
