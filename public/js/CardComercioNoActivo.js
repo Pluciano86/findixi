@@ -5,6 +5,48 @@ function resolveAppBase() {
   return isLocal ? '/public/' : '/';
 }
 
+function toFiniteNumber(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function buildReclamarPerfilUrl(comercio = {}) {
+  const params = new URLSearchParams({
+    claim: '1',
+    source: 'noactivo_card',
+  });
+
+  const comercioId = toFiniteNumber(comercio?.id);
+  if (Number.isFinite(comercioId)) params.set('comercioId', String(comercioId));
+
+  const nombre = String(comercio?.nombre || '').trim();
+  if (nombre) params.set('nombre', nombre);
+
+  const municipio = String(comercio?.municipio || comercio?.pueblo || '').trim();
+  if (municipio) params.set('municipio', municipio);
+
+  const lat = toFiniteNumber(comercio?.latitud);
+  const lon = toFiniteNumber(comercio?.longitud);
+  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    params.set('lat', String(lat));
+    params.set('lon', String(lon));
+  }
+
+  const placeId = String(
+    comercio?.google_place_id_posible_match ||
+      comercio?.google_place_id ||
+      comercio?.place_id ||
+      ''
+  ).trim();
+  if (placeId) params.set('placeId', placeId);
+
+  return `${resolveAppBase()}registroComercio.html?${params.toString()}`;
+}
+
 export function cardComercioNoActivo(comercio) {
   const div = document.createElement('div');
   div.className = `
@@ -22,7 +64,7 @@ export function cardComercioNoActivo(comercio) {
     'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/portadaNoActivo.png';
   const logoUrl =
     'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/logoNoActivo.png';
-  const reclamarPerfilUrl = `${resolveAppBase()}registroComercio.html`;
+  const reclamarPerfilUrl = buildReclamarPerfilUrl(comercio);
 
   div.innerHTML = `
     <div class="relative">

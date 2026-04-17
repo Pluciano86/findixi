@@ -140,11 +140,116 @@ let brandingState = {
   logoOffer: null,
   idComercio: null,
 };
+const claimContextFromUrl = getClaimContextFromUrl();
 
 function toFiniteNumber(value) {
   if (value === '' || value === null || value === undefined) return null;
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
+}
+
+function getClaimContextFromUrl() {
+  if (typeof window === 'undefined') return null;
+
+  const params = new URLSearchParams(window.location.search || '');
+  const claim = params.get('claim') === '1';
+  const source = String(params.get('source') || '').trim().toLowerCase();
+  const comercioId = toFiniteNumber(params.get('comercioId'));
+
+  if (!claim && source !== 'noactivo_card' && !Number.isFinite(comercioId)) {
+    return null;
+  }
+
+  return {
+    claim,
+    source,
+    comercioId: Number.isFinite(comercioId) ? comercioId : null,
+    nombre: String(params.get('nombre') || '').trim(),
+    municipio: String(params.get('municipio') || '').trim(),
+    latitud: toFiniteNumber(params.get('lat')),
+    longitud: toFiniteNumber(params.get('lon')),
+    placeId: String(params.get('placeId') || '').trim(),
+  };
+}
+
+function seleccionarMunicipioPorNombre(municipioNombre = '') {
+  if (!selectMunicipio || !municipioNombre) return false;
+  const target = normalizeText(municipioNombre);
+  if (!target) return false;
+
+  const options = Array.from(selectMunicipio.options || []);
+  const found = options.find((option) => normalizeText(option.textContent || '') === target);
+  if (!found) return false;
+
+  selectMunicipio.value = found.value;
+  return true;
+}
+
+async function hidratarClaimContext(context) {
+  if (!context || !Number.isFinite(context.comercioId)) return context;
+
+  try {
+    const { data, error } = await supabase
+      .from('Comercios')
+      .select('id, nombre, municipio, idMunicipio, latitud, longitud, google_place_id_posible_match')
+      .eq('id', context.comercioId)
+      .maybeSingle();
+
+    if (error || !data) return context;
+
+    return {
+      ...context,
+      nombre: String(data.nombre || context.nombre || '').trim(),
+      municipio: String(data.municipio || context.municipio || '').trim(),
+      idMunicipio: toFiniteNumber(data.idMunicipio) ?? context.idMunicipio ?? null,
+      latitud: toFiniteNumber(data.latitud) ?? context.latitud ?? null,
+      longitud: toFiniteNumber(data.longitud) ?? context.longitud ?? null,
+      placeId: String(data.google_place_id_posible_match || context.placeId || '').trim(),
+    };
+  } catch (_error) {
+    return context;
+  }
+}
+
+function aplicarClaimContextEnFormulario(context) {
+  if (!context) return;
+
+  if (inputNombreComercio && context.nombre) {
+    inputNombreComercio.value = context.nombre;
+  }
+
+  if (inputLatitud && Number.isFinite(context.latitud)) {
+    inputLatitud.value = String(context.latitud);
+  }
+
+  if (inputLongitud && Number.isFinite(context.longitud)) {
+    inputLongitud.value = String(context.longitud);
+  }
+
+  const idMunicipio = toFiniteNumber(context.idMunicipio);
+  if (selectMunicipio) {
+    if (Number.isFinite(idMunicipio)) {
+      selectMunicipio.value = String(idMunicipio);
+    }
+    if (!selectMunicipio.value && context.municipio) {
+      seleccionarMunicipioPorNombre(context.municipio);
+    }
+  }
+
+  if (context.placeId) {
+    window.findixiRegistroClaimPlaceId = context.placeId;
+  }
+}
+
+async function aplicarPrefillClaimDesdeUrl() {
+  if (!claimContextFromUrl) return;
+
+  const context = await hidratarClaimContext(claimContextFromUrl);
+  aplicarClaimContextEnFormulario(context);
+
+  if (context && context.nombre) {
+    window.findixiRegistroClaimPrefill = context;
+  }
 }
 
 function normalizeText(value) {
@@ -3434,6 +3539,7 @@ async function init() {
   wireEvents();
   await cargarUsuario();
   await cargarMunicipios();
+  await aplicarPrefillClaimDesdeUrl();
   await cargarPlanesCatalogo();
   renderPlanes(selectedNivel);
   hideOtpVerificationBox({ clearSession: false });
