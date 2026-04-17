@@ -28,6 +28,8 @@ function buildReclamarPerfilUrl(comercio = {}) {
 
   const municipio = String(comercio?.municipio || comercio?.pueblo || '').trim();
   if (municipio) params.set('municipio', municipio);
+  const idMunicipio = toFiniteNumber(comercio?.idMunicipio);
+  if (Number.isFinite(idMunicipio)) params.set('idMunicipio', String(idMunicipio));
 
   const lat = toFiniteNumber(comercio?.latitud);
   const lon = toFiniteNumber(comercio?.longitud);
@@ -43,6 +45,18 @@ function buildReclamarPerfilUrl(comercio = {}) {
       ''
   ).trim();
   if (placeId) params.set('placeId', placeId);
+
+  const telefono = String(comercio?.telefono || '').trim();
+  if (telefono) params.set('telefono', telefono);
+
+  const direccion = String(comercio?.direccion || '').trim();
+  if (direccion) params.set('direccion', direccion);
+
+  const portada = String(comercio?.portada || '').trim();
+  if (portada) params.set('portada', portada);
+
+  const logo = String(comercio?.logo || '').trim();
+  if (logo) params.set('logo', logo);
 
   return `${resolveAppBase()}registroComercio.html?${params.toString()}`;
 }

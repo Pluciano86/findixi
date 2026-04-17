@@ -166,9 +166,14 @@ function getClaimContextFromUrl() {
     comercioId: Number.isFinite(comercioId) ? comercioId : null,
     nombre: String(params.get('nombre') || '').trim(),
     municipio: String(params.get('municipio') || '').trim(),
+    idMunicipio: toFiniteNumber(params.get('idMunicipio')),
     latitud: toFiniteNumber(params.get('lat')),
     longitud: toFiniteNumber(params.get('lon')),
     placeId: String(params.get('placeId') || '').trim(),
+    telefono: String(params.get('telefono') || '').trim(),
+    direccion: String(params.get('direccion') || '').trim(),
+    portada: String(params.get('portada') || '').trim(),
+    logo: String(params.get('logo') || '').trim(),
   };
 }
 
@@ -186,29 +191,7 @@ function seleccionarMunicipioPorNombre(municipioNombre = '') {
 }
 
 async function hidratarClaimContext(context) {
-  if (!context || !Number.isFinite(context.comercioId)) return context;
-
-  try {
-    const { data, error } = await supabase
-      .from('Comercios')
-      .select('id, nombre, municipio, idMunicipio, latitud, longitud, google_place_id_posible_match')
-      .eq('id', context.comercioId)
-      .maybeSingle();
-
-    if (error || !data) return context;
-
-    return {
-      ...context,
-      nombre: String(data.nombre || context.nombre || '').trim(),
-      municipio: String(data.municipio || context.municipio || '').trim(),
-      idMunicipio: toFiniteNumber(data.idMunicipio) ?? context.idMunicipio ?? null,
-      latitud: toFiniteNumber(data.latitud) ?? context.latitud ?? null,
-      longitud: toFiniteNumber(data.longitud) ?? context.longitud ?? null,
-      placeId: String(data.google_place_id_posible_match || context.placeId || '').trim(),
-    };
-  } catch (_error) {
-    return context;
-  }
+  return context;
 }
 
 function aplicarClaimContextEnFormulario(context) {
@@ -2210,7 +2193,10 @@ function getGoogleMapsKeyFromWindow() {
     browserEnv.GOOGLE_MAPS_API_KEY ||
     browserEnv.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
     browserEnv.VITE_GOOGLE_MAPS_API_KEY;
-  return typeof fromWindow === 'string' ? fromWindow.trim() : '';
+  const key = typeof fromWindow === 'string' ? fromWindow.trim() : '';
+  if (!key) return '';
+  if (/REEMPLAZA_AQUI_TU_KEY_LOCAL/i.test(key)) return '';
+  return key;
 }
 
 function isLocalHostRuntime() {
@@ -2224,7 +2210,19 @@ function isLikelyNetlifyDevRuntime() {
 }
 
 async function tryLoadLocalMapsConfig() {
+  try {
+    await import('../shared/localMapsConfig.js');
+    const keyFromModule = getGoogleMapsKeyFromWindow();
+    if (keyFromModule) {
+      googleMapsApiKeyCache = keyFromModule;
+      return keyFromModule;
+    }
+  } catch (_error) {
+    // localMapsConfig.js is optional in development
+  }
+
   const keyFromStorage = String(localStorage.getItem('GOOGLE_MAPS_BROWSER_KEY') || '').trim();
+  if (/REEMPLAZA_AQUI_TU_KEY_LOCAL/i.test(keyFromStorage)) return '';
   if (keyFromStorage) {
     window.__ENV__ = window.__ENV__ || {};
     window.__ENV__.GOOGLE_MAPS_BROWSER_KEY = keyFromStorage;
