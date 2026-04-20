@@ -3,6 +3,11 @@ import { requireAuth } from './authGuard.js';
 
 const PUBLIC_BUCKET_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios';
 const DEFAULT_LOGO = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoPerfil.png';
+const SHARE_ICON_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/send.svg';
+const LIKE_ON_ICON_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/likeit.svg';
+const LIKE_OFF_ICON_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/nolikeit.svg';
+const LODEHOY_LIKES_TABLE = 'lodehoy_likes_comercio';
+const LODEHOY_AUDIO_PREF_KEY = 'lodehoy_audio_enabled';
 const HOST = String(window.location.hostname || '').toLowerCase();
 const IS_LOCAL = HOST === 'localhost' || HOST === '127.0.0.1' || HOST === '::1';
 const APP_PREFIX = IS_LOCAL ? '/public' : '';
@@ -15,10 +20,13 @@ const shareSheetCerrar = document.getElementById('shareSheetCerrar');
 
 let currentUser = null;
 let favoritosSet = new Set();
+let likesVisualSet = new Set();
 let publicaciones = [];
 let comercioById = new Map();
 let sharePostId = null;
 let highlightedFromQuery = false;
+let audioEnabled = true;
+let videoObserver = null;
 
 function toNumber(value) {
   const parsed = Number(value);
@@ -32,6 +40,21 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function readAudioPreference() {
+  try {
+    const raw = localStorage.getItem(LODEHOY_AUDIO_PREF_KEY);
+    if (raw === '0') return false;
+    if (raw === '1') return true;
+  } catch (_error) {}
+  return true;
+}
+
+function saveAudioPreference() {
+  try {
+    localStorage.setItem(LODEHOY_AUDIO_PREF_KEY, audioEnabled ? '1' : '0');
+  } catch (_error) {}
 }
 
 function encodeStoragePath(path) {
@@ -62,14 +85,14 @@ function getComercioLogoUrl(logo) {
   return buildStoragePublicUrl(logo);
 }
 
-function formatFechaPR(value) {
+function formatHoraPR(value) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
 
   return new Intl.DateTimeFormat('es-PR', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
     timeZone: 'America/Puerto_Rico',
   }).format(date);
 }
@@ -96,31 +119,204 @@ function isFavorite(comercioId) {
   return id ? favoritosSet.has(id) : false;
 }
 
-function getLikeButtonLabel(comercioId) {
-  return isFavorite(comercioId) ? 'Te gusta' : 'Me gusta';
+function isLikeVisualOn(comercioId) {
+  const id = toNumber(comercioId);
+  return id ? likesVisualSet.has(id) : false;
 }
 
-function getLikeButtonClass(comercioId) {
-  return isFavorite(comercioId)
-    ? 'bg-red-50 text-red-700 border-red-200'
-    : 'bg-gray-100 text-gray-700 border-gray-200';
-}
-
-function updateLikeButtonsForComercio(comercioId) {
+function updateFavoriteButtonsForComercio(comercioId) {
   const id = toNumber(comercioId);
   if (!id) return;
 
-  const buttons = document.querySelectorAll(`[data-action="like"][data-comercio-id="${id}"]`);
+  const buttons = document.querySelectorAll(`[data-action="favorite"][data-comercio-id="${id}"]`);
   buttons.forEach((button) => {
     const icon = button.querySelector('i');
-    const text = button.querySelector('span');
     if (icon) {
-      icon.className = isFavorite(id) ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
+      icon.className = isFavorite(id)
+        ? 'fa-solid fa-heart text-2xl text-[#EC7F25]'
+        : 'fa-regular fa-heart text-2xl text-[#1f2937]';
     }
-    if (text) {
-      text.textContent = getLikeButtonLabel(id);
+    button.setAttribute('aria-pressed', isFavorite(id) ? 'true' : 'false');
+  });
+}
+
+function updateLikeVisualButtonsForComercio(comercioId) {
+  const id = toNumber(comercioId);
+  if (!id) return;
+
+  const buttons = document.querySelectorAll(`[data-action="like-visual"][data-comercio-id="${id}"]`);
+  const iconUrl = isLikeVisualOn(id) ? LIKE_ON_ICON_URL : LIKE_OFF_ICON_URL;
+  const altText = isLikeVisualOn(id) ? 'Me gusta activo' : 'Me gusta inactivo';
+
+  buttons.forEach((button) => {
+    const img = button.querySelector('img');
+    if (img) {
+      img.src = iconUrl;
+      img.alt = altText;
     }
-    button.className = `w-full border rounded-lg py-2 text-sm font-medium transition ${getLikeButtonClass(id)}`;
+    button.setAttribute('aria-pressed', isLikeVisualOn(id) ? 'true' : 'false');
+    button.classList.toggle('bg-rose-50', isLikeVisualOn(id));
+    button.classList.toggle('ring-1', isLikeVisualOn(id));
+    button.classList.toggle('ring-rose-200', isLikeVisualOn(id));
+  });
+}
+
+function updateAudioButtons() {
+  const buttons = document.querySelectorAll('[data-action="toggle-audio"]');
+  buttons.forEach((button) => {
+    const icon = button.querySelector('i');
+    if (icon) {
+      icon.className = audioEnabled
+        ? 'fa-solid fa-volume-high text-[12px] text-emerald-700'
+        : 'fa-solid fa-volume-xmark text-[12px] text-gray-700';
+    }
+    button.setAttribute('aria-pressed', audioEnabled ? 'true' : 'false');
+    button.setAttribute('aria-label', audioEnabled ? 'Silenciar videos' : 'Activar audio de videos');
+    button.classList.toggle('ring-1', audioEnabled);
+    button.classList.toggle('ring-emerald-200', audioEnabled);
+  });
+}
+
+function getVideoAudioControls(videoId) {
+  if (!videoId) return { button: null, badge: null };
+  return {
+    button: document.querySelector(`button[data-action="toggle-audio"][data-video-id="${videoId}"]`),
+    badge: document.querySelector(`[data-role="video-no-audio"][data-video-id="${videoId}"]`),
+  };
+}
+
+function inferVideoAudio(video) {
+  if (!(video instanceof HTMLVideoElement)) return { known: false, hasAudio: true };
+
+  if (typeof video.mozHasAudio === 'boolean') {
+    return { known: true, hasAudio: video.mozHasAudio };
+  }
+
+  const tracks = video.audioTracks;
+  if (tracks && typeof tracks.length === 'number') {
+    return { known: true, hasAudio: tracks.length > 0 };
+  }
+
+  if (typeof video.webkitAudioDecodedByteCount === 'number') {
+    if (video.webkitAudioDecodedByteCount > 0) {
+      return { known: true, hasAudio: true };
+    }
+    if (video.currentTime >= 0.8 || video.readyState >= 3) {
+      return { known: true, hasAudio: false };
+    }
+  }
+
+  return { known: false, hasAudio: true };
+}
+
+function applyVideoAudioUI(video, { known, hasAudio }) {
+  const videoId = String(video?.dataset?.postId || '').trim();
+  if (!videoId) return;
+  video.dataset.hasAudio = known ? (hasAudio ? '1' : '0') : 'unknown';
+
+  const { button, badge } = getVideoAudioControls(videoId);
+  if (!button && !badge) return;
+
+  if (known && !hasAudio) {
+    button?.classList.add('hidden');
+    badge?.classList.remove('hidden');
+    video.muted = true;
+    video.defaultMuted = true;
+    return;
+  }
+
+  button?.classList.remove('hidden');
+  badge?.classList.add('hidden');
+}
+
+function scheduleVideoAudioProbe(video) {
+  if (!(video instanceof HTMLVideoElement)) return;
+  if (video.dataset.audioProbeScheduled === '1') return;
+  video.dataset.audioProbeScheduled = '1';
+
+  const runProbe = () => {
+    const first = inferVideoAudio(video);
+    applyVideoAudioUI(video, first);
+
+    if (first.known) return;
+
+    window.setTimeout(() => {
+      const later = inferVideoAudio(video);
+      applyVideoAudioUI(video, later);
+    }, 1200);
+  };
+
+  if (video.readyState >= 1) {
+    runProbe();
+  } else {
+    video.addEventListener('loadedmetadata', runProbe, { once: true });
+  }
+}
+
+function pauseManagedVideo(video) {
+  if (!(video instanceof HTMLVideoElement)) return;
+  video.loop = false;
+  video.pause();
+}
+
+async function playManagedVideo(video) {
+  if (!(video instanceof HTMLVideoElement)) return;
+
+  scheduleVideoAudioProbe(video);
+
+  video.loop = true;
+  video.muted = !audioEnabled;
+  video.defaultMuted = !audioEnabled;
+
+  try {
+    await video.play();
+  } catch (_error) {
+    if (audioEnabled) {
+      // Fallback para navegadores que bloquean autoplay con audio.
+      video.muted = true;
+      video.defaultMuted = true;
+      try {
+        await video.play();
+      } catch (_errorMuted) {}
+    }
+  }
+}
+
+function setupVideoObserver() {
+  if (videoObserver) {
+    videoObserver.disconnect();
+    videoObserver = null;
+  }
+
+  const videos = Array.from(document.querySelectorAll('video[data-lodehoy-video="1"]'));
+  if (!videos.length) return;
+
+  videoObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      const video = entry.target;
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+        void playManagedVideo(video);
+      } else {
+        pauseManagedVideo(video);
+      }
+    });
+  }, { threshold: [0, 0.25, 0.5, 0.75, 1] });
+
+  videos.forEach((video) => {
+    videoObserver.observe(video);
+  });
+}
+
+function applyAudioStateToVisibleVideos() {
+  const videos = document.querySelectorAll('video[data-lodehoy-video="1"]');
+  videos.forEach((video) => {
+    const isNoAudio = video.dataset.hasAudio === '0';
+    if (isNoAudio) return;
+    video.muted = !audioEnabled;
+    video.defaultMuted = !audioEnabled;
+    if (!video.paused) {
+      void playManagedVideo(video);
+    }
   });
 }
 
@@ -140,6 +336,10 @@ function renderPublicaciones() {
   if (!publicaciones.length) {
     listaPublicaciones.innerHTML = '';
     setEmptyVisible(true);
+    if (videoObserver) {
+      videoObserver.disconnect();
+      videoObserver = null;
+    }
     return;
   }
 
@@ -154,48 +354,101 @@ function renderPublicaciones() {
     const textoSeguro = escapeHtml(texto);
     const logoUrl = getComercioLogoUrl(comercio.logo);
     const mediaUrl = buildStoragePublicUrl(post.media_path);
-    const fecha = formatFechaPR(post.created_at);
+    const horaPublicada = formatHoraPR(post.created_at);
     const logoUrlSafe = escapeHtml(logoUrl);
     const mediaUrlSafe = escapeHtml(mediaUrl);
+    const iconLikeVisual = escapeHtml(isLikeVisualOn(comercioId) ? LIKE_ON_ICON_URL : LIKE_OFF_ICON_URL);
+    const favoriteClass = isFavorite(comercioId)
+      ? 'fa-solid fa-heart text-2xl text-[#EC7F25]'
+      : 'fa-regular fa-heart text-2xl text-[#1f2937]';
 
     const mediaNode = post.media_tipo === 'video'
-      ? `<video class="lodehoy-media-content" src="${mediaUrlSafe}" controls playsinline preload="metadata"></video>`
+      ? `<video class="lodehoy-media-content" src="${mediaUrlSafe}" controls playsinline preload="metadata" data-lodehoy-video="1" data-post-id="${post.id}" data-has-audio="unknown"></video>`
       : `<img class="lodehoy-media-content" src="${mediaUrlSafe}" alt="Publicación de ${nombreComercio}" loading="lazy">`;
 
     return `
       <article id="post-${post.id}" class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
         <header class="px-3 py-3 flex items-center gap-3">
+          <button
+            type="button"
+            data-action="favorite"
+            data-comercio-id="${comercioId}"
+            class="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 transition"
+            aria-label="Favorito del comercio"
+            aria-pressed="${isFavorite(comercioId) ? 'true' : 'false'}"
+          >
+            <i class="${favoriteClass}"></i>
+          </button>
           <img src="${logoUrlSafe}" alt="${nombreComercio}" class="w-11 h-11 rounded-full object-cover border border-gray-200">
           <div class="min-w-0">
             <p class="text-sm font-semibold text-gray-900 truncate">${nombreComercio}</p>
             <p class="text-xs text-gray-500 truncate">${municipio || 'Puerto Rico'}</p>
           </div>
-          <span class="ml-auto text-[11px] text-gray-500 whitespace-nowrap">${escapeHtml(fecha)}</span>
+          <div class="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              data-action="like-visual"
+              data-comercio-id="${comercioId}"
+              class="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 transition"
+              aria-label="Me gusta del comercio"
+              aria-pressed="${isLikeVisualOn(comercioId) ? 'true' : 'false'}"
+            >
+              <img src="${iconLikeVisual}" alt="${isLikeVisualOn(comercioId) ? 'Me gusta activo' : 'Me gusta inactivo'}" class="w-8 h-8">
+            </button>
+            <button
+              type="button"
+              data-action="share"
+              data-post-id="${post.id}"
+              class="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 transition"
+              aria-label="Compartir publicación"
+            >
+              <img src="${escapeHtml(SHARE_ICON_URL)}" alt="Compartir" class="w-8 h-8">
+            </button>
+          </div>
         </header>
 
-        <div class="lodehoy-media-frame bg-gray-100 flex items-center justify-center overflow-hidden">
+        <div class="lodehoy-media-frame bg-gray-100 flex items-center justify-center overflow-hidden relative">
           ${mediaNode}
+          ${post.media_tipo === 'video' ? `
+            <div class="absolute right-2 bottom-2 z-10 flex items-center gap-2">
+              <span data-role="video-no-audio" data-video-id="${post.id}" class="hidden px-2 py-0.5 rounded-full bg-white/95 text-[10px] font-semibold text-gray-700 shadow-sm">
+                Video sin Audio
+              </span>
+              <button
+                type="button"
+                data-action="toggle-audio"
+                data-video-id="${post.id}"
+                class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/95 shadow-sm border border-gray-100"
+                aria-label="${audioEnabled ? 'Silenciar videos' : 'Activar audio de videos'}"
+                aria-pressed="${audioEnabled ? 'true' : 'false'}"
+              >
+                <i class="${audioEnabled ? 'fa-solid fa-volume-high text-[12px] text-emerald-700' : 'fa-solid fa-volume-xmark text-[12px] text-gray-700'}"></i>
+              </button>
+            </div>
+          ` : ''}
+        </div>
+        <div class="px-3 py-2 border-t border-gray-100">
+          <p class="text-sm text-gray-500 text-center">
+            <span class="font-semibold">Publicado:</span> ${escapeHtml(horaPublicada || '—')}
+          </p>
         </div>
         ${textoSeguro ? `
-          <div class="px-3 py-2 border-t border-gray-100">
-            <p class="text-sm text-gray-700 line-clamp-3">${textoSeguro}</p>
+          <div class="px-3 pb-3">
+            <p class="text-sm text-gray-700 line-clamp-3 font-medium">${textoSeguro}</p>
           </div>
         ` : ''}
-
-        <div class="p-3 grid grid-cols-2 gap-2">
-          <button type="button" data-action="share" data-post-id="${post.id}" class="w-full border border-gray-200 rounded-lg py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
-            <i class="fa-solid fa-share-nodes mr-1"></i> Share
-          </button>
-          <button type="button" data-action="like" data-comercio-id="${comercioId}" class="w-full border rounded-lg py-2 text-sm font-medium transition ${getLikeButtonClass(comercioId)}">
-            <i class="${isFavorite(comercioId) ? 'fa-solid' : 'fa-regular'} fa-heart mr-1"></i>
-            <span>${getLikeButtonLabel(comercioId)}</span>
-          </button>
-        </div>
       </article>
     `;
   }).join('');
 
   listaPublicaciones.innerHTML = html;
+  updateAudioButtons();
+  setupVideoObserver();
+  const videos = document.querySelectorAll('video[data-lodehoy-video="1"]');
+  videos.forEach((video) => {
+    applyVideoAudioUI(video, { known: false, hasAudio: true });
+    scheduleVideoAudioProbe(video);
+  });
   maybeHighlightPostFromQuery();
 }
 
@@ -221,12 +474,14 @@ async function loadUserAndFavorites() {
     console.warn('No se pudo obtener usuario actual:', error.message || error);
     currentUser = null;
     favoritosSet = new Set();
+    likesVisualSet = new Set();
     return;
   }
 
   currentUser = data?.user || null;
   if (!currentUser) {
     favoritosSet = new Set();
+    likesVisualSet = new Set();
     return;
   }
 
@@ -238,10 +493,24 @@ async function loadUserAndFavorites() {
   if (favErr) {
     console.warn('No se pudo cargar favoritos:', favErr.message || favErr);
     favoritosSet = new Set();
+  } else {
+    favoritosSet = new Set((favs || []).map((row) => toNumber(row.idcomercio)).filter(Boolean));
+  }
+
+  const { data: likesData, error: likesErr } = await supabase
+    .from(LODEHOY_LIKES_TABLE)
+    .select('idcomercio')
+    .eq('idusuario', currentUser.id);
+
+  if (likesErr) {
+    if (likesErr.code !== '42P01') {
+      console.warn('No se pudieron cargar Me Gusta de Lo de Hoy:', likesErr.message || likesErr);
+    }
+    likesVisualSet = new Set();
     return;
   }
 
-  favoritosSet = new Set((favs || []).map((row) => toNumber(row.idcomercio)).filter(Boolean));
+  likesVisualSet = new Set((likesData || []).map((row) => toNumber(row.idcomercio)).filter(Boolean));
 }
 
 async function loadPublicaciones() {
@@ -367,7 +636,70 @@ async function handleShare(channel) {
   }
 }
 
-async function toggleLike(comercioId) {
+function toggleGlobalAudio() {
+  audioEnabled = !audioEnabled;
+  saveAudioPreference();
+  updateAudioButtons();
+  applyAudioStateToVisibleVideos();
+}
+
+async function toggleLikeVisual(comercioId) {
+  const id = toNumber(comercioId);
+  if (!id) return;
+
+  if (!currentUser) {
+    try {
+      const user = await requireAuth('likeCommerceInLoDeHoy');
+      if (!user?.id) return;
+      currentUser = user;
+      await loadUserAndFavorites();
+    } catch {
+      return;
+    }
+  }
+
+  const alreadyLiked = likesVisualSet.has(id);
+
+  if (alreadyLiked) {
+    const { error } = await supabase
+      .from(LODEHOY_LIKES_TABLE)
+      .delete()
+      .eq('idusuario', currentUser.id)
+      .eq('idcomercio', id);
+
+    if (error) {
+      if (error.code !== '42P01') {
+        console.error('Error removiendo Me Gusta de Lo de Hoy:', error.message || error);
+      }
+      return;
+    }
+
+    likesVisualSet.delete(id);
+    updateLikeVisualButtonsForComercio(id);
+    return;
+  }
+
+  const { error } = await supabase
+    .from(LODEHOY_LIKES_TABLE)
+    .insert([{ idusuario: currentUser.id, idcomercio: id }]);
+
+  if (error) {
+    if (error.code === '23505') {
+      likesVisualSet.add(id);
+      updateLikeVisualButtonsForComercio(id);
+      return;
+    }
+    if (error.code !== '42P01') {
+      console.error('Error guardando Me Gusta de Lo de Hoy:', error.message || error);
+    }
+    return;
+  }
+
+  likesVisualSet.add(id);
+  updateLikeVisualButtonsForComercio(id);
+}
+
+async function toggleFavorite(comercioId) {
   const id = toNumber(comercioId);
   if (!id) return;
 
@@ -397,7 +729,7 @@ async function toggleLike(comercioId) {
     }
 
     favoritosSet.delete(id);
-    updateLikeButtonsForComercio(id);
+    updateFavoriteButtonsForComercio(id);
     return;
   }
 
@@ -411,7 +743,7 @@ async function toggleLike(comercioId) {
   }
 
   favoritosSet.add(id);
-  updateLikeButtonsForComercio(id);
+  updateFavoriteButtonsForComercio(id);
 }
 
 function bindEvents() {
@@ -425,8 +757,18 @@ function bindEvents() {
       return;
     }
 
-    if (action === 'like') {
-      await toggleLike(target.getAttribute('data-comercio-id'));
+    if (action === 'toggle-audio') {
+      toggleGlobalAudio();
+      return;
+    }
+
+    if (action === 'like-visual') {
+      toggleLikeVisual(target.getAttribute('data-comercio-id'));
+      return;
+    }
+
+    if (action === 'favorite') {
+      await toggleFavorite(target.getAttribute('data-comercio-id'));
     }
   });
 
@@ -447,6 +789,7 @@ function bindEvents() {
 }
 
 async function init() {
+  audioEnabled = readAudioPreference();
   bindEvents();
   await loadUserAndFavorites();
   await loadPublicaciones();

@@ -2,7 +2,15 @@ import { supabase } from '../shared/supabaseClient.js';
 
 const BUCKET_NAME = 'galeriacomercios';
 const PUBLIC_BUCKET_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios';
-const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/gif', 'video/mp4']);
+const LODEHOY_LIKES_TABLE = 'lodehoy_likes_comercio';
+const ALLOWED_MIME = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'video/mp4',
+  'video/quicktime',
+  'video/x-m4v',
+]);
 const MAX_FILE_SIZE_MB = 45;
 
 const formPublicacion = document.getElementById('formPublicacion');
@@ -26,6 +34,12 @@ let currentUser = null;
 let selectedFileMeta = null;
 let previewObjectUrl = null;
 let publicacionesActivas = [];
+let likesCountByComercio = new Map();
+
+function toNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 function escapeHtml(value) {
   return String(value || '')
@@ -105,6 +119,8 @@ function normalizeFileExtension(file) {
   if (extFromName) return extFromName.replace(/[^a-z0-9]/g, '');
 
   if (file.type === 'video/mp4') return 'mp4';
+  if (file.type === 'video/quicktime') return 'mov';
+  if (file.type === 'video/x-m4v') return 'm4v';
   if (file.type === 'image/gif') return 'gif';
   if (file.type === 'image/png') return 'png';
   return 'jpg';
@@ -116,7 +132,7 @@ function randomSuffix() {
 }
 
 function getMediaDimensions(file) {
-  const isVideo = file.type === 'video/mp4';
+  const isVideo = String(file.type || '').startsWith('video/');
 
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
@@ -169,7 +185,7 @@ async function validateAndPrepareFile(file) {
   }
 
   if (!ALLOWED_MIME.has(file.type)) {
-    throw new Error('Formato no permitido. Usa JPG, PNG, GIF o MP4.');
+    throw new Error('Formato no permitido. Usa JPG, PNG, GIF, MP4 o MOV.');
   }
 
   const sizeMb = file.size / (1024 * 1024);
@@ -181,7 +197,7 @@ async function validateAndPrepareFile(file) {
 
   return {
     mime: file.type,
-    media_tipo: file.type === 'video/mp4' ? 'video' : 'image',
+    media_tipo: String(file.type || '').startsWith('video/') ? 'video' : 'image',
     width: dims.width,
     height: dims.height,
   };
@@ -269,6 +285,7 @@ function renderListaPublicaciones() {
   }
 
   setListaVacia(false);
+  const likeCount = Number(likesCountByComercio.get(idComercio) || 0);
 
   listaPublicacionesComercio.innerHTML = publicacionesActivas.map((row) => {
     const text = String(row.texto || '').trim();
@@ -290,7 +307,13 @@ function renderListaPublicaciones() {
       <article class="border border-gray-200 rounded-xl overflow-hidden bg-white">
         <div class="publicacion-media-frame bg-gray-100 flex items-center justify-center overflow-hidden">${mediaHtml}</div>
         <div class="p-3 space-y-2">
-          <p class="text-xs text-gray-500">${safeFecha}</p>
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-xs text-gray-500">${safeFecha}</p>
+            <span class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold bg-rose-50 border border-rose-100 text-rose-700">
+              <i class="fa-solid fa-heart text-[11px]"></i>
+              ${likeCount} Me Gusta
+            </span>
+          </div>
           <p class="text-sm text-gray-800 ${text ? '' : 'italic text-gray-500'}" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">
             ${safeText || 'Sin texto en esta publicación.'}
           </p>
@@ -304,6 +327,23 @@ function renderListaPublicaciones() {
       </article>
     `;
   }).join('');
+}
+
+async function loadLikesCount() {
+  const { count, error } = await supabase
+    .from(LODEHOY_LIKES_TABLE)
+    .select('idcomercio', { count: 'exact', head: true })
+    .eq('idcomercio', idComercio);
+
+  if (error) {
+    if (error.code !== '42P01') {
+      console.warn('No se pudo cargar el conteo de Me Gusta:', error.message || error);
+    }
+    likesCountByComercio.set(idComercio, 0);
+    return;
+  }
+
+  likesCountByComercio.set(idComercio, toNumber(count) || 0);
 }
 
 async function loadPublicacionesActivas() {
@@ -329,6 +369,7 @@ async function loadPublicacionesActivas() {
   }
 
   publicacionesActivas = data || [];
+  await loadLikesCount();
   estadoLista?.classList.add('hidden');
   renderListaPublicaciones();
 }
