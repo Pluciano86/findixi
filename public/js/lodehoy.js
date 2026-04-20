@@ -368,7 +368,7 @@ function updateFavoriteButtonsForComercio(comercioId) {
     const icon = button.querySelector('i');
     if (icon) {
       icon.className = isFavorite(id)
-        ? 'fa-solid fa-heart text-2xl text-[#EC7F25]'
+        ? 'fa-solid fa-heart text-2xl text-red-500'
         : 'fa-regular fa-heart text-2xl text-[#1f2937]';
     }
     button.setAttribute('aria-pressed', isFavorite(id) ? 'true' : 'false');
@@ -928,7 +928,7 @@ function renderPublicaciones(list = publicaciones) {
       : (post.media_has_audio === false && !IS_IOS_DEVICE ? '0' : 'unknown');
     const iconLikeVisual = escapeHtml(isLikeVisualOn(comercioId) ? LIKE_ON_ICON_URL : LIKE_OFF_ICON_URL);
     const favoriteClass = isFavorite(comercioId)
-      ? 'fa-solid fa-heart text-2xl text-[#EC7F25]'
+      ? 'fa-solid fa-heart text-2xl text-red-500'
       : 'fa-regular fa-heart text-2xl text-[#1f2937]';
 
     const mediaNode = post.media_tipo === 'video'
