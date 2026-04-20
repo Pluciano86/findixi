@@ -20,6 +20,137 @@ const inputColabEmail = document.getElementById('inputColabEmail');
 const colabSuggestions = document.getElementById('colabSuggestions');
 let colabSearchTimer;
 
+function toNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getIdComercio(row = {}) {
+  return toNumber(row.idComercio ?? row.idcomercio ?? row.id_comercio ?? row.comercio_id ?? null);
+}
+
+function parseStorageAsignaciones() {
+  try {
+    const raw = localStorage.getItem('comercio_asignaciones');
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => ({
+        idComercio: getIdComercio(item),
+        rol: item?.rol || '',
+      }))
+      .filter((item) => Number.isFinite(item.idComercio));
+  } catch (_error) {
+    return [];
+  }
+}
+
+function isMissingColumnError(error) {
+  const msg = String(error?.message || '').toLowerCase();
+  return msg.includes('column') && msg.includes('does not exist');
+}
+
+async function fetchUsuarioComerciosByUser(userId) {
+  const attempts = [
+    { selectCol: 'idComercio', filterCol: 'idUsuario' },
+    { selectCol: 'idcomercio', filterCol: 'idUsuario' },
+    { selectCol: 'idComercio', filterCol: 'idusuario' },
+    { selectCol: 'idcomercio', filterCol: 'idusuario' },
+  ];
+
+  let lastError = null;
+  for (const attempt of attempts) {
+    const { data, error } = await supabase
+      .from('UsuarioComercios')
+      .select(`${attempt.selectCol}, rol`)
+      .eq(attempt.filterCol, userId);
+
+    if (!error) {
+      const rows = Array.isArray(data) ? data : [];
+      return rows
+        .map((row) => ({
+          idComercio: getIdComercio(row),
+          rol: row?.rol || '',
+        }))
+        .filter((row) => Number.isFinite(row.idComercio));
+    }
+
+    lastError = error;
+    if (!isMissingColumnError(error)) break;
+  }
+
+  throw lastError || new Error('No se pudieron cargar asignaciones.');
+}
+
+async function fetchUsuarioComerciosByComercioIds(ids = []) {
+  if (!ids.length) return [];
+
+  const attempts = ['idComercio', 'idcomercio'];
+  let lastError = null;
+
+  for (const col of attempts) {
+    const { data, error } = await supabase
+      .from('UsuarioComercios')
+      .select(`${col}, rol`)
+      .in(col, ids);
+
+    if (!error) {
+      const rows = Array.isArray(data) ? data : [];
+      return rows
+        .map((row) => ({
+          idComercio: getIdComercio(row),
+          rol: row?.rol || '',
+        }))
+        .filter((row) => Number.isFinite(row.idComercio));
+    }
+
+    lastError = error;
+    if (!isMissingColumnError(error)) break;
+  }
+
+  if (lastError) {
+    console.warn('No se pudieron cargar colaboradores por comercio:', lastError.message || lastError);
+  }
+  return [];
+}
+
+async function fetchIntentosByComercioIds(ids = [], fechaIso = '') {
+  if (!ids.length) return [];
+
+  const attempts = ['idComercio', 'idcomercio'];
+  let lastError = null;
+
+  for (const col of attempts) {
+    let query = supabase
+      .from('basic_click_intents')
+      .select(`${col}, created_at`)
+      .in(col, ids);
+
+    if (fechaIso) {
+      query = query.gte('created_at', fechaIso);
+    }
+
+    const { data, error } = await query;
+
+    if (!error) {
+      const rows = Array.isArray(data) ? data : [];
+      return rows.map((row) => ({
+        idComercio: getIdComercio(row),
+        created_at: row?.created_at || null,
+      }));
+    }
+
+    lastError = error;
+    if (!isMissingColumnError(error)) break;
+  }
+
+  if (lastError && lastError.code !== '42P01') {
+    console.warn('No se pudieron cargar métricas de interés:', lastError.message || lastError);
+  }
+  return [];
+}
+
 async function getUser() {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data?.user) {
@@ -30,13 +161,32 @@ async function getUser() {
 }
 
 async function cargarPerfil(user) {
+  const fallbackNombre =
+    String(
+      user?.user_metadata?.full_name ||
+      user?.user_metadata?.name ||
+      user?.email?.split('@')?.[0] ||
+      'Usuario'
+    ).trim() || 'Usuario';
+  if (userNombre) userNombre.textContent = fallbackNombre;
+  if (userEmail) userEmail.textContent = user?.email || '—';
+  if (userAvatar) userAvatar.src = 'https://placehold.co/120x120?text=User';
+
   const { data, error } = await supabase
     .from('usuarios')
     .select('nombre, apellido, email, imagen, municipio')
     .eq('id', user.id)
     .maybeSingle();
 
-  if (error || !data) return;
+  if (error) {
+    console.warn('No se pudo cargar perfil desde tabla usuarios:', error.message || error);
+    return;
+  }
+  if (!data) {
+    console.warn('No existe fila en tabla usuarios para auth.uid:', user.id);
+    return;
+  }
+
   const nombreCompleto = `${data.nombre || ''} ${data.apellido || ''}`.trim() || 'Sin nombre';
   userNombre.textContent = nombreCompleto;
   userEmail.textContent = data.email || user.email || '—';
@@ -52,17 +202,22 @@ async function cargarComercios(user) {
   comerciosLista.innerHTML = '';
   comerciosVacio?.classList.add('hidden');
 
-  const { data: relaciones, error: errRel } = await supabase
-    .from('UsuarioComercios')
-    .select('idComercio, rol')
-    .eq('idUsuario', user.id);
-
-  if (errRel) {
+  let relacionesLista = [];
+  try {
+    relacionesLista = await fetchUsuarioComerciosByUser(user.id);
+  } catch (errRel) {
     console.error('Error cargando asignaciones', errRel);
   }
 
-  const relacionesLista = Array.isArray(relaciones) ? relaciones : [];
-  const idsRelacionados = new Set(relacionesLista.map((r) => r.idComercio).filter(Boolean));
+  if (!relacionesLista.length) {
+    const fallbackAsignaciones = parseStorageAsignaciones();
+    if (fallbackAsignaciones.length) {
+      console.info('[dashboardComercio] Usando asignaciones de localStorage como respaldo.');
+      relacionesLista = fallbackAsignaciones;
+    }
+  }
+
+  const idsRelacionados = new Set(relacionesLista.map((r) => getIdComercio(r)).filter(Boolean));
 
   const { data: comerciosOwner, error: errOwner } = await supabase
     .from('Comercios')
@@ -89,14 +244,11 @@ async function cargarComercios(user) {
 
   // Obtener conteo de colaboradores por comercio
   const colaboradoresMap = {};
-  const { data: colaboradores, error: errCols } = await supabase
-    .from('UsuarioComercios')
-    .select('idComercio, rol')
-    .in('idComercio', ids);
-
-  if (!errCols && Array.isArray(colaboradores)) {
+  const colaboradores = await fetchUsuarioComerciosByComercioIds(ids);
+  if (Array.isArray(colaboradores)) {
     colaboradores.forEach((col) => {
-      const key = col.idComercio;
+      const key = getIdComercio(col);
+      if (!Number.isFinite(key)) return;
       if (!colaboradoresMap[key]) colaboradoresMap[key] = { admin: 0, editor: 0 };
       const rol = (col.rol || '').toLowerCase();
       if (rol.includes('admin')) colaboradoresMap[key].admin += 1;
@@ -123,19 +275,10 @@ async function cargarComercios(user) {
   const metricasIntentoMap = {};
   const fecha30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const fecha7Dias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const { data: intentosData, error: errIntentos } = await supabase
-    .from('basic_click_intents')
-    .select('idComercio, created_at')
-    .in('idComercio', ids)
-    .gte('created_at', fecha30Dias.toISOString());
-
-  if (errIntentos && errIntentos.code !== '42P01') {
-    console.warn('No se pudieron cargar métricas de interés:', errIntentos.message || errIntentos);
-  }
-
-  if (!errIntentos && Array.isArray(intentosData)) {
+  const intentosData = await fetchIntentosByComercioIds(ids, fecha30Dias.toISOString());
+  if (Array.isArray(intentosData)) {
     intentosData.forEach((evento) => {
-      const comercioId = Number(evento.idComercio);
+      const comercioId = getIdComercio(evento);
       if (!Number.isFinite(comercioId)) return;
       if (!metricasIntentoMap[comercioId]) {
         metricasIntentoMap[comercioId] = { total30d: 0, total7d: 0 };
@@ -468,9 +611,17 @@ btnLogout?.addEventListener('click', async () => {
   window.location.href = './login.html';
 });
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initDashboardComercio() {
   const user = await getUser();
   if (!user) return;
   await cargarPerfil(user);
   await cargarComercios(user);
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    void initDashboardComercio();
+  }, { once: true });
+} else {
+  void initDashboardComercio();
+}
