@@ -10,6 +10,8 @@ const LODEHOY_LIKES_TABLE = 'lodehoy_likes_comercio';
 const LODEHOY_AUDIO_PREF_KEY = 'lodehoy_audio_enabled';
 const HOST = String(window.location.hostname || '').toLowerCase();
 const IS_LOCAL = HOST === 'localhost' || HOST === '127.0.0.1' || HOST === '::1';
+const IS_IOS_DEVICE = /iphone|ipad|ipod/i.test(String(window.navigator?.userAgent || ''))
+  || (String(window.navigator?.platform || '').toLowerCase() === 'macintel' && Number(window.navigator?.maxTouchPoints || 0) > 1);
 const APP_PREFIX = IS_LOCAL ? '/public' : '';
 
 const estadoCarga = document.getElementById('estadoCarga');
@@ -230,7 +232,12 @@ function inferVideoAudio(video) {
 
   const tracks = video.audioTracks;
   if (tracks && typeof tracks.length === 'number') {
-    return { known: true, hasAudio: tracks.length > 0 };
+    if (tracks.length > 0) {
+      return { known: true, hasAudio: true };
+    }
+    if (!IS_IOS_DEVICE) {
+      return { known: true, hasAudio: false };
+    }
   }
 
   if (typeof video.webkitAudioDecodedByteCount === 'number') {
@@ -323,6 +330,10 @@ function retryVisibleVideosPlayback() {
 function registerAutoplayUnlockHandlers() {
   const unlock = () => {
     autoplayUnlocked = true;
+    audioEnabled = true;
+    saveAudioPreference();
+    updateAudioButtons();
+    applyAudioStateToVisibleVideos();
     retryVisibleVideosPlayback();
   };
 
@@ -443,9 +454,9 @@ function renderPublicaciones() {
     const mediaUrlSafe = escapeHtml(mediaUrl);
     const clipStart = Number.isFinite(Number(post.clip_start_sec)) ? Number(post.clip_start_sec) : 0;
     const clipEnd = Number.isFinite(Number(post.clip_end_sec)) ? Number(post.clip_end_sec) : '';
-    const hasAudioAttr = typeof post.media_has_audio === 'boolean'
-      ? (post.media_has_audio ? '1' : '0')
-      : 'unknown';
+    const hasAudioAttr = post.media_has_audio === true
+      ? '1'
+      : (post.media_has_audio === false && !IS_IOS_DEVICE ? '0' : 'unknown');
     const iconLikeVisual = escapeHtml(isLikeVisualOn(comercioId) ? LIKE_ON_ICON_URL : LIKE_OFF_ICON_URL);
     const favoriteClass = isFavorite(comercioId)
       ? 'fa-solid fa-heart text-2xl text-[#EC7F25]'

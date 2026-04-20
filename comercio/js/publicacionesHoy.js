@@ -15,6 +15,9 @@ const MAX_FILE_SIZE_MB = 45;
 const MAX_CLIP_SECONDS = 12;
 const MIN_CLIP_SECONDS = 0.5;
 const TRIM_RECORDING_TIMESLICE_MS = 200;
+const USER_AGENT = String(window.navigator?.userAgent || '').toLowerCase();
+const IS_IOS_DEVICE = /iphone|ipad|ipod/.test(USER_AGENT)
+  || (String(window.navigator?.platform || '').toLowerCase() === 'macintel' && Number(window.navigator?.maxTouchPoints || 0) > 1);
 
 const formPublicacion = document.getElementById('formPublicacion');
 const inputArchivo = document.getElementById('inputArchivo');
@@ -110,6 +113,7 @@ function getTrimOutputMime(preferredMime = '') {
 }
 
 function canPhysicallyTrimVideo() {
+  if (IS_IOS_DEVICE) return false;
   return typeof window !== 'undefined'
     && typeof MediaRecorder !== 'undefined'
     && (
@@ -348,9 +352,9 @@ function getMediaMetadata(file) {
       const durationSec = Number(video.duration || 0);
       let hasAudio = null;
       if (typeof video.mozHasAudio === 'boolean') {
-        hasAudio = video.mozHasAudio;
+        hasAudio = video.mozHasAudio ? true : null;
       } else if (video.audioTracks && typeof video.audioTracks.length === 'number') {
-        hasAudio = video.audioTracks.length > 0;
+        hasAudio = video.audioTracks.length > 0 ? true : null;
       }
       URL.revokeObjectURL(objectUrl);
       video.remove();
@@ -480,7 +484,7 @@ function getClipPayload(meta) {
     return {
       clip_start_sec: 0,
       clip_end_sec: null,
-      media_has_audio: typeof meta?.hasAudio === 'boolean' ? meta.hasAudio : null,
+      media_has_audio: meta?.hasAudio === true ? true : null,
     };
   }
 
@@ -492,7 +496,7 @@ function getClipPayload(meta) {
   return {
     clip_start_sec: Number(safeStart.toFixed(3)),
     clip_end_sec: Number(safeEnd.toFixed(3)),
-    media_has_audio: typeof meta?.hasAudio === 'boolean' ? meta.hasAudio : null,
+    media_has_audio: meta?.hasAudio === true ? true : null,
   };
 }
 
@@ -551,7 +555,9 @@ async function trimVideoFilePhysically(file, meta) {
       file,
       meta,
       clippedPhysically: false,
-      message: 'El dispositivo no soporta recorte físico; se aplicará recorte al reproducir.',
+      message: IS_IOS_DEVICE
+        ? 'En iPhone se usa recorte seguro al reproducir para mantener audio.'
+        : 'El dispositivo no soporta recorte físico; se aplicará recorte al reproducir.',
     };
   }
 
@@ -878,7 +884,7 @@ async function handleSubmit(event) {
     const fileToUpload = trimResult.file;
     const meta = trimResult.meta;
     const clipPayload = trimResult.clippedPhysically
-      ? { clip_start_sec: null, clip_end_sec: null, media_has_audio: typeof meta?.hasAudio === 'boolean' ? meta.hasAudio : null }
+      ? { clip_start_sec: null, clip_end_sec: null, media_has_audio: meta?.hasAudio === true ? true : null }
       : getClipPayload(meta);
 
     const ext = normalizeFileExtension(fileToUpload);
