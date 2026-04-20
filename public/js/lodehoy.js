@@ -19,17 +19,36 @@ const estadoVacio = document.getElementById('estadoVacio');
 const listaPublicaciones = document.getElementById('listaPublicaciones');
 const shareSheet = document.getElementById('shareSheet');
 const shareSheetCerrar = document.getElementById('shareSheetCerrar');
+const filtroUbicacion = document.getElementById('filtroUbicacionLoDeHoy');
+const filtroCategoria = document.getElementById('filtroCategoriaLoDeHoy');
+const filtroOrden = document.getElementById('filtroOrdenLoDeHoy');
+const EMPTY_DEFAULT_TEXT = 'Todavía no hay publicaciones para hoy.';
+const EMPTY_FILTER_TEXT = 'No hay publicaciones para los filtros seleccionados.';
 
 let currentUser = null;
 let favoritosSet = new Set();
 let likesVisualSet = new Set();
 let publicaciones = [];
+let publicacionesRender = [];
 let comercioById = new Map();
+let likesCountByComercio = new Map();
+let categoriasByComercio = new Map();
+let categoriaNombreById = new Map();
+let areasCatalog = [];
+let municipiosCatalog = [];
+let userCoords = null;
+let ubicacionInteracted = false;
 let sharePostId = null;
 let highlightedFromQuery = false;
 let audioEnabled = true;
 let videoObserver = null;
 let autoplayUnlocked = false;
+const filterState = {
+  scopeType: 'area',
+  scopeValue: '',
+  categoriaId: '',
+  orden: 'recientes',
+};
 
 function toNumber(value) {
   const parsed = Number(value);
@@ -43,6 +62,43 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function getComercioLikeCount(comercioId) {
+  const id = toNumber(comercioId);
+  if (!id) return 0;
+  const count = Number(likesCountByComercio.get(id) || 0);
+  return Number.isFinite(count) ? count : 0;
+}
+
+function getDistanceKmFromUser(comercio = {}) {
+  if (!Number.isFinite(userCoords?.lat) || !Number.isFinite(userCoords?.lon)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const lat1 = Number(userCoords.lat);
+  const lon1 = Number(userCoords.lon);
+  const lat2 = Number(comercio.latitud);
+  const lon2 = Number(comercio.longitud);
+  if (!Number.isFinite(lat2) || !Number.isFinite(lon2)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return 6371 * c;
 }
 
 function readAudioPreference() {
@@ -150,6 +206,76 @@ function hideStatus() {
 function setEmptyVisible(visible) {
   if (!estadoVacio) return;
   estadoVacio.classList.toggle('hidden', !visible);
+}
+
+function setSelectOptions(select, options = [], selectedValue = '') {
+  if (!select) return;
+  select.innerHTML = options.map((opt) => {
+    const value = escapeHtml(opt.value ?? '');
+    const label = escapeHtml(opt.label ?? '');
+    const selected = String(opt.value ?? '') === String(selectedValue ?? '') ? ' selected' : '';
+    return `<option value="${value}"${selected}>${label}</option>`;
+  }).join('');
+}
+
+function parseCategoriaTokens(rawCategoria) {
+  if (typeof rawCategoria !== 'string') return [];
+  return rawCategoria
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getComercioCategoriasIds(comercioId) {
+  const id = toNumber(comercioId);
+  if (!id) return [];
+  return categoriasByComercio.get(id) || [];
+}
+
+function syncCategoryFallbackFromComercios() {
+  comercioById.forEach((comercio, comercioId) => {
+    const categoriaIds = categoriasByComercio.get(comercioId);
+    if (Array.isArray(categoriaIds) && categoriaIds.length) return;
+
+    const tokens = parseCategoriaTokens(comercio?.categoria);
+    if (!tokens.length) return;
+
+    const knownIds = [];
+    categoriaNombreById.forEach((nombre, id) => {
+      const normNombre = normalizeText(nombre);
+      if (tokens.some((token) => normalizeText(token) === normNombre)) {
+        knownIds.push(id);
+      }
+    });
+    if (knownIds.length) {
+      categoriasByComercio.set(comercioId, knownIds);
+    }
+  });
+}
+
+function getMunicipiosForActiveScopeType() {
+  if (filterState.scopeType !== 'municipio') return [];
+  return municipiosCatalog.filter((municipio) => toNumber(municipio?.id));
+}
+
+function getAreasForActiveScopeType() {
+  if (filterState.scopeType !== 'area') return [];
+  return areasCatalog.filter((area) => toNumber(area?.idArea));
+}
+
+function getCategoriasDisponibles() {
+  const usedCategoryIds = new Set();
+  publicaciones.forEach((post) => {
+    const comercioId = toNumber(post.idcomercio);
+    const ids = getComercioCategoriasIds(comercioId);
+    ids.forEach((id) => {
+      if (toNumber(id)) usedCategoryIds.add(toNumber(id));
+    });
+  });
+
+  return Array.from(usedCategoryIds)
+    .map((id) => ({ id, nombre: categoriaNombreById.get(id) || `Categoría ${id}` }))
+    .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
 }
 
 function isFavorite(comercioId) {
@@ -415,6 +541,180 @@ function applyAudioStateToVisibleVideos() {
   });
 }
 
+async function ensureUserCoords() {
+  if (Number.isFinite(userCoords?.lat) && Number.isFinite(userCoords?.lon)) {
+    return true;
+  }
+
+  if (!navigator?.geolocation) {
+    return false;
+  }
+
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        userCoords = {
+          lat: Number(position.coords.latitude),
+          lon: Number(position.coords.longitude),
+        };
+        resolve(true);
+      },
+      () => resolve(false),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  });
+}
+
+function postMatchesScope(post) {
+  const comercio = comercioById.get(toNumber(post.idcomercio)) || {};
+  const scopeValue = toNumber(filterState.scopeValue);
+  if (!scopeValue) return true;
+
+  if (filterState.scopeType === 'municipio') {
+    return toNumber(comercio.idMunicipio) === scopeValue;
+  }
+  return toNumber(comercio.idArea) === scopeValue;
+}
+
+function postMatchesCategoria(post) {
+  const categoriaId = toNumber(filterState.categoriaId);
+  if (!categoriaId) return true;
+  const comercioId = toNumber(post.idcomercio);
+  const ids = getComercioCategoriasIds(comercioId);
+  return ids.includes(categoriaId);
+}
+
+function comparePublicaciones(a, b) {
+  const likesA = getComercioLikeCount(a.idcomercio);
+  const likesB = getComercioLikeCount(b.idcomercio);
+  if (likesA !== likesB) return likesB - likesA;
+
+  if (filterState.orden === 'cercania') {
+    const comercioA = comercioById.get(toNumber(a.idcomercio)) || {};
+    const comercioB = comercioById.get(toNumber(b.idcomercio)) || {};
+    const distA = getDistanceKmFromUser(comercioA);
+    const distB = getDistanceKmFromUser(comercioB);
+    if (distA !== distB) return distA - distB;
+  }
+
+  const dateA = new Date(a.created_at).getTime();
+  const dateB = new Date(b.created_at).getTime();
+  if (filterState.orden === 'antiguos') return dateA - dateB;
+  return dateB - dateA;
+}
+
+function buildScopeOptionValue(scopeType, scopeValue = '') {
+  return `scope:${scopeType}:${scopeValue || ''}`;
+}
+
+function parseScopeOptionValue(rawValue) {
+  const raw = String(rawValue || '');
+  if (!raw.startsWith('scope:')) return null;
+  const [_, rawScopeType, ...rest] = raw.split(':');
+  const scopeType = rawScopeType === 'municipio' ? 'municipio' : 'area';
+  return {
+    scopeType,
+    scopeValue: String(rest.join(':') || ''),
+  };
+}
+
+function refreshUbicacionOptions() {
+  if (!filtroUbicacion) return;
+
+  const scopeType = filterState.scopeType === 'municipio' ? 'municipio' : 'area';
+  const isMunicipio = scopeType === 'municipio';
+  const dynamicItems = isMunicipio ? getMunicipiosForActiveScopeType() : getAreasForActiveScopeType();
+  const options = [
+    { value: 'placeholder:localidad', label: 'Localidad:' },
+    { value: 'mode:area', label: 'Por Área' },
+    { value: 'mode:municipio', label: 'Por Municipio' },
+    {
+      value: buildScopeOptionValue(scopeType, ''),
+      label: isMunicipio ? 'Municipio: Todos' : 'Área: Todas',
+    },
+  ];
+
+  dynamicItems.forEach((item) => {
+    if (isMunicipio) {
+      const id = toNumber(item.id);
+      if (!id) return;
+      options.push({
+        value: buildScopeOptionValue('municipio', String(id)),
+        label: item.nombre || `Municipio ${id}`,
+      });
+      return;
+    }
+
+    const id = toNumber(item.idArea);
+    if (!id) return;
+    options.push({
+      value: buildScopeOptionValue('area', String(id)),
+      label: item.nombre || item.nombre_es || `Área ${id}`,
+    });
+  });
+
+  const selectedValue = buildScopeOptionValue(scopeType, String(filterState.scopeValue || ''));
+  const hasCurrent = options.some((opt) => opt.value === selectedValue);
+  if (!hasCurrent) {
+    filterState.scopeValue = '';
+  }
+
+  const finalSelected = !ubicacionInteracted
+    ? 'placeholder:localidad'
+    : (hasCurrent ? selectedValue : buildScopeOptionValue(scopeType, ''));
+
+  setSelectOptions(filtroUbicacion, options, finalSelected);
+}
+
+function refreshCategoriaOptions() {
+  const categorias = getCategoriasDisponibles();
+  const options = [
+    { value: '', label: 'Categorías:' },
+    { value: '__all__', label: 'Todas las categorías' },
+  ];
+  categorias.forEach((categoria) => {
+    options.push({ value: String(categoria.id), label: categoria.nombre });
+  });
+
+  const currentValue = filterState.categoriaId || '';
+  const hasCurrent = options.some((opt) => String(opt.value) === String(currentValue));
+  if (!hasCurrent) {
+    filterState.categoriaId = '';
+  }
+
+  setSelectOptions(filtroCategoria, options, currentValue);
+}
+
+async function applyFiltersAndRender() {
+  if (filterState.orden === 'cercania') {
+    const hasCoords = await ensureUserCoords();
+    if (!hasCoords) {
+      filterState.orden = 'recientes';
+      if (filtroOrden) filtroOrden.value = 'recientes';
+    }
+  }
+
+  publicacionesRender = publicaciones
+    .filter((post) => postMatchesScope(post))
+    .filter((post) => postMatchesCategoria(post))
+    .sort(comparePublicaciones);
+
+  if (estadoVacio) {
+    estadoVacio.textContent = publicaciones.length > 0 && publicacionesRender.length === 0
+      ? EMPTY_FILTER_TEXT
+      : EMPTY_DEFAULT_TEXT;
+  }
+
+  hideStatus();
+  renderPublicaciones(publicacionesRender);
+}
+
+function refreshFiltersUI() {
+  if (filtroOrden) filtroOrden.value = filterState.orden || '';
+  refreshUbicacionOptions();
+  refreshCategoriaOptions();
+}
+
 function getProfileUrl(comercioId) {
   const id = toNumber(comercioId);
   return `${window.location.origin}${APP_PREFIX}/perfilComercio.html?id=${id}`;
@@ -425,10 +725,10 @@ function getPostUrl(postId) {
   return `${window.location.origin}${APP_PREFIX}/lodehoy.html?post=${id}`;
 }
 
-function renderPublicaciones() {
+function renderPublicaciones(list = publicaciones) {
   if (!listaPublicaciones) return;
 
-  if (!publicaciones.length) {
+  if (!list.length) {
     listaPublicaciones.innerHTML = '';
     setEmptyVisible(true);
     if (videoObserver) {
@@ -440,11 +740,13 @@ function renderPublicaciones() {
 
   setEmptyVisible(false);
 
-  const html = publicaciones.map((post) => {
+  const html = list.map((post) => {
     const comercioId = toNumber(post.idcomercio);
     const comercio = comercioById.get(comercioId) || {};
     const nombreComercio = escapeHtml(comercio.nombre || 'Comercio');
     const municipio = comercio.municipio ? escapeHtml(comercio.municipio) : '';
+    const titulo = String(post.titulo || '').trim();
+    const tituloSeguro = escapeHtml(titulo);
     const texto = String(post.texto || '').trim();
     const textoSeguro = escapeHtml(texto);
     const logoUrl = getComercioLogoUrl(comercio.logo);
@@ -527,16 +829,21 @@ function renderPublicaciones() {
             </div>
           ` : ''}
         </div>
-        <div class="px-3 py-2 border-t border-gray-100">
-          <p class="text-sm text-gray-500 text-center">
-            <span class="font-semibold">Publicado:</span> ${escapeHtml(horaPublicada || '—')}
+        <div class="px-3 py-3 border-t border-gray-100 space-y-2">
+          ${tituloSeguro ? `
+            <p class="text-[18px] leading-tight font-semibold text-gray-900 text-center" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+              ${tituloSeguro}
+            </p>
+          ` : ''}
+          ${textoSeguro ? `
+            <p class="text-[16px] leading-snug font-normal text-gray-700 text-center line-clamp-3">
+              ${textoSeguro}
+            </p>
+          ` : ''}
+          <p class="text-[13px] leading-tight font-normal text-gray-500 text-center">
+            Publicado: ${escapeHtml(horaPublicada || '—')}
           </p>
         </div>
-        ${textoSeguro ? `
-          <div class="px-3 pb-3">
-            <p class="text-sm text-gray-700 line-clamp-3 font-medium">${textoSeguro}</p>
-          </div>
-        ` : ''}
       </article>
     `;
   }).join('');
@@ -619,6 +926,206 @@ async function loadUserAndFavorites() {
   likesVisualSet = new Set((likesData || []).map((row) => toNumber(row.idcomercio)).filter(Boolean));
 }
 
+async function loadGeoCatalogs() {
+  const areasAttempts = [
+    { columns: 'idArea,nombre_es,nombre', order: 'nombre_es' },
+    { columns: 'idArea,nombre', order: 'nombre' },
+  ];
+  const municipiosAttempts = [
+    'id,nombre,idArea',
+    'id,nombre',
+  ];
+
+  areasCatalog = [];
+  for (const attempt of areasAttempts) {
+    const { data, error } = await supabase
+      .from('Area')
+      .select(attempt.columns)
+      .order(attempt.order, { ascending: true });
+    if (!error) {
+      areasCatalog = (data || []).map((row) => ({
+        ...row,
+        nombre: String(row?.nombre_es || row?.nombre || '').trim(),
+      }));
+      break;
+    }
+  }
+
+  municipiosCatalog = [];
+  for (const columns of municipiosAttempts) {
+    const { data, error } = await supabase
+      .from('Municipios')
+      .select(columns)
+      .order('nombre', { ascending: true });
+    if (!error) {
+      municipiosCatalog = (data || []).map((row) => ({
+        ...row,
+        idArea: toNumber(row?.idArea),
+      }));
+      break;
+    }
+  }
+}
+
+function readCategoriaIdFromRelacion(relacion) {
+  const raw = relacion?.idCategoria ?? relacion?.idcategoria ?? relacion?.id_categoria;
+  return toNumber(raw);
+}
+
+async function loadCategoriasPorComercio(comercioIds = []) {
+  categoriasByComercio = new Map();
+  categoriaNombreById = new Map();
+
+  if (!comercioIds.length) return;
+
+  const embedded = await supabase
+    .from('Comercios')
+    .select(`
+      id,
+      ComercioCategorias (
+        idCategoria,
+        categoria:Categorias (
+          id,
+          nombre
+        )
+      )
+    `)
+    .in('id', comercioIds);
+
+  if (!embedded.error) {
+    (embedded.data || []).forEach((comercio) => {
+      const comercioId = toNumber(comercio?.id);
+      if (!comercioId) return;
+      const ids = [];
+      (Array.isArray(comercio.ComercioCategorias) ? comercio.ComercioCategorias : []).forEach((rel) => {
+        const categoriaId = readCategoriaIdFromRelacion(rel);
+        if (!categoriaId) return;
+        ids.push(categoriaId);
+        const catName = String(rel?.categoria?.nombre || '').trim();
+        if (catName) categoriaNombreById.set(categoriaId, catName);
+      });
+      categoriasByComercio.set(comercioId, Array.from(new Set(ids)));
+    });
+    return;
+  }
+
+  const relAttempts = [
+    { select: 'idComercio,idCategoria', comercioCol: 'idComercio', categoriaCol: 'idCategoria' },
+    { select: 'idcomercio,idcategoria', comercioCol: 'idcomercio', categoriaCol: 'idcategoria' },
+    { select: 'idComercio,id_categoria', comercioCol: 'idComercio', categoriaCol: 'id_categoria' },
+  ];
+
+  const categoriaIds = new Set();
+  for (const attempt of relAttempts) {
+    const { data, error } = await supabase
+      .from('ComercioCategorias')
+      .select(attempt.select)
+      .in(attempt.comercioCol, comercioIds);
+    if (error) continue;
+
+    (data || []).forEach((rel) => {
+      const comercioId = toNumber(rel?.[attempt.comercioCol]);
+      const categoriaId = toNumber(rel?.[attempt.categoriaCol]);
+      if (!comercioId || !categoriaId) return;
+      const current = categoriasByComercio.get(comercioId) || [];
+      current.push(categoriaId);
+      categoriasByComercio.set(comercioId, current);
+      categoriaIds.add(categoriaId);
+    });
+    break;
+  }
+
+  if (categoriaIds.size) {
+    const ids = Array.from(categoriaIds);
+    const { data, error } = await supabase
+      .from('Categorias')
+      .select('id,nombre')
+      .in('id', ids);
+    if (!error) {
+      (data || []).forEach((categoria) => {
+        const id = toNumber(categoria?.id);
+        if (!id) return;
+        categoriaNombreById.set(id, String(categoria?.nombre || `Categoría ${id}`));
+      });
+    }
+  }
+
+  categoriasByComercio.forEach((ids, comercioId) => {
+    categoriasByComercio.set(comercioId, Array.from(new Set(ids)));
+  });
+}
+
+async function loadLikesCountByComercios(comercioIds = []) {
+  likesCountByComercio = new Map(comercioIds.map((id) => [id, 0]));
+  if (!comercioIds.length) return;
+
+  const rpcResp = await supabase.rpc('fn_lodehoy_likes_counts', { p_comercios: comercioIds });
+  if (!rpcResp.error) {
+    (rpcResp.data || []).forEach((row) => {
+      const comercioId = toNumber(row?.idcomercio);
+      const count = toNumber(row?.likes_count);
+      if (!comercioId) return;
+      likesCountByComercio.set(comercioId, count || 0);
+    });
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from(LODEHOY_LIKES_TABLE)
+    .select('idcomercio')
+    .in('idcomercio', comercioIds);
+
+  if (error) {
+    if (error.code !== '42P01') {
+      console.warn('No se pudo cargar el conteo de Me Gusta para Lo de Hoy:', error.message || error);
+    }
+    return;
+  }
+
+  const counter = new Map(comercioIds.map((id) => [id, 0]));
+  (data || []).forEach((row) => {
+    const id = toNumber(row?.idcomercio);
+    if (!id) return;
+    counter.set(id, Number(counter.get(id) || 0) + 1);
+  });
+  likesCountByComercio = counter;
+}
+
+async function loadComerciosForPublicaciones(comercioIds = []) {
+  comercioById = new Map();
+  if (!comercioIds.length) return;
+
+  const attempts = [
+    'id,nombre,logo,municipio,idArea,idMunicipio,latitud,longitud,categoria',
+    'id,nombre,logo,municipio,idArea,idMunicipio,latitud,longitud',
+    'id,nombre,logo,municipio',
+  ];
+
+  for (const columns of attempts) {
+    const { data, error } = await supabase
+      .from('Comercios')
+      .select(columns)
+      .in('id', comercioIds);
+
+    if (error) {
+      continue;
+    }
+
+    (data || []).forEach((row) => {
+      const id = toNumber(row?.id);
+      if (!id) return;
+      comercioById.set(id, {
+        ...row,
+        idArea: toNumber(row?.idArea),
+        idMunicipio: toNumber(row?.idMunicipio),
+        latitud: Number(row?.latitud),
+        longitud: Number(row?.longitud),
+      });
+    });
+    break;
+  }
+}
+
 async function loadPublicaciones() {
   setStatus('Cargando publicaciones...');
 
@@ -626,28 +1133,36 @@ async function loadPublicaciones() {
   let data = null;
   let error = null;
 
-  const withClip = await supabase
-    .from('publicaciones_hoy')
-    .select('id,idcomercio,texto,media_path,media_tipo,media_has_audio,created_at,expira_en,clip_start_sec,clip_end_sec')
-    .gt('expira_en', nowIso)
-    .order('created_at', { ascending: false })
-    .limit(120);
+  const attempts = [
+    'id,idcomercio,titulo,texto,media_path,media_tipo,media_has_audio,created_at,expira_en,clip_start_sec,clip_end_sec',
+    'id,idcomercio,titulo,texto,media_path,media_tipo,created_at,expira_en,clip_start_sec,clip_end_sec',
+    'id,idcomercio,titulo,texto,media_path,media_tipo,created_at,expira_en',
+    'id,idcomercio,texto,media_path,media_tipo,created_at,expira_en',
+  ];
 
-  if (!withClip.error) {
-    data = withClip.data;
-  } else {
-    const msg = String(withClip.error.message || '').toLowerCase();
-    if (msg.includes('clip_start_sec') || msg.includes('clip_end_sec') || msg.includes('media_has_audio')) {
-      const fallback = await supabase
-        .from('publicaciones_hoy')
-        .select('id,idcomercio,texto,media_path,media_tipo,created_at,expira_en')
-        .gt('expira_en', nowIso)
-        .order('created_at', { ascending: false })
-        .limit(120);
-      data = fallback.data;
-      error = fallback.error;
-    } else {
-      error = withClip.error;
+  for (const selectColumns of attempts) {
+    const response = await supabase
+      .from('publicaciones_hoy')
+      .select(selectColumns)
+      .gt('expira_en', nowIso)
+      .order('created_at', { ascending: false })
+      .limit(120);
+
+    if (!response.error) {
+      data = response.data;
+      error = null;
+      break;
+    }
+
+    error = response.error;
+    const msg = String(response.error.message || '').toLowerCase();
+    if (
+      !msg.includes('clip_start_sec')
+      && !msg.includes('clip_end_sec')
+      && !msg.includes('media_has_audio')
+      && !msg.includes('titulo')
+    ) {
+      break;
     }
   }
 
@@ -663,28 +1178,17 @@ async function loadPublicaciones() {
 
   publicaciones = data || [];
 
+  await loadGeoCatalogs();
   const comercioIds = [...new Set(publicaciones.map((row) => toNumber(row.idcomercio)).filter(Boolean))];
-  comercioById = new Map();
+  await Promise.all([
+    loadComerciosForPublicaciones(comercioIds),
+    loadCategoriasPorComercio(comercioIds),
+    loadLikesCountByComercios(comercioIds),
+  ]);
+  syncCategoryFallbackFromComercios();
 
-  if (comercioIds.length) {
-    const { data: comercios, error: comercioError } = await supabase
-      .from('Comercios')
-      .select('id,nombre,logo,municipio')
-      .in('id', comercioIds);
-
-    if (comercioError) {
-      console.warn('No se pudieron cargar comercios para Lo de Hoy:', comercioError.message || comercioError);
-    } else {
-      (comercios || []).forEach((comercio) => {
-        const id = toNumber(comercio.id);
-        if (!id) return;
-        comercioById.set(id, comercio);
-      });
-    }
-  }
-
-  hideStatus();
-  renderPublicaciones();
+  refreshFiltersUI();
+  await applyFiltersAndRender();
 }
 
 function openShareSheet(postId) {
@@ -710,7 +1214,8 @@ function getSharePayload(postId) {
   const comercioId = toNumber(post.idcomercio);
   const comercio = comercioById.get(comercioId) || {};
   const comercioNombre = String(comercio.nombre || 'Comercio');
-  const resumen = String(post.texto || '').trim();
+  const titulo = String(post.titulo || '').trim();
+  const resumen = String(post.texto || titulo || '').trim();
   const resumenCorto = resumen.length > 120 ? `${resumen.slice(0, 117)}...` : resumen;
   const postUrl = getPostUrl(post.id);
   const profileUrl = getProfileUrl(comercioId);
@@ -803,6 +1308,8 @@ async function toggleLikeVisual(comercioId) {
 
     likesVisualSet.delete(id);
     updateLikeVisualButtonsForComercio(id);
+    likesCountByComercio.set(id, Math.max(0, getComercioLikeCount(id) - 1));
+    await applyFiltersAndRender();
     return;
   }
 
@@ -814,6 +1321,8 @@ async function toggleLikeVisual(comercioId) {
     if (error.code === '23505') {
       likesVisualSet.add(id);
       updateLikeVisualButtonsForComercio(id);
+      likesCountByComercio.set(id, getComercioLikeCount(id) + 1);
+      await applyFiltersAndRender();
       return;
     }
     if (error.code !== '42P01') {
@@ -824,6 +1333,8 @@ async function toggleLikeVisual(comercioId) {
 
   likesVisualSet.add(id);
   updateLikeVisualButtonsForComercio(id);
+  likesCountByComercio.set(id, getComercioLikeCount(id) + 1);
+  await applyFiltersAndRender();
 }
 
 async function toggleFavorite(comercioId) {
@@ -913,10 +1424,60 @@ function bindEvents() {
     const channel = button.getAttribute('data-share-channel');
     void handleShare(channel);
   });
+
+  filtroUbicacion?.addEventListener('change', async (event) => {
+    const value = String(event.target?.value || '').trim().toLowerCase();
+    if (!value) return;
+
+    if (value === 'placeholder:localidad') {
+      ubicacionInteracted = false;
+      filterState.scopeValue = '';
+      await applyFiltersAndRender();
+      return;
+    }
+
+    if (value.startsWith('mode:')) {
+      const mode = value === 'mode:municipio' ? 'municipio' : 'area';
+      filterState.scopeType = mode;
+      filterState.scopeValue = '';
+      ubicacionInteracted = true;
+      refreshUbicacionOptions();
+      await applyFiltersAndRender();
+      return;
+    }
+
+    const parsed = parseScopeOptionValue(value);
+    if (!parsed) return;
+    filterState.scopeType = parsed.scopeType;
+    filterState.scopeValue = parsed.scopeValue;
+    ubicacionInteracted = true;
+    await applyFiltersAndRender();
+  });
+
+  filtroCategoria?.addEventListener('change', async (event) => {
+    const value = String(event.target?.value || '');
+    filterState.categoriaId = value === '__all__' ? '' : value;
+    if (value === '__all__' && filtroCategoria) {
+      filtroCategoria.value = '__all__';
+    }
+    await applyFiltersAndRender();
+  });
+
+  filtroOrden?.addEventListener('change', async (event) => {
+    const value = String(event.target?.value || '').trim().toLowerCase();
+    filterState.orden = ['recientes', 'antiguos', 'cercania'].includes(value) ? value : '';
+    await applyFiltersAndRender();
+  });
 }
 
 async function init() {
   audioEnabled = readAudioPreference();
+  filterState.scopeType = 'area';
+  const ordenInicial = String(filtroOrden?.value ?? '').toLowerCase().trim();
+  filterState.orden = ['recientes', 'antiguos', 'cercania'].includes(ordenInicial) ? ordenInicial : '';
+  filterState.scopeValue = '';
+  filterState.categoriaId = '';
+  ubicacionInteracted = false;
   registerAutoplayUnlockHandlers();
   bindEvents();
   await loadUserAndFavorites();

@@ -4,7 +4,7 @@
   <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Lo de Hoy</title>
+  <title>Chequea Lo de Hoy en Findixi...</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
@@ -38,9 +38,26 @@
       <script type="module" src="./js/header.js"></script>
 
       <main class="px-4 py-6 space-y-4">
-        <section class="text-center space-y-1">
-          <h1 class="text-2xl font-semibold text-gray-900">Lo de Hoy</h1>
-          <p class="text-sm text-gray-600">Lo que está pasando hoy en los comercios: ambiente, ofertas y novedades del día.</p>
+        <section class="space-y-3">
+          <h1 class="text-2xl font-semibold text-gray-900 text-center">Chequea Lo de Hoy en Findixi...</h1>
+          <div class="rounded-2xl border border-gray-200 bg-white p-2">
+            <div class="grid grid-cols-3 gap-2">
+              <select id="filtroUbicacionLoDeHoy" class="w-full h-9 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#EC7F25]/40">
+                <option value="placeholder:localidad">Localidad:</option>
+                <option value="mode:area">Por Área</option>
+                <option value="mode:municipio">Por Municipio</option>
+              </select>
+              <select id="filtroCategoriaLoDeHoy" class="w-full h-9 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#EC7F25]/40">
+                <option value="">Categorías:</option>
+              </select>
+              <select id="filtroOrdenLoDeHoy" class="w-full h-9 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#EC7F25]/40">
+                <option value="">Ordena por:</option>
+                <option value="recientes">Recientes</option>
+                <option value="antiguos">Antiguos</option>
+                <option value="cercania">Cercanía</option>
+              </select>
+            </div>
+          </div>
         </section>
 
         <section>

@@ -21,6 +21,8 @@ const IS_IOS_DEVICE = /iphone|ipad|ipod/.test(USER_AGENT)
 
 const formPublicacion = document.getElementById('formPublicacion');
 const inputArchivo = document.getElementById('inputArchivo');
+const inputTitulo = document.getElementById('inputTitulo');
+const contadorTitulo = document.getElementById('contadorTitulo');
 const inputTexto = document.getElementById('inputTexto');
 const contadorTexto = document.getElementById('contadorTexto');
 const previewMedia = document.getElementById('previewMedia');
@@ -47,6 +49,7 @@ let selectedFileMeta = null;
 let previewObjectUrl = null;
 let publicacionesActivas = [];
 let likesCountByComercio = new Map();
+let editingPostId = null;
 let selectedClip = {
   enabled: false,
   startSec: 0,
@@ -164,6 +167,11 @@ function setListaVacia(visible) {
 function updateContadorTexto() {
   if (!contadorTexto || !inputTexto) return;
   contadorTexto.textContent = `${inputTexto.value.length} / 280`;
+}
+
+function updateContadorTitulo() {
+  if (!contadorTitulo || !inputTitulo) return;
+  contadorTitulo.textContent = `${inputTitulo.value.length} / 50`;
 }
 
 function resetClipEditor() {
@@ -716,6 +724,10 @@ function renderListaPublicaciones() {
   const likeCount = Number(likesCountByComercio.get(idComercio) || 0);
 
   listaPublicacionesComercio.innerHTML = publicacionesActivas.map((row) => {
+    const rowId = toNumber(row.id);
+    const isEditing = rowId && editingPostId === rowId;
+    const titulo = String(row.titulo || '').trim();
+    const safeTitulo = escapeHtml(titulo);
     const text = String(row.texto || '').trim();
     const safeText = escapeHtml(text);
     const mediaUrl = buildStoragePublicUrl(row.media_path);
@@ -742,15 +754,58 @@ function renderListaPublicaciones() {
               ${likeCount} Me Gusta
             </span>
           </div>
-          <p class="text-sm text-gray-800 ${text ? '' : 'italic text-gray-500'}" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">
-            ${safeText || 'Sin texto en esta publicación.'}
-          </p>
-          <div class="flex items-center justify-end">
-            <button type="button" data-action="delete" data-id="${row.id}" class="px-3 py-1.5 rounded-lg text-sm bg-red-50 border border-red-100 text-red-700 hover:bg-red-100">
-              <i class="fa-solid fa-trash mr-1"></i>
-              Eliminar
-            </button>
-          </div>
+          ${isEditing ? `
+            <div class="space-y-2" data-role="edit-form" data-id="${row.id}">
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Título</label>
+                <input
+                  type="text"
+                  maxlength="50"
+                  value="${safeTitulo}"
+                  data-role="edit-titulo"
+                  class="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                >
+                <p class="text-[11px] text-gray-500 mt-1" data-role="edit-titulo-count">${titulo.length} / 50</p>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Texto</label>
+                <textarea
+                  rows="3"
+                  maxlength="280"
+                  data-role="edit-texto"
+                  class="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm resize-y"
+                >${safeText}</textarea>
+                <p class="text-[11px] text-gray-500 mt-1" data-role="edit-texto-count">${text.length} / 280</p>
+              </div>
+            </div>
+            <div class="flex items-center justify-end gap-2 pt-1">
+              <button type="button" data-action="cancel-edit" data-id="${row.id}" class="px-3 py-1.5 rounded-lg text-sm border border-gray-200 text-gray-700 hover:bg-gray-100">
+                Cancelar
+              </button>
+              <button type="button" data-action="save-edit" data-id="${row.id}" class="px-3 py-1.5 rounded-lg text-sm bg-emerald-600 text-white hover:bg-emerald-700">
+                Guardar
+              </button>
+            </div>
+          ` : `
+            ${safeTitulo ? `
+              <p class="text-[15px] font-semibold text-gray-900 text-center" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+                ${safeTitulo}
+              </p>
+            ` : ''}
+            <p class="text-sm text-gray-800 ${text ? '' : 'italic text-gray-500'}" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">
+              ${safeText || 'Sin texto en esta publicación.'}
+            </p>
+            <div class="flex items-center justify-end gap-2">
+              <button type="button" data-action="start-edit" data-id="${row.id}" class="px-3 py-1.5 rounded-lg text-sm border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100">
+                <i class="fa-solid fa-pen mr-1"></i>
+                Editar
+              </button>
+              <button type="button" data-action="delete" data-id="${row.id}" class="px-3 py-1.5 rounded-lg text-sm bg-red-50 border border-red-100 text-red-700 hover:bg-red-100">
+                <i class="fa-solid fa-trash mr-1"></i>
+                Eliminar
+              </button>
+            </div>
+          `}
         </div>
       </article>
     `;
@@ -776,33 +831,39 @@ async function loadLikesCount() {
 
 async function loadPublicacionesActivas() {
   setEstadoLista('Cargando publicaciones...');
+  editingPostId = null;
 
   const nowIso = new Date().toISOString();
   let data = null;
   let error = null;
+  const attempts = [
+    'id,titulo,texto,media_path,media_tipo,created_at,expira_en,clip_start_sec,clip_end_sec',
+    'id,titulo,texto,media_path,media_tipo,created_at,expira_en',
+    'id,texto,media_path,media_tipo,created_at,expira_en',
+  ];
 
-  const withClip = await supabase
-    .from('publicaciones_hoy')
-    .select('id,texto,media_path,media_tipo,created_at,expira_en,clip_start_sec,clip_end_sec')
-    .eq('idcomercio', idComercio)
-    .gt('expira_en', nowIso)
-    .order('created_at', { ascending: false });
+  for (const selectColumns of attempts) {
+    const response = await supabase
+      .from('publicaciones_hoy')
+      .select(selectColumns)
+      .eq('idcomercio', idComercio)
+      .gt('expira_en', nowIso)
+      .order('created_at', { ascending: false });
 
-  if (!withClip.error) {
-    data = withClip.data;
-  } else {
-    const maybeMissingCol = String(withClip.error.message || '').toLowerCase();
-    if (maybeMissingCol.includes('clip_start_sec') || maybeMissingCol.includes('clip_end_sec')) {
-      const fallback = await supabase
-        .from('publicaciones_hoy')
-        .select('id,texto,media_path,media_tipo,created_at,expira_en')
-        .eq('idcomercio', idComercio)
-        .gt('expira_en', nowIso)
-        .order('created_at', { ascending: false });
-      data = fallback.data;
-      error = fallback.error;
-    } else {
-      error = withClip.error;
+    if (!response.error) {
+      data = response.data;
+      error = null;
+      break;
+    }
+
+    error = response.error;
+    const msg = String(response.error.message || '').toLowerCase();
+    if (
+      !msg.includes('clip_start_sec')
+      && !msg.includes('clip_end_sec')
+      && !msg.includes('titulo')
+    ) {
+      break;
     }
   }
 
@@ -861,10 +922,91 @@ async function deletePublicacion(postId) {
   await loadPublicacionesActivas();
 }
 
+function startEditPublicacion(postId) {
+  const id = toNumber(postId);
+  if (!id) return;
+  editingPostId = id;
+  renderListaPublicaciones();
+}
+
+function cancelEditPublicacion() {
+  editingPostId = null;
+  renderListaPublicaciones();
+}
+
+function findEditContainer(postId) {
+  const id = toNumber(postId);
+  if (!id || !listaPublicacionesComercio) return null;
+  return listaPublicacionesComercio.querySelector(`[data-role="edit-form"][data-id="${id}"]`);
+}
+
+function updateInlineEditCounters(container) {
+  if (!container) return;
+  const tituloInput = container.querySelector('[data-role="edit-titulo"]');
+  const textoInput = container.querySelector('[data-role="edit-texto"]');
+  const tituloCount = container.querySelector('[data-role="edit-titulo-count"]');
+  const textoCount = container.querySelector('[data-role="edit-texto-count"]');
+  if (tituloInput && tituloCount) {
+    tituloCount.textContent = `${String(tituloInput.value || '').length} / 50`;
+  }
+  if (textoInput && textoCount) {
+    textoCount.textContent = `${String(textoInput.value || '').length} / 280`;
+  }
+}
+
+async function saveEditPublicacion(postId) {
+  const id = toNumber(postId);
+  if (!id) return;
+
+  const container = findEditContainer(id);
+  if (!container) return;
+
+  const tituloInput = container.querySelector('[data-role="edit-titulo"]');
+  const textoInput = container.querySelector('[data-role="edit-texto"]');
+  const titulo = String(tituloInput?.value || '').trim().slice(0, 50);
+  const texto = String(textoInput?.value || '').trim().slice(0, 280);
+
+  setEstadoGuardado('Guardando cambios...');
+
+  const attempts = [
+    { titulo, texto },
+    { texto },
+  ];
+  let updateError = null;
+
+  for (const updatePayload of attempts) {
+    const response = await supabase
+      .from('publicaciones_hoy')
+      .update(updatePayload)
+      .eq('id', id)
+      .eq('idcomercio', idComercio);
+
+    if (!response.error) {
+      updateError = null;
+      break;
+    }
+
+    updateError = response.error;
+    const msg = String(response.error.message || '').toLowerCase();
+    if (!msg.includes('titulo')) break;
+  }
+
+  if (updateError) {
+    console.error('Error actualizando publicación:', updateError);
+    setEstadoGuardado(updateError.message || 'No se pudo actualizar la publicación.', true);
+    return;
+  }
+
+  editingPostId = null;
+  setEstadoGuardado('Publicación actualizada.');
+  await loadPublicacionesActivas();
+}
+
 async function handleSubmit(event) {
   event.preventDefault();
 
   const file = inputArchivo?.files?.[0];
+  const titulo = String(inputTitulo?.value || '').trim().slice(0, 50);
   const text = String(inputTexto?.value || '').trim();
 
   try {
@@ -904,6 +1046,7 @@ async function handleSubmit(event) {
 
     const payload = {
       idcomercio: idComercio,
+      titulo,
       texto: text,
       media_path: storagePath,
       media_tipo: meta.media_tipo,
@@ -914,28 +1057,44 @@ async function handleSubmit(event) {
     };
 
     let insertError = null;
-    {
-      const withClip = await supabase
-        .from('publicaciones_hoy')
-        .insert(payload);
+    const insertAttempts = [
+      { ...payload },
+      (() => {
+        const item = { ...payload };
+        delete item.clip_start_sec;
+        delete item.clip_end_sec;
+        delete item.media_has_audio;
+        return item;
+      })(),
+      (() => {
+        const item = { ...payload };
+        delete item.clip_start_sec;
+        delete item.clip_end_sec;
+        delete item.media_has_audio;
+        delete item.titulo;
+        return item;
+      })(),
+    ];
 
-      if (!withClip.error) {
+    for (const insertPayload of insertAttempts) {
+      const response = await supabase
+        .from('publicaciones_hoy')
+        .insert(insertPayload);
+
+      if (!response.error) {
         insertError = null;
-      } else {
-        const msg = String(withClip.error.message || '').toLowerCase();
-        if (msg.includes('clip_start_sec') || msg.includes('clip_end_sec') || msg.includes('media_has_audio')) {
-          const fallbackPayload = { ...payload };
-          delete fallbackPayload.clip_start_sec;
-          delete fallbackPayload.clip_end_sec;
-          delete fallbackPayload.media_has_audio;
-          const fallback = await supabase
-            .from('publicaciones_hoy')
-            .insert(fallbackPayload);
-          insertError = fallback.error;
-        } else {
-          insertError = withClip.error;
-        }
+        break;
       }
+
+      insertError = response.error;
+      const msg = String(response.error.message || '').toLowerCase();
+      const shouldRetry = (
+        msg.includes('clip_start_sec')
+        || msg.includes('clip_end_sec')
+        || msg.includes('media_has_audio')
+        || msg.includes('titulo')
+      );
+      if (!shouldRetry) break;
     }
 
     if (insertError) {
@@ -947,6 +1106,7 @@ async function handleSubmit(event) {
 
     formPublicacion.reset();
     clearPreview();
+    updateContadorTitulo();
     updateContadorTexto();
     await loadPublicacionesActivas();
   } catch (error) {
@@ -959,6 +1119,7 @@ async function handleSubmit(event) {
 }
 
 function bindEvents() {
+  inputTitulo?.addEventListener('input', updateContadorTitulo);
   inputTexto?.addEventListener('input', updateContadorTexto);
 
   clipStartRange?.addEventListener('input', () => {
@@ -1001,14 +1162,43 @@ function bindEvents() {
   });
 
   listaPublicacionesComercio?.addEventListener('click', (event) => {
-    const btn = event.target.closest('button[data-action="delete"]');
+    const btn = event.target.closest('button[data-action]');
     if (!btn) return;
-    void deletePublicacion(btn.getAttribute('data-id'));
+    const action = btn.getAttribute('data-action');
+    const rowId = btn.getAttribute('data-id');
+
+    if (action === 'start-edit') {
+      startEditPublicacion(rowId);
+      return;
+    }
+
+    if (action === 'cancel-edit') {
+      cancelEditPublicacion();
+      return;
+    }
+
+    if (action === 'save-edit') {
+      void saveEditPublicacion(rowId);
+      return;
+    }
+
+    if (action === 'delete') {
+      void deletePublicacion(rowId);
+    }
+  });
+
+  listaPublicacionesComercio?.addEventListener('input', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (!target.matches('[data-role="edit-titulo"], [data-role="edit-texto"]')) return;
+    const container = target.closest('[data-role="edit-form"]');
+    updateInlineEditCounters(container);
   });
 }
 
 async function init() {
   bindEvents();
+  updateContadorTitulo();
   updateContadorTexto();
   resetClipEditor();
 
