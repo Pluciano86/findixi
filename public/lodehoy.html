@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Lo de Hoy</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+    .line-clamp-3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .lodehoy-media-frame {
+      max-height: 60vh;
+      min-height: 180px;
+    }
+    .lodehoy-media-content {
+      max-height: 60vh;
+      max-width: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      margin: 0 auto;
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-[#121212]">
+  <div class="min-h-screen flex justify-center bg-[#121212]">
+    <div class="w-full max-w-md bg-white text-gray-800 pb-24">
+      <div id="headerContainer"></div>
+      <script type="module" src="./js/header.js"></script>
+
+      <main class="px-4 py-6 space-y-4">
+        <section class="text-center space-y-1">
+          <h1 class="text-2xl font-semibold text-gray-900">Lo de Hoy</h1>
+          <p class="text-sm text-gray-600">Lo que está pasando hoy en los comercios: ambiente, ofertas y novedades del día.</p>
+        </section>
+
+        <section>
+          <p id="estadoCarga" class="text-sm text-gray-500 text-center">Cargando publicaciones...</p>
+          <p id="estadoVacio" class="hidden text-sm text-gray-500 text-center">Todavía no hay publicaciones para hoy.</p>
+          <div id="listaPublicaciones" class="space-y-4"></div>
+        </section>
+      </main>
+
+      <div id="footerContainer"></div>
+      <script type="module" src="./js/footer.js"></script>
+    </div>
+  </div>
+
+  <div id="shareSheet" class="fixed inset-0 z-[9999] bg-black/60 hidden items-end justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl p-4 shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-base font-semibold text-gray-900">Compartir</p>
+        <button type="button" id="shareSheetCerrar" class="text-gray-500 hover:text-gray-700" aria-label="Cerrar compartir">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" data-share-channel="whatsapp" class="px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium">
+          WhatsApp
+        </button>
+        <button type="button" data-share-channel="facebook" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">
+          Facebook
+        </button>
+        <button type="button" data-share-channel="sms" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-sm font-medium">
+          Texto (SMS)
+        </button>
+        <button type="button" data-share-channel="copy" class="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-900 text-sm font-medium">
+          Copiar URL
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/lodehoy.js"></script>
+  <script src="./js/bloquearPantalla.js"></script>
+</body>
+</html>

@@ -57,9 +57,9 @@ function renderFooter() {
           <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoNearMe.png" class="w-8 h-8 mb-1" alt="Cerca de Mi">
           <span data-i18n="footer.cerca">Cerca de Mi</span>
         </a>
-        <a href="${base}listadoEventos.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
-          <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoEventos.png" class="w-8 h-8 mb-1" alt="Eventos">
-          <span data-i18n="footer.eventos">Eventos</span>
+        <a href="${base}lodehoy.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
+          <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/botonLodeHoy.svg" class="w-8 h-8 mb-1" alt="Lo de Hoy">
+          <span>Lo de Hoy</span>
         </a>
         <a id="enlaceMiCuenta" href="${loginPath}" class="flex flex-col items-center text-sm font-extralight w-1/4">
           <img 

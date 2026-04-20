@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lo de Hoy · Comercio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+    .publicacion-media-frame {
+      max-height: 60vh;
+      min-height: 180px;
+    }
+    .publicacion-media-content {
+      max-height: 60vh;
+      max-width: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      margin: 0 auto;
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+  <header class="bg-[#023047] text-white shadow">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <a href="./index.html" class="inline-flex items-center gap-2 text-sm font-medium hover:text-cyan-200">
+        <i class="fa-solid fa-arrow-left"></i>
+        Volver al panel
+      </a>
+      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/FindixiBusiness.png" alt="Findixi" class="h-8 w-auto">
+      <span class="text-xs text-cyan-100 uppercase tracking-wide">Lo de Hoy</span>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
+    <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 space-y-2">
+      <h1 class="text-2xl font-semibold">Publicaciones del día</h1>
+      <p id="subtituloComercio" class="text-sm text-gray-600">Gestiona las publicaciones que verá el usuario en <strong>Lo de Hoy</strong>.</p>
+      <p class="text-xs text-gray-500">Las publicaciones se vencen automáticamente todos los días a las 5:00 AM (hora de Puerto Rico).</p>
+      <p id="estadoAcceso" class="hidden text-sm"></p>
+    </section>
+
+    <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+      <form id="formPublicacion" class="space-y-4">
+        <div>
+          <label for="inputArchivo" class="block text-sm font-semibold text-gray-700 mb-1">Imagen o video</label>
+          <input
+            id="inputArchivo"
+            type="file"
+            accept=".jpg,.jpeg,.png,.gif,.mp4,image/jpeg,image/png,image/gif,video/mp4"
+            required
+            class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          >
+          <p class="mt-1 text-xs text-gray-500">Permitidos: JPG, PNG, GIF o MP4. Se respeta la proporción original; en vertical se limita a un máximo de 60% de pantalla.</p>
+        </div>
+
+        <div>
+          <label for="inputTexto" class="block text-sm font-semibold text-gray-700 mb-1">Texto de la publicación</label>
+          <textarea id="inputTexto" rows="3" maxlength="280" placeholder="Ej: Hoy tenemos música en vivo desde las 8PM y ofertas especiales en tragos clásicos." class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-y"></textarea>
+          <p id="contadorTexto" class="text-xs text-gray-500 mt-1">0 / 280</p>
+        </div>
+
+        <div>
+          <p class="text-sm font-semibold text-gray-700 mb-2">Vista previa (proporción original, máx. 60% pantalla)</p>
+          <div class="max-w-[280px] w-full publicacion-media-frame rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
+            <div id="previewMedia" class="w-full h-full flex items-center justify-center text-gray-400 text-xs px-3 text-center">
+              Selecciona un archivo para ver la vista previa.
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnPublicar" type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-fuchsia-600 text-white font-semibold hover:bg-fuchsia-700 transition">
+            <i class="fa-solid fa-upload"></i>
+            Publicar en Lo de Hoy
+          </button>
+          <span id="estadoGuardado" class="text-sm text-gray-500"></span>
+        </div>
+      </form>
+    </section>
+
+    <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+      <div class="flex items-center justify-between gap-2 mb-3">
+        <h2 class="text-lg font-semibold">Publicaciones activas</h2>
+        <button id="btnRecargar" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-100">Recargar</button>
+      </div>
+      <p id="estadoLista" class="text-sm text-gray-500">Cargando publicaciones...</p>
+      <p id="estadoListaVacia" class="hidden text-sm text-gray-500">Todavía no has publicado contenido para hoy.</p>
+      <div id="listaPublicacionesComercio" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+  </main>
+
+  <script type="module" src="./js/publicacionesHoy.js"></script>
+</body>
+</html>

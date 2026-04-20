@@ -222,7 +222,7 @@ async function cargarComercios(user) {
 
     // fila inferior botones principales
     const filaBottom = document.createElement('div');
-    filaBottom.className = 'grid grid-cols-1 sm:grid-cols-5 gap-2';
+    filaBottom.className = 'grid grid-cols-1 sm:grid-cols-6 gap-2';
 
     const btnEditar = document.createElement('a');
     btnEditar.href = `./editarPerfilComercio.html?id=${c.id}`;
@@ -242,6 +242,11 @@ async function cargarComercios(user) {
     btnOrdenes.href = `./ordenesPickup.html?id=${c.id}`;
     btnOrdenes.className = 'w-full px-3 py-2 text-sm sm:text-base font-normal leading-snug bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-center flex items-center justify-center';
     btnOrdenes.textContent = 'Órdenes PickUp';
+
+    const btnLoDeHoy = document.createElement('a');
+    btnLoDeHoy.href = `./publicacionesHoy.html?id=${c.id}`;
+    btnLoDeHoy.className = 'w-full px-3 py-2 text-sm sm:text-base font-normal leading-snug bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-lg text-center flex items-center justify-center';
+    btnLoDeHoy.textContent = 'Lo de Hoy';
 
     const filaColab = document.createElement('div');
     filaColab.className = 'grid grid-cols-2 gap-2';
@@ -296,6 +301,7 @@ async function cargarComercios(user) {
     filaBottom.appendChild(btnMenu);
     filaBottom.appendChild(btnEspeciales);
     filaBottom.appendChild(btnOrdenes);
+    filaBottom.appendChild(btnLoDeHoy);
     filaBottom.appendChild(btnPaquetes);
 
     card.appendChild(filaTop);
