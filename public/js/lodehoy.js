@@ -27,6 +27,7 @@ let sharePostId = null;
 let highlightedFromQuery = false;
 let audioEnabled = true;
 let videoObserver = null;
+let autoplayUnlocked = false;
 
 function toNumber(value) {
   const parsed = Number(value);
@@ -55,6 +56,41 @@ function saveAudioPreference() {
   try {
     localStorage.setItem(LODEHOY_AUDIO_PREF_KEY, audioEnabled ? '1' : '0');
   } catch (_error) {}
+}
+
+function toFiniteNumber(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+function resolveVideoClipRange(video) {
+  const duration = toFiniteNumber(video?.duration, 0);
+  const startRaw = toFiniteNumber(video?.dataset?.clipStart, 0);
+  const endRaw = toFiniteNumber(video?.dataset?.clipEnd, duration);
+
+  const safeStart = Math.max(0, startRaw);
+  let safeEnd = endRaw > safeStart ? endRaw : duration;
+  if (duration > 0) {
+    safeEnd = Math.min(duration, safeEnd);
+  }
+  if (!Number.isFinite(safeEnd) || safeEnd <= safeStart) {
+    safeEnd = duration > safeStart ? duration : safeStart + 0.1;
+  }
+  return { start: safeStart, end: safeEnd };
+}
+
+function isElementAtLeastHalfVisible(el) {
+  if (!el || typeof el.getBoundingClientRect !== 'function') return false;
+  const rect = el.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return false;
+  const viewportW = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
+  const overlapW = Math.max(0, Math.min(rect.right, viewportW) - Math.max(rect.left, 0));
+  const overlapH = Math.max(0, Math.min(rect.bottom, viewportH) - Math.max(rect.top, 0));
+  const visibleArea = overlapW * overlapH;
+  const totalArea = rect.width * rect.height;
+  if (!totalArea) return false;
+  return (visibleArea / totalArea) >= 0.5;
 }
 
 function encodeStoragePath(path) {
@@ -201,9 +237,6 @@ function inferVideoAudio(video) {
     if (video.webkitAudioDecodedByteCount > 0) {
       return { known: true, hasAudio: true };
     }
-    if (video.currentTime >= 0.8 || video.readyState >= 3) {
-      return { known: true, hasAudio: false };
-    }
   }
 
   return { known: false, hasAudio: true };
@@ -253,6 +286,51 @@ function scheduleVideoAudioProbe(video) {
   }
 }
 
+function bindVideoClipLoop(video) {
+  if (!(video instanceof HTMLVideoElement)) return;
+  if (video.dataset.clipLoopBound === '1') return;
+  video.dataset.clipLoopBound = '1';
+  video.loop = false;
+
+  const ensureWindow = () => {
+    const { start, end } = resolveVideoClipRange(video);
+    if (video.currentTime < start || video.currentTime > end) {
+      video.currentTime = start;
+    }
+  };
+
+  video.addEventListener('loadedmetadata', ensureWindow);
+  video.addEventListener('timeupdate', () => {
+    const { start, end } = resolveVideoClipRange(video);
+    if (video.currentTime >= end - 0.04) {
+      video.currentTime = start;
+      if (!video.paused) {
+        void video.play().catch(() => {});
+      }
+    }
+  });
+}
+
+function retryVisibleVideosPlayback() {
+  const videos = document.querySelectorAll('video[data-lodehoy-video="1"]');
+  videos.forEach((video) => {
+    if (isElementAtLeastHalfVisible(video)) {
+      void playManagedVideo(video);
+    }
+  });
+}
+
+function registerAutoplayUnlockHandlers() {
+  const unlock = () => {
+    autoplayUnlocked = true;
+    retryVisibleVideosPlayback();
+  };
+
+  document.addEventListener('touchstart', unlock, { once: true, passive: true });
+  document.addEventListener('scroll', unlock, { once: true, passive: true });
+  document.addEventListener('pointerdown', unlock, { once: true, passive: true });
+}
+
 function pauseManagedVideo(video) {
   if (!(video instanceof HTMLVideoElement)) return;
   video.loop = false;
@@ -263,15 +341,22 @@ async function playManagedVideo(video) {
   if (!(video instanceof HTMLVideoElement)) return;
 
   scheduleVideoAudioProbe(video);
+  bindVideoClipLoop(video);
 
-  video.loop = true;
-  video.muted = !audioEnabled;
-  video.defaultMuted = !audioEnabled;
+  const clip = resolveVideoClipRange(video);
+  if (video.currentTime < clip.start || video.currentTime > clip.end) {
+    video.currentTime = clip.start;
+  }
+
+  const isNoAudio = video.dataset.hasAudio === '0';
+  video.muted = isNoAudio ? true : !audioEnabled;
+  video.defaultMuted = isNoAudio ? true : !audioEnabled;
+  video.loop = false;
 
   try {
     await video.play();
   } catch (_error) {
-    if (audioEnabled) {
+    if (!autoplayUnlocked || audioEnabled) {
       // Fallback para navegadores que bloquean autoplay con audio.
       video.muted = true;
       video.defaultMuted = true;
@@ -311,9 +396,8 @@ function applyAudioStateToVisibleVideos() {
   const videos = document.querySelectorAll('video[data-lodehoy-video="1"]');
   videos.forEach((video) => {
     const isNoAudio = video.dataset.hasAudio === '0';
-    if (isNoAudio) return;
-    video.muted = !audioEnabled;
-    video.defaultMuted = !audioEnabled;
+    video.muted = isNoAudio ? true : !audioEnabled;
+    video.defaultMuted = isNoAudio ? true : !audioEnabled;
     if (!video.paused) {
       void playManagedVideo(video);
     }
@@ -357,13 +441,18 @@ function renderPublicaciones() {
     const horaPublicada = formatHoraPR(post.created_at);
     const logoUrlSafe = escapeHtml(logoUrl);
     const mediaUrlSafe = escapeHtml(mediaUrl);
+    const clipStart = Number.isFinite(Number(post.clip_start_sec)) ? Number(post.clip_start_sec) : 0;
+    const clipEnd = Number.isFinite(Number(post.clip_end_sec)) ? Number(post.clip_end_sec) : '';
+    const hasAudioAttr = typeof post.media_has_audio === 'boolean'
+      ? (post.media_has_audio ? '1' : '0')
+      : 'unknown';
     const iconLikeVisual = escapeHtml(isLikeVisualOn(comercioId) ? LIKE_ON_ICON_URL : LIKE_OFF_ICON_URL);
     const favoriteClass = isFavorite(comercioId)
       ? 'fa-solid fa-heart text-2xl text-[#EC7F25]'
       : 'fa-regular fa-heart text-2xl text-[#1f2937]';
 
     const mediaNode = post.media_tipo === 'video'
-      ? `<video class="lodehoy-media-content" src="${mediaUrlSafe}" controls playsinline preload="metadata" data-lodehoy-video="1" data-post-id="${post.id}" data-has-audio="unknown"></video>`
+      ? `<video class="lodehoy-media-content" src="${mediaUrlSafe}" controls playsinline preload="metadata" data-lodehoy-video="1" data-post-id="${post.id}" data-has-audio="${hasAudioAttr}" data-clip-start="${clipStart}" data-clip-end="${clipEnd}"></video>`
       : `<img class="lodehoy-media-content" src="${mediaUrlSafe}" alt="Publicación de ${nombreComercio}" loading="lazy">`;
 
     return `
@@ -446,8 +535,14 @@ function renderPublicaciones() {
   setupVideoObserver();
   const videos = document.querySelectorAll('video[data-lodehoy-video="1"]');
   videos.forEach((video) => {
-    applyVideoAudioUI(video, { known: false, hasAudio: true });
-    scheduleVideoAudioProbe(video);
+    bindVideoClipLoop(video);
+    const hasAudioAttr = String(video.dataset.hasAudio || '').trim();
+    const knownAudio = hasAudioAttr === '1' || hasAudioAttr === '0';
+    const hasAudio = hasAudioAttr !== '0';
+    applyVideoAudioUI(video, { known: knownAudio, hasAudio });
+    if (!knownAudio) {
+      scheduleVideoAudioProbe(video);
+    }
   });
   maybeHighlightPostFromQuery();
 }
@@ -517,12 +612,33 @@ async function loadPublicaciones() {
   setStatus('Cargando publicaciones...');
 
   const nowIso = new Date().toISOString();
-  const { data, error } = await supabase
+  let data = null;
+  let error = null;
+
+  const withClip = await supabase
     .from('publicaciones_hoy')
-    .select('id,idcomercio,texto,media_path,media_tipo,created_at,expira_en')
+    .select('id,idcomercio,texto,media_path,media_tipo,media_has_audio,created_at,expira_en,clip_start_sec,clip_end_sec')
     .gt('expira_en', nowIso)
     .order('created_at', { ascending: false })
     .limit(120);
+
+  if (!withClip.error) {
+    data = withClip.data;
+  } else {
+    const msg = String(withClip.error.message || '').toLowerCase();
+    if (msg.includes('clip_start_sec') || msg.includes('clip_end_sec') || msg.includes('media_has_audio')) {
+      const fallback = await supabase
+        .from('publicaciones_hoy')
+        .select('id,idcomercio,texto,media_path,media_tipo,created_at,expira_en')
+        .gt('expira_en', nowIso)
+        .order('created_at', { ascending: false })
+        .limit(120);
+      data = fallback.data;
+      error = fallback.error;
+    } else {
+      error = withClip.error;
+    }
+  }
 
   if (error) {
     console.error('Error cargando publicaciones de hoy:', error);
@@ -790,6 +906,7 @@ function bindEvents() {
 
 async function init() {
   audioEnabled = readAudioPreference();
+  registerAutoplayUnlockHandlers();
   bindEvents();
   await loadUserAndFavorites();
   await loadPublicaciones();

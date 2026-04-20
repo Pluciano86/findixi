@@ -74,6 +74,29 @@
           </div>
         </div>
 
+        <div id="videoClipEditor" class="hidden rounded-xl border border-fuchsia-100 bg-fuchsia-50/40 p-3 space-y-3">
+          <p class="text-sm font-semibold text-gray-800">Recorte de video (máx. 12s)</p>
+          <p class="text-xs text-gray-600">Selecciona desde qué segundo empieza el fragmento y cuánto dura (máximo 12 segundos).</p>
+
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-xs text-gray-700">
+              <label for="clipStartRange" class="font-medium">Inicio</label>
+              <span id="clipStartValue">0.0s</span>
+            </div>
+            <input id="clipStartRange" type="range" min="0" max="0" step="0.1" value="0" class="w-full accent-fuchsia-600">
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-xs text-gray-700">
+              <label for="clipDurationRange" class="font-medium">Duración</label>
+              <span id="clipDurationValue">12.0s</span>
+            </div>
+            <input id="clipDurationRange" type="range" min="1" max="12" step="0.1" value="12" class="w-full accent-fuchsia-600">
+          </div>
+
+          <p id="clipResumen" class="text-xs text-gray-600"></p>
+        </div>
+
         <div class="flex flex-wrap items-center gap-2">
           <button id="btnPublicar" type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-fuchsia-600 text-white font-semibold hover:bg-fuchsia-700 transition">
             <i class="fa-solid fa-upload"></i>
