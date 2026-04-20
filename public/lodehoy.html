@@ -17,18 +17,24 @@
       overflow: hidden;
     }
     .lodehoy-media-frame {
-      max-height: 60vh;
-      min-height: 180px;
+      max-height: min(60vh, 560px);
+    }
+    .lodehoy-media-frame--portrait {
+      height: min(60vh, 560px);
+      min-height: 220px;
+    }
+    .lodehoy-media-frame--landscape {
+      height: auto;
+      min-height: 0;
     }
     .lodehoy-media-content {
-      max-height: 60vh;
-      max-width: 100%;
-      width: auto;
-      height: auto;
-      object-fit: contain;
-      margin: 0 auto;
+      width: 100%;
+      max-height: min(60vh, 560px);
+      object-position: center center;
       display: block;
     }
+    .lodehoy-media-fit-cover { object-fit: cover; }
+    .lodehoy-media-fit-contain { object-fit: contain; }
   </style>
 </head>
 <body class="bg-[#121212]">
@@ -70,6 +76,18 @@
       <div id="footerContainer"></div>
       <script type="module" src="./js/footer.js"></script>
     </div>
+  </div>
+
+  <div id="mediaViewer" class="fixed inset-0 z-[10000] hidden bg-black/95">
+    <button
+      id="mediaViewerClose"
+      type="button"
+      class="absolute top-4 right-4 z-20 inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/15 text-white hover:bg-white/25"
+      aria-label="Cerrar visor"
+    >
+      <i class="fa-solid fa-xmark text-xl"></i>
+    </button>
+    <div id="mediaViewerContent" class="w-full h-full flex items-center justify-center p-3"></div>
   </div>
 
   <div id="shareSheet" class="fixed inset-0 z-[9999] bg-black/60 hidden items-end justify-center p-4">

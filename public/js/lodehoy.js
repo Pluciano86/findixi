@@ -19,6 +19,9 @@ const estadoVacio = document.getElementById('estadoVacio');
 const listaPublicaciones = document.getElementById('listaPublicaciones');
 const shareSheet = document.getElementById('shareSheet');
 const shareSheetCerrar = document.getElementById('shareSheetCerrar');
+const mediaViewer = document.getElementById('mediaViewer');
+const mediaViewerContent = document.getElementById('mediaViewerContent');
+const mediaViewerClose = document.getElementById('mediaViewerClose');
 const filtroUbicacion = document.getElementById('filtroUbicacionLoDeHoy');
 const filtroCategoria = document.getElementById('filtroCategoriaLoDeHoy');
 const filtroOrden = document.getElementById('filtroOrdenLoDeHoy');
@@ -43,6 +46,7 @@ let highlightedFromQuery = false;
 let audioEnabled = true;
 let videoObserver = null;
 let autoplayUnlocked = false;
+let mediaViewerOpen = false;
 const filterState = {
   scopeType: 'area',
   scopeValue: '',
@@ -149,6 +153,73 @@ function isElementAtLeastHalfVisible(el) {
   const totalArea = rect.width * rect.height;
   if (!totalArea) return false;
   return (visibleArea / totalArea) >= 0.5;
+}
+
+function getMediaOrientation(width, height) {
+  const w = Number(width);
+  const h = Number(height);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+    return 'landscape';
+  }
+  return h > w ? 'portrait' : 'landscape';
+}
+
+function applyFeedMediaLayout(mediaEl, orientation = 'landscape') {
+  if (!(mediaEl instanceof HTMLElement)) return;
+  const frame = mediaEl.closest('.lodehoy-media-frame');
+  if (!frame) return;
+
+  const isPortrait = orientation === 'portrait';
+  frame.classList.toggle('lodehoy-media-frame--portrait', isPortrait);
+  frame.classList.toggle('lodehoy-media-frame--landscape', !isPortrait);
+  mediaEl.classList.toggle('lodehoy-media-fit-cover', isPortrait);
+  mediaEl.classList.toggle('lodehoy-media-fit-contain', !isPortrait);
+
+  if (isPortrait) {
+    mediaEl.classList.add('h-full');
+    mediaEl.classList.remove('h-auto');
+  } else {
+    mediaEl.classList.add('h-auto');
+    mediaEl.classList.remove('h-full');
+  }
+}
+
+function resolveAndApplyFeedMediaOrientation(mediaEl) {
+  if (mediaEl instanceof HTMLImageElement) {
+    const applyFromImage = () => {
+      const orientation = getMediaOrientation(mediaEl.naturalWidth, mediaEl.naturalHeight);
+      applyFeedMediaLayout(mediaEl, orientation);
+    };
+
+    if (mediaEl.complete && mediaEl.naturalWidth > 0) {
+      applyFromImage();
+    } else {
+      mediaEl.addEventListener('load', applyFromImage, { once: true });
+    }
+    return;
+  }
+
+  if (mediaEl instanceof HTMLVideoElement) {
+    const applyFromVideo = () => {
+      const orientation = getMediaOrientation(mediaEl.videoWidth, mediaEl.videoHeight);
+      applyFeedMediaLayout(mediaEl, orientation);
+    };
+
+    if (mediaEl.readyState >= 1 && mediaEl.videoWidth > 0) {
+      applyFromVideo();
+    } else {
+      mediaEl.addEventListener('loadedmetadata', applyFromVideo, { once: true });
+    }
+  }
+}
+
+function setupFeedMediaLayout() {
+  if (!listaPublicaciones) return;
+  const mediaList = listaPublicaciones.querySelectorAll('[data-role="feed-media"]');
+  mediaList.forEach((mediaEl) => {
+    applyFeedMediaLayout(mediaEl, 'landscape');
+    resolveAndApplyFeedMediaOrientation(mediaEl);
+  });
 }
 
 function encodeStoragePath(path) {
@@ -444,11 +515,34 @@ function bindVideoClipLoop(video) {
   });
 }
 
+function getFeedVideos() {
+  if (!listaPublicaciones) return [];
+  return Array.from(listaPublicaciones.querySelectorAll('video[data-lodehoy-video="1"]'));
+}
+
 function retryVisibleVideosPlayback() {
-  const videos = document.querySelectorAll('video[data-lodehoy-video="1"]');
-  videos.forEach((video) => {
+  getFeedVideos().forEach((video) => {
     if (isElementAtLeastHalfVisible(video)) {
       void playManagedVideo(video);
+    }
+  });
+}
+
+function pauseAllFeedVideos() {
+  getFeedVideos().forEach((video) => pauseManagedVideo(video));
+}
+
+function syncViewportVideoPlayback() {
+  getFeedVideos().forEach((video) => {
+    if (mediaViewerOpen) {
+      pauseManagedVideo(video);
+      return;
+    }
+
+    if (isElementAtLeastHalfVisible(video)) {
+      void playManagedVideo(video);
+    } else {
+      pauseManagedVideo(video);
     }
   });
 }
@@ -479,6 +573,9 @@ async function playManagedVideo(video) {
 
   scheduleVideoAudioProbe(video);
   bindVideoClipLoop(video);
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
+  video.autoplay = true;
 
   const clip = resolveVideoClipRange(video);
   if (video.currentTime < clip.start || video.currentTime > clip.end) {
@@ -510,12 +607,16 @@ function setupVideoObserver() {
     videoObserver = null;
   }
 
-  const videos = Array.from(document.querySelectorAll('video[data-lodehoy-video="1"]'));
+  const videos = getFeedVideos();
   if (!videos.length) return;
 
   videoObserver = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       const video = entry.target;
+      if (mediaViewerOpen) {
+        pauseManagedVideo(video);
+        return;
+      }
       if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
         void playManagedVideo(video);
       } else {
@@ -530,8 +631,7 @@ function setupVideoObserver() {
 }
 
 function applyAudioStateToVisibleVideos() {
-  const videos = document.querySelectorAll('video[data-lodehoy-video="1"]');
-  videos.forEach((video) => {
+  getFeedVideos().forEach((video) => {
     const isNoAudio = video.dataset.hasAudio === '0';
     video.muted = isNoAudio ? true : !audioEnabled;
     video.defaultMuted = isNoAudio ? true : !audioEnabled;
@@ -539,6 +639,73 @@ function applyAudioStateToVisibleVideos() {
       void playManagedVideo(video);
     }
   });
+}
+
+function closeMediaViewer() {
+  if (!mediaViewer || !mediaViewerContent) return;
+  mediaViewer.classList.add('hidden');
+  mediaViewerOpen = false;
+  document.body.classList.remove('overflow-hidden');
+  mediaViewerContent.innerHTML = '';
+  retryVisibleVideosPlayback();
+}
+
+function openMediaViewer(postId) {
+  const id = toNumber(postId);
+  if (!id || !mediaViewer || !mediaViewerContent) return;
+  const post = publicaciones.find((item) => toNumber(item.id) === id);
+  if (!post) return;
+
+  const comercio = comercioById.get(toNumber(post.idcomercio)) || {};
+  const mediaUrl = buildStoragePublicUrl(post.media_path);
+  const mediaUrlSafe = escapeHtml(mediaUrl);
+  const nombreComercio = escapeHtml(comercio.nombre || 'Comercio');
+  const clipStart = Number.isFinite(Number(post.clip_start_sec)) ? Number(post.clip_start_sec) : 0;
+  const clipEnd = Number.isFinite(Number(post.clip_end_sec)) ? Number(post.clip_end_sec) : '';
+  const hasAudioAttr = post.media_has_audio === true
+    ? '1'
+    : (post.media_has_audio === false && !IS_IOS_DEVICE ? '0' : 'unknown');
+
+  const node = post.media_tipo === 'video'
+    ? `
+      <video
+        id="mediaViewerVideo"
+        class="w-full h-full max-w-[100vw] max-h-[100vh] object-contain"
+        src="${mediaUrlSafe}"
+        controls
+        autoplay
+        playsinline
+        webkit-playsinline
+        preload="metadata"
+        data-post-id="${post.id}"
+        data-has-audio="${hasAudioAttr}"
+        data-clip-start="${clipStart}"
+        data-clip-end="${clipEnd}"
+      ></video>
+    `
+    : `<img class="w-full h-full max-w-[100vw] max-h-[100vh] object-contain" src="${mediaUrlSafe}" alt="Publicación de ${nombreComercio}" loading="lazy">`;
+
+  mediaViewerContent.innerHTML = node;
+  mediaViewer.classList.remove('hidden');
+  mediaViewerOpen = true;
+  document.body.classList.add('overflow-hidden');
+  pauseAllFeedVideos();
+
+  if (post.media_tipo === 'video') {
+    const video = document.getElementById('mediaViewerVideo');
+    if (video instanceof HTMLVideoElement) {
+      bindVideoClipLoop(video);
+      scheduleVideoAudioProbe(video);
+      const isNoAudio = video.dataset.hasAudio === '0';
+      video.muted = isNoAudio ? true : !audioEnabled;
+      video.defaultMuted = isNoAudio ? true : !audioEnabled;
+      void video.play().catch(async () => {
+        video.muted = true;
+        video.defaultMuted = true;
+        await video.play().catch(() => {});
+      });
+    }
+  }
 }
 
 async function ensureUserCoords() {
@@ -765,8 +932,8 @@ function renderPublicaciones(list = publicaciones) {
       : 'fa-regular fa-heart text-2xl text-[#1f2937]';
 
     const mediaNode = post.media_tipo === 'video'
-      ? `<video class="lodehoy-media-content" src="${mediaUrlSafe}" controls playsinline preload="metadata" data-lodehoy-video="1" data-post-id="${post.id}" data-has-audio="${hasAudioAttr}" data-clip-start="${clipStart}" data-clip-end="${clipEnd}"></video>`
-      : `<img class="lodehoy-media-content" src="${mediaUrlSafe}" alt="Publicación de ${nombreComercio}" loading="lazy">`;
+      ? `<video class="lodehoy-media-content cursor-zoom-in" src="${mediaUrlSafe}" controls autoplay muted playsinline webkit-playsinline preload="metadata" data-role="feed-media" data-lodehoy-video="1" data-action="open-media" data-post-id="${post.id}" data-has-audio="${hasAudioAttr}" data-clip-start="${clipStart}" data-clip-end="${clipEnd}"></video>`
+      : `<img class="lodehoy-media-content cursor-zoom-in" src="${mediaUrlSafe}" alt="Publicación de ${nombreComercio}" loading="lazy" data-role="feed-media" data-action="open-media" data-post-id="${post.id}">`;
 
     return `
       <article id="post-${post.id}" class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -809,7 +976,7 @@ function renderPublicaciones(list = publicaciones) {
           </div>
         </header>
 
-        <div class="lodehoy-media-frame bg-gray-100 flex items-center justify-center overflow-hidden relative">
+        <div class="lodehoy-media-frame lodehoy-media-frame--landscape bg-gray-100 flex items-center justify-center overflow-hidden relative">
           ${mediaNode}
           ${post.media_tipo === 'video' ? `
             <div class="absolute right-2 bottom-2 z-10 flex items-center gap-2">
@@ -849,10 +1016,10 @@ function renderPublicaciones(list = publicaciones) {
   }).join('');
 
   listaPublicaciones.innerHTML = html;
+  setupFeedMediaLayout();
   updateAudioButtons();
   setupVideoObserver();
-  const videos = document.querySelectorAll('video[data-lodehoy-video="1"]');
-  videos.forEach((video) => {
+  getFeedVideos().forEach((video) => {
     bindVideoClipLoop(video);
     const hasAudioAttr = String(video.dataset.hasAudio || '').trim();
     const knownAudio = hasAudioAttr === '1' || hasAudioAttr === '0';
@@ -1386,6 +1553,13 @@ async function toggleFavorite(comercioId) {
 
 function bindEvents() {
   listaPublicaciones?.addEventListener('click', async (event) => {
+    const mediaTarget = event.target.closest('[data-action="open-media"][data-post-id]');
+    if (mediaTarget) {
+      event.preventDefault();
+      openMediaViewer(mediaTarget.getAttribute('data-post-id'));
+      return;
+    }
+
     const target = event.target.closest('button[data-action]');
     if (!target) return;
 
@@ -1411,6 +1585,40 @@ function bindEvents() {
   });
 
   shareSheetCerrar?.addEventListener('click', closeShareSheet);
+
+  mediaViewerClose?.addEventListener('click', closeMediaViewer);
+
+  mediaViewer?.addEventListener('click', (event) => {
+    if (event.target === mediaViewer) {
+      closeMediaViewer();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && mediaViewerOpen) {
+      closeMediaViewer();
+    }
+  });
+
+  let syncPlaybackRaf = 0;
+  const schedulePlaybackSync = () => {
+    if (syncPlaybackRaf) return;
+    syncPlaybackRaf = window.requestAnimationFrame(() => {
+      syncPlaybackRaf = 0;
+      syncViewportVideoPlayback();
+    });
+  };
+
+  window.addEventListener('scroll', schedulePlaybackSync, { passive: true });
+  window.addEventListener('resize', schedulePlaybackSync, { passive: true });
+  window.addEventListener('orientationchange', schedulePlaybackSync);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      pauseAllFeedVideos();
+      return;
+    }
+    schedulePlaybackSync();
+  });
 
   shareSheet?.addEventListener('click', (event) => {
     if (event.target === shareSheet) {
