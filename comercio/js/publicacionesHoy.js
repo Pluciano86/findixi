@@ -11,10 +11,12 @@ const ALLOWED_MIME = new Set([
   'video/quicktime',
   'video/x-m4v',
 ]);
-const MAX_FILE_SIZE_MB = 45;
-const MAX_CLIP_SECONDS = 12;
+const MAX_FILE_SIZE_MB = 50;
+const MAX_CLIP_SECONDS = 30;
 const MIN_CLIP_SECONDS = 1;
 const TRIM_RECORDING_TIMESLICE_MS = 200;
+const TARGET_AUDIO_BITRATE = 96000;
+const MIN_VIDEO_BITRATE = 320000;
 const USER_AGENT = String(window.navigator?.userAgent || '').toLowerCase();
 const IS_IOS_DEVICE = /iphone|ipad|ipod/.test(USER_AGENT)
   || (String(window.navigator?.platform || '').toLowerCase() === 'macintel' && Number(window.navigator?.maxTouchPoints || 0) > 1);
@@ -689,42 +691,136 @@ function waitForEvent(target, eventName, timeoutMs = 12000) {
 }
 
 async function trimVideoFilePhysically(file, meta) {
-  if (!isVideoMeta(meta) || !selectedClip.enabled) {
+  if (!isVideoMeta(meta)) {
     return { file, meta, clippedPhysically: false, message: '' };
   }
 
   const sourceDuration = Number(meta.durationSec || selectedClip.sourceDurationSec || 0);
-  const { start, end, duration } = getClipWindow();
-  if (!Number.isFinite(sourceDuration) || sourceDuration <= 0 || duration <= 0) {
-    return { file, meta, clippedPhysically: false, message: '' };
-  }
+  const isLongVideo = Number.isFinite(sourceDuration) && sourceDuration > MAX_CLIP_SECONDS;
+  const needsCompression = getFileSizeMb(file) > MAX_FILE_SIZE_MB;
+  const requiresPhysicalProcessing = isLongVideo || needsCompression;
 
-  // Si el clip cubre todo el video, evitamos trabajo extra.
-  if (start <= 0.05 && end >= sourceDuration - 0.05) {
+  if (!requiresPhysicalProcessing) {
     return { file, meta, clippedPhysically: false, message: '' };
   }
 
   if (!canPhysicallyTrimVideo()) {
-    return {
-      file,
-      meta,
-      clippedPhysically: false,
-      message: IS_IOS_DEVICE
-        ? 'En iPhone se usa recorte seguro al reproducir para mantener audio.'
-        : 'El dispositivo no soporta recorte físico; se aplicará recorte al reproducir.',
-    };
+    throw new Error(
+      `Este dispositivo no soporta recorte/compresión automática. Publica un video de ${MAX_CLIP_SECONDS}s o menos y ${MAX_FILE_SIZE_MB}MB o menos.`
+    );
   }
 
   const outputMime = getTrimOutputMime(meta.mime || file.type);
   if (!outputMime) {
+    throw new Error('Este navegador no soporta el formato necesario para recortar/comprimir automáticamente.');
+  }
+
+  const clipWindow = isLongVideo
+    ? getClipWindow()
+    : {
+      start: 0,
+      end: Number(sourceDuration || 0),
+      duration: Number(sourceDuration || 0),
+      sourceDuration: Number(sourceDuration || 0),
+    };
+
+  const hasClipWindow = Number.isFinite(clipWindow.duration) && clipWindow.duration > 0;
+  if (isLongVideo && !hasClipWindow) {
+    throw new Error('No se pudo calcular el recorte del video.');
+  }
+
+  let workingFile = file;
+  let workingMeta = meta;
+  let processedPhysically = false;
+
+  if (isLongVideo) {
+    const clipped = await transcodeVideoSegment(workingFile, workingMeta, {
+      startSec: clipWindow.start,
+      endSec: clipWindow.end,
+      outputMime,
+      scale: 1,
+    });
+    workingFile = clipped.file;
+    workingMeta = clipped.meta;
+    processedPhysically = true;
+  }
+
+  if (getFileSizeMb(workingFile) <= MAX_FILE_SIZE_MB) {
     return {
-      file,
-      meta,
-      clippedPhysically: false,
-      message: 'No hay formato compatible para recorte físico en este navegador; se aplicará recorte al reproducir.',
+      file: workingFile,
+      meta: workingMeta,
+      clippedPhysically: processedPhysically,
+      message: processedPhysically ? 'Video recortado. Verificando tamaño final...' : '',
     };
   }
 
+  const compressionProfiles = buildCompressionProfiles(Number(workingMeta.durationSec || sourceDuration || MAX_CLIP_SECONDS));
+  for (const profile of compressionProfiles) {
+    const compressed = await transcodeVideoSegment(workingFile, workingMeta, {
+      startSec: 0,
+      endSec: Number(workingMeta.durationSec || sourceDuration || MAX_CLIP_SECONDS),
+      outputMime,
+      scale: profile.scale,
+      videoBitsPerSecond: profile.videoBitsPerSecond,
+      audioBitsPerSecond: profile.audioBitsPerSecond,
+    });
+    workingFile = compressed.file;
+    workingMeta = compressed.meta;
+    processedPhysically = true;
+
+    if (getFileSizeMb(workingFile) <= MAX_FILE_SIZE_MB) {
+      return {
+        file: workingFile,
+        meta: workingMeta,
+        clippedPhysically: processedPhysically,
+        message: 'Video recortado y comprimido. Subiendo publicación...',
+      };
+    }
+  }
+
+  const finalSize = getFileSizeMb(workingFile).toFixed(1);
+  throw new Error(`No se pudo reducir el video a ${MAX_FILE_SIZE_MB}MB (quedó en ${finalSize}MB). Usa un clip más corto o menor calidad.`);
+}
+
+function roundToEven(value, min = 2) {
+  const numeric = Math.max(min, Math.floor(Number(value) || 0));
+  return numeric % 2 === 0 ? numeric : numeric - 1;
+}
+
+function buildCompressionProfiles(durationSec) {
+  const safeDuration = Math.max(1, Number(durationSec || MAX_CLIP_SECONDS));
+  const targetTotalBitsPerSecond = Math.max(
+    TARGET_AUDIO_BITRATE + MIN_VIDEO_BITRATE,
+    Math.floor((MAX_FILE_SIZE_MB * 1024 * 1024 * 8 * 0.9) / safeDuration)
+  );
+  const baseVideoBitsPerSecond = Math.max(MIN_VIDEO_BITRATE, targetTotalBitsPerSecond - TARGET_AUDIO_BITRATE);
+
+  const profileSeed = [
+    { scale: 1, mult: 1.2 },
+    { scale: 1, mult: 1.0 },
+    { scale: 0.9, mult: 0.85 },
+    { scale: 0.8, mult: 0.72 },
+    { scale: 0.7, mult: 0.62 },
+    { scale: 0.6, mult: 0.52 },
+    { scale: 0.5, mult: 0.42 },
+    { scale: 0.4, mult: 0.35 },
+  ];
+
+  return profileSeed.map((seed) => ({
+    scale: seed.scale,
+    videoBitsPerSecond: Math.max(MIN_VIDEO_BITRATE, Math.floor(baseVideoBitsPerSecond * seed.mult)),
+    audioBitsPerSecond: TARGET_AUDIO_BITRATE,
+  }));
+}
+
+async function transcodeVideoSegment(file, meta, {
+  startSec = 0,
+  endSec = Number(meta?.durationSec || 0),
+  outputMime = '',
+  scale = 1,
+  videoBitsPerSecond,
+  audioBitsPerSecond,
+} = {}) {
   const objectUrl = URL.createObjectURL(file);
   const video = document.createElement('video');
   video.preload = 'auto';
@@ -734,62 +830,108 @@ async function trimVideoFilePhysically(file, meta) {
   video.volume = 0;
   video.src = objectUrl;
 
+  let sourceStream = null;
   let stream = null;
   let recorder = null;
   let stopTimer = null;
+  let rafId = 0;
+  let drawing = false;
+  let canvas = null;
 
   try {
     await waitForEvent(video, 'loadedmetadata', 18000);
 
+    const durationSec = Number(video.duration || meta?.durationSec || 0);
+    const minDuration = Math.min(MIN_CLIP_SECONDS, durationSec || MIN_CLIP_SECONDS);
+    const safeStart = clamp(Number(startSec || 0), 0, Math.max(0, durationSec - minDuration));
+    const safeEnd = clamp(Number(endSec || durationSec), safeStart + minDuration, durationSec);
     const capture = video.captureStream?.bind(video) || video.mozCaptureStream?.bind(video);
     if (!capture) {
-      return {
-        file,
-        meta,
-        clippedPhysically: false,
-        message: 'captureStream no está disponible; se aplicará recorte al reproducir.',
-      };
+      throw new Error('captureStream no está disponible.');
     }
 
-    stream = capture();
-    if (!stream) {
-      return {
-        file,
-        meta,
-        clippedPhysically: false,
-        message: 'No se pudo abrir el stream de recorte; se aplicará recorte al reproducir.',
+    sourceStream = capture();
+    if (!sourceStream) {
+      throw new Error('No se pudo abrir el stream de video.');
+    }
+
+    const videoWidth = Number(video.videoWidth || 0);
+    const videoHeight = Number(video.videoHeight || 0);
+    const safeScale = clamp(Number(scale || 1), 0.2, 1);
+    const useCanvas = safeScale < 0.999;
+
+    if (useCanvas) {
+      if (typeof HTMLCanvasElement === 'undefined' || typeof HTMLCanvasElement.prototype.captureStream !== 'function') {
+        throw new Error('Canvas capture no disponible para reducir resolución.');
+      }
+
+      const targetWidth = roundToEven(videoWidth * safeScale, 2);
+      const targetHeight = roundToEven(videoHeight * safeScale, 2);
+      canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext('2d', { alpha: false });
+      if (!ctx) {
+        throw new Error('No se pudo iniciar el canvas para compresión.');
+      }
+
+      stream = canvas.captureStream(30);
+      sourceStream.getAudioTracks().forEach((track) => stream.addTrack(track));
+
+      const drawFrame = () => {
+        if (!drawing) return;
+        ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
+        rafId = window.requestAnimationFrame(drawFrame);
       };
+
+      const startDrawing = () => {
+        if (drawing) return;
+        drawing = true;
+        drawFrame();
+      };
+      const stopDrawing = () => {
+        drawing = false;
+        if (rafId) {
+          window.cancelAnimationFrame(rafId);
+          rafId = 0;
+        }
+      };
+
+      video.addEventListener('play', startDrawing);
+      video.addEventListener('pause', stopDrawing);
+      video.addEventListener('ended', stopDrawing);
+    } else {
+      stream = sourceStream;
     }
 
     const chunks = [];
-    recorder = new MediaRecorder(stream, { mimeType: outputMime });
+    const recorderOptions = { mimeType: outputMime };
+    if (Number.isFinite(videoBitsPerSecond) && videoBitsPerSecond > 0) {
+      recorderOptions.videoBitsPerSecond = Math.floor(videoBitsPerSecond);
+    }
+    if (Number.isFinite(audioBitsPerSecond) && audioBitsPerSecond > 0) {
+      recorderOptions.audioBitsPerSecond = Math.floor(audioBitsPerSecond);
+    }
+
+    recorder = new MediaRecorder(stream, recorderOptions);
     recorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) {
-        chunks.push(event.data);
-      }
+      if (event.data && event.data.size > 0) chunks.push(event.data);
     };
 
     const stopPromise = new Promise((resolve) => {
       recorder.addEventListener('stop', () => resolve(), { once: true });
     });
 
-    const safeStart = clamp(start, 0, Math.max(0, sourceDuration - MIN_CLIP_SECONDS));
-    const safeEnd = clamp(end, safeStart + Math.min(MIN_CLIP_SECONDS, sourceDuration), sourceDuration);
-
     video.currentTime = safeStart;
     await waitForEvent(video, 'seeked', 12000).catch(() => {});
 
     const finalizeStop = () => {
-      if (recorder && recorder.state !== 'inactive') {
-        recorder.stop();
-      }
+      if (recorder && recorder.state !== 'inactive') recorder.stop();
       video.pause();
     };
 
     video.addEventListener('timeupdate', () => {
-      if (video.currentTime >= safeEnd - 0.03) {
-        finalizeStop();
-      }
+      if (video.currentTime >= safeEnd - 0.03) finalizeStop();
     });
     video.addEventListener('ended', finalizeStop, { once: true });
 
@@ -804,56 +946,51 @@ async function trimVideoFilePhysically(file, meta) {
 
     stopTimer = window.setTimeout(() => {
       finalizeStop();
-    }, Math.ceil((safeEnd - safeStart + 0.4) * 1000));
+    }, Math.ceil((safeEnd - safeStart + 0.8) * 1000));
 
     await stopPromise;
 
     const blobType = normalizeMimeType(outputMime) || normalizeMimeType(chunks[0]?.type) || normalizeMimeType(file.type);
-    const clippedBlob = new Blob(chunks, { type: blobType || file.type });
-    if (!clippedBlob.size) {
-      return {
-        file,
-        meta,
-        clippedPhysically: false,
-        message: 'No se pudo generar el clip físico; se aplicará recorte al reproducir.',
-      };
+    const outputBlob = new Blob(chunks, { type: blobType || file.type });
+    if (!outputBlob.size) {
+      throw new Error('El recorte generado está vacío.');
     }
 
     const baseName = String(file.name || 'video')
       .replace(/\.[^.]+$/, '')
       .replace(/\s+/g, '_');
     const ext = getExtensionFromMime(blobType || file.type, normalizeFileExtension(file));
-    const clippedFile = new File([clippedBlob], `${baseName}-clip.${ext}`, {
+    const outputFile = new File([outputBlob], `${baseName}-processed.${ext}`, {
       type: blobType || file.type,
       lastModified: Date.now(),
     });
 
-    const clippedMeta = await validateAndPrepareFile(clippedFile, { ignoreSizeLimitForVideo: true });
-
-    return {
-      file: clippedFile,
-      meta: clippedMeta,
-      clippedPhysically: true,
-      message: 'Video recortado y comprimido. Subiendo publicación...',
-    };
-  } catch (error) {
-    console.warn('Recorte físico no disponible, usando recorte lógico:', error?.message || error);
-    return {
-      file,
-      meta,
-      clippedPhysically: false,
-      message: 'No se pudo recortar físicamente; se aplicará recorte al reproducir.',
-    };
+    const outputMeta = await validateAndPrepareFile(outputFile, { ignoreSizeLimitForVideo: true });
+    return { file: outputFile, meta: outputMeta };
   } finally {
     if (stopTimer) window.clearTimeout(stopTimer);
     try {
       if (recorder && recorder.state !== 'inactive') recorder.stop();
     } catch (_error) {}
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+      stream.getTracks().forEach((track) => {
+        try { track.stop(); } catch (_error) {}
+      });
+    }
+    if (sourceStream && sourceStream !== stream) {
+      sourceStream.getTracks().forEach((track) => {
+        try { track.stop(); } catch (_error) {}
+      });
+    }
+    if (rafId) {
+      window.cancelAnimationFrame(rafId);
     }
     URL.revokeObjectURL(objectUrl);
     video.remove();
+    if (canvas) {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
   }
 }
 
@@ -1178,7 +1315,7 @@ async function handleSubmit(event) {
 
     btnPublicar.disabled = true;
     btnPublicar.classList.add('opacity-60', 'cursor-not-allowed');
-    setEstadoGuardado('Preparando publicación...');
+    setEstadoGuardado('Procesando video y preparando publicación...');
 
     const trimResult = await trimVideoFilePhysically(file, baseMeta);
     if (trimResult.message) {
@@ -1310,8 +1447,12 @@ function bindEvents() {
       const meta = await validateAndPrepareFile(file, { ignoreSizeLimitForVideo: true });
       renderPreview(file, meta);
       const sourceSizeMb = getFileSizeMb(file);
-      if (meta.media_tipo === 'video' && sourceSizeMb > MAX_FILE_SIZE_MB) {
-        setEstadoGuardado(`Video cargado (${sourceSizeMb.toFixed(1)}MB). Recórtalo; al publicar debe quedar en ${MAX_FILE_SIZE_MB}MB o menos.`);
+      if (meta.media_tipo === 'video' && Number(meta.durationSec || 0) > MAX_CLIP_SECONDS) {
+        setEstadoGuardado(`Video cargado (${Number(meta.durationSec || 0).toFixed(1)}s). Selecciona un fragmento de hasta ${MAX_CLIP_SECONDS}s para publicar.`);
+      } else if (meta.media_tipo === 'video' && sourceSizeMb > MAX_FILE_SIZE_MB && !canPhysicallyTrimVideo()) {
+        setEstadoGuardado(`Video cargado (${sourceSizeMb.toFixed(1)}MB). Este dispositivo no soporta compresión automática; usa un video de ${MAX_FILE_SIZE_MB}MB o menos.`, true);
+      } else if (meta.media_tipo === 'video' && sourceSizeMb > MAX_FILE_SIZE_MB) {
+        setEstadoGuardado('Archivo listo para publicar.');
       } else {
         setEstadoGuardado('Archivo listo para publicar.');
       }

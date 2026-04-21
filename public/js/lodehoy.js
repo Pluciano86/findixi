@@ -76,6 +76,45 @@ function normalizeText(value) {
     .trim();
 }
 
+function pad2(value) {
+  return String(value).padStart(2, '0');
+}
+
+function getPuertoRicoNowParts() {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Puerto_Rico',
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
+  const parts = formatter.formatToParts(new Date());
+  const pick = (type) => Number(parts.find((p) => p.type === type)?.value || 0);
+  return {
+    year: pick('year'),
+    month: pick('month'),
+    day: pick('day'),
+    hour: pick('hour'),
+  };
+}
+
+function getLoDeHoyWindowStartIso() {
+  const pr = getPuertoRicoNowParts();
+  if (!pr.year || !pr.month || !pr.day) return null;
+
+  const dayUtc = Date.UTC(pr.year, pr.month - 1, pr.day) - (pr.hour < 5 ? 86400000 : 0);
+  const dayDate = new Date(dayUtc);
+  const y = dayDate.getUTCFullYear();
+  const m = pad2(dayDate.getUTCMonth() + 1);
+  const d = pad2(dayDate.getUTCDate());
+  // Puerto Rico no usa DST; se mantiene en UTC-04:00.
+  return `${y}-${m}-${d}T05:00:00-04:00`;
+}
+
 function getComercioLikeCount(comercioId) {
   const id = toNumber(comercioId);
   if (!id) return 0;
@@ -1084,20 +1123,44 @@ async function loadUserAndFavorites() {
     favoritosSet = new Set((favs || []).map((row) => toNumber(row.idcomercio)).filter(Boolean));
   }
 
-  const { data: likesData, error: likesErr } = await supabase
+  likesVisualSet = new Set();
+}
+
+async function loadLikesVisualForComercios(comercioIds = []) {
+  if (!currentUser || !comercioIds.length) {
+    likesVisualSet = new Set();
+    return;
+  }
+
+  const windowStartIso = getLoDeHoyWindowStartIso();
+  let query = supabase
     .from(LODEHOY_LIKES_TABLE)
     .select('idcomercio')
-    .eq('idusuario', currentUser.id);
+    .eq('idusuario', currentUser.id)
+    .in('idcomercio', comercioIds);
 
-  if (likesErr) {
-    if (likesErr.code !== '42P01') {
-      console.warn('No se pudieron cargar Me Gusta de Lo de Hoy:', likesErr.message || likesErr);
+  if (windowStartIso) {
+    query = query.gte('created_at', windowStartIso);
+  }
+
+  let { data, error } = await query;
+  if (error && String(error.message || '').toLowerCase().includes('created_at')) {
+    ({ data, error } = await supabase
+      .from(LODEHOY_LIKES_TABLE)
+      .select('idcomercio')
+      .eq('idusuario', currentUser.id)
+      .in('idcomercio', comercioIds));
+  }
+
+  if (error) {
+    if (error.code !== '42P01') {
+      console.warn('No se pudieron cargar Me Gusta de Lo de Hoy:', error.message || error);
     }
     likesVisualSet = new Set();
     return;
   }
 
-  likesVisualSet = new Set((likesData || []).map((row) => toNumber(row.idcomercio)).filter(Boolean));
+  likesVisualSet = new Set((data || []).map((row) => toNumber(row.idcomercio)).filter(Boolean));
 }
 
 async function loadGeoCatalogs() {
@@ -1233,21 +1296,23 @@ async function loadLikesCountByComercios(comercioIds = []) {
   likesCountByComercio = new Map(comercioIds.map((id) => [id, 0]));
   if (!comercioIds.length) return;
 
-  const rpcResp = await supabase.rpc('fn_lodehoy_likes_counts', { p_comercios: comercioIds });
-  if (!rpcResp.error) {
-    (rpcResp.data || []).forEach((row) => {
-      const comercioId = toNumber(row?.idcomercio);
-      const count = toNumber(row?.likes_count);
-      if (!comercioId) return;
-      likesCountByComercio.set(comercioId, count || 0);
-    });
-    return;
+  const windowStartIso = getLoDeHoyWindowStartIso();
+  let query = supabase
+    .from(LODEHOY_LIKES_TABLE)
+    .select('idcomercio,idusuario')
+    .in('idcomercio', comercioIds);
+
+  if (windowStartIso) {
+    query = query.gte('created_at', windowStartIso);
   }
 
-  const { data, error } = await supabase
-    .from(LODEHOY_LIKES_TABLE)
-    .select('idcomercio')
-    .in('idcomercio', comercioIds);
+  let { data, error } = await query;
+  if (error && String(error.message || '').toLowerCase().includes('created_at')) {
+    ({ data, error } = await supabase
+      .from(LODEHOY_LIKES_TABLE)
+      .select('idcomercio,idusuario')
+      .in('idcomercio', comercioIds));
+  }
 
   if (error) {
     if (error.code !== '42P01') {
@@ -1256,11 +1321,20 @@ async function loadLikesCountByComercios(comercioIds = []) {
     return;
   }
 
-  const counter = new Map(comercioIds.map((id) => [id, 0]));
+  const byComercioUsers = new Map(comercioIds.map((id) => [id, new Set()]));
   (data || []).forEach((row) => {
-    const id = toNumber(row?.idcomercio);
-    if (!id) return;
-    counter.set(id, Number(counter.get(id) || 0) + 1);
+    const comercioId = toNumber(row?.idcomercio);
+    const userId = String(row?.idusuario || '').trim();
+    if (!comercioId || !userId) return;
+    if (!byComercioUsers.has(comercioId)) {
+      byComercioUsers.set(comercioId, new Set());
+    }
+    byComercioUsers.get(comercioId).add(userId);
+  });
+
+  const counter = new Map(comercioIds.map((id) => [id, 0]));
+  byComercioUsers.forEach((usersSet, comercioId) => {
+    counter.set(comercioId, usersSet.size);
   });
   likesCountByComercio = counter;
 }
@@ -1358,6 +1432,7 @@ async function loadPublicaciones() {
     loadComerciosForPublicaciones(comercioIds),
     loadCategoriasPorComercio(comercioIds),
     loadLikesCountByComercios(comercioIds),
+    loadLikesVisualForComercios(comercioIds),
   ]);
   syncCategoryFallbackFromComercios();
 
@@ -1459,6 +1534,8 @@ async function toggleLikeVisual(comercioId) {
       if (!user?.id) return;
       currentUser = user;
       await loadUserAndFavorites();
+      const activeComercioIds = [...new Set(publicaciones.map((row) => toNumber(row.idcomercio)).filter(Boolean))];
+      await loadLikesVisualForComercios(activeComercioIds);
     } catch {
       return;
     }
@@ -1495,7 +1572,8 @@ async function toggleLikeVisual(comercioId) {
     if (error.code === '23505') {
       likesVisualSet.add(id);
       updateLikeVisualButtonsForComercio(id);
-      likesCountByComercio.set(id, getComercioLikeCount(id) + 1);
+      const activeComercioIds = [...new Set(publicaciones.map((row) => toNumber(row.idcomercio)).filter(Boolean))];
+      await loadLikesCountByComercios(activeComercioIds);
       await applyFiltersAndRender();
       return;
     }

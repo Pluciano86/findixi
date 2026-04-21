@@ -64,7 +64,7 @@
             required
             class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
           >
-          <p class="mt-1 text-xs text-gray-500">Permitidos: JPG, PNG, GIF, MP4 o MOV. Se respeta la proporción original; en vertical se limita a un máximo de 60% de pantalla.</p>
+          <p class="mt-1 text-xs text-gray-500">Permitidos: JPG, PNG, GIF, MP4 o MOV. Video final máximo 30 segundos y 50MB. Se respeta la proporción original; en vertical se limita a un máximo de 60% de pantalla.</p>
         </div>
 
         <div>
@@ -86,7 +86,7 @@
               Selecciona un archivo para ver la vista previa.
             </div>
             <div id="videoClipEditor" class="hidden absolute left-2 right-2 bottom-2 rounded-xl bg-transparent p-2">
-              <p class="text-[11px] font-semibold text-white text-center [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]">Recorte automático (máx. 12s)</p>
+              <p class="text-[11px] font-semibold text-white text-center [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]">Recorte automático (máx. 30s)</p>
 
               <div class="space-y-2">
                 <div class="relative h-9 clip-timeline" id="clipTimeline" aria-label="Selector de recorte de video">
@@ -110,12 +110,12 @@
 
                 <div class="flex items-center justify-center gap-4 text-[11px] text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]">
                   <span><span class="font-medium">Inicio:</span> <span id="clipStartValue">0.0s</span></span>
-                  <span><span class="font-medium">Duración:</span> <span id="clipDurationValue">12.0s</span></span>
+                  <span><span class="font-medium">Duración:</span> <span id="clipDurationValue">30.0s</span></span>
                 </div>
               </div>
             </div>
           </div>
-          <p class="mt-2 text-xs text-gray-600">Si el video supera 12 segundos, usa la barra sobre el preview para escoger el fragmento (1s a 12s).</p>
+          <p class="mt-2 text-xs text-gray-600">Si el video supera 30 segundos, usa la barra sobre el preview para escoger el fragmento (1s a 30s).</p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
