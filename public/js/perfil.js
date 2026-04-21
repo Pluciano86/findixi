@@ -15,9 +15,23 @@ let latUsuario = null;
 let lonUsuario = null;
 let comercioActual = null;
 const CUPON_PLACEHOLDER = 'https://placehold.co/600x400?text=Cup%C3%B3n';
+const PUBLIC_BUCKET_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios';
+const DEFAULT_LOGO = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoPerfil.png';
+const SHARE_ICON_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/send.svg';
+const LIKE_OFF_ICON_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/nolikeit.svg';
+const LODEHOY_AUDIO_PREF_KEY = 'lodehoy_audio_enabled';
+const USER_AGENT = String(window.navigator?.userAgent || '').toLowerCase();
+const IS_IOS_DEVICE = /iphone|ipad|ipod/.test(USER_AGENT)
+  || (String(window.navigator?.platform || '').toLowerCase() === 'macintel' && Number(window.navigator?.maxTouchPoints || 0) > 1);
 const isLocalEnv = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 const LOGIN_URL = isLocalEnv ? '/public/logearse.html' : '/logearse.html';
 let perfilUsuarioCache = null;
+let perfilAutoplayUnlocked = false;
+let perfilVideoObserver = null;
+let perfilUnlockHandlersBound = false;
+let perfilPlaybackEventsBound = false;
+let perfilAudioEnabled = true;
+let perfilPostActionsBound = false;
 
 const obtenerUsuarioActual = async () => {
   try {
@@ -159,6 +173,640 @@ const formatearFechaLegible = (fecha) => {
     day: 'numeric'
   });
 };
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function encodeStoragePath(path) {
+  const clean = String(path || '')
+    .trim()
+    .replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/public\/galeriacomercios\//i, '')
+    .replace(/^\/+/, '')
+    .replace(/^public\//i, '')
+    .replace(/^galeriacomercios\//i, '');
+
+  return clean
+    .split('/')
+    .filter(Boolean)
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+}
+
+function buildStoragePublicUrl(path) {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+  const encoded = encodeStoragePath(path);
+  return encoded ? `${PUBLIC_BUCKET_BASE}/${encoded}` : '';
+}
+
+function formatHoraPR(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('es-PR', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'America/Puerto_Rico',
+  }).format(date);
+}
+
+function toFiniteNumber(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+function resolvePerfilVideoClipRange(video) {
+  const duration = toFiniteNumber(video?.duration, 0);
+  const startRaw = toFiniteNumber(video?.dataset?.clipStart, 0);
+  const endRaw = toFiniteNumber(video?.dataset?.clipEnd, duration);
+
+  const safeStart = Math.max(0, startRaw);
+  let safeEnd = endRaw > safeStart ? endRaw : duration;
+  if (duration > 0) {
+    safeEnd = Math.min(duration, safeEnd);
+  }
+  if (!Number.isFinite(safeEnd) || safeEnd <= safeStart) {
+    safeEnd = duration > safeStart ? duration : safeStart + 0.1;
+  }
+  return { start: safeStart, end: safeEnd };
+}
+
+function isElementAtLeastHalfVisible(el) {
+  if (!el || typeof el.getBoundingClientRect !== 'function') return false;
+  const rect = el.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return false;
+  const viewportW = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
+  const overlapW = Math.max(0, Math.min(rect.right, viewportW) - Math.max(rect.left, 0));
+  const overlapH = Math.max(0, Math.min(rect.bottom, viewportH) - Math.max(rect.top, 0));
+  const visibleArea = overlapW * overlapH;
+  const totalArea = rect.width * rect.height;
+  if (!totalArea) return false;
+  return (visibleArea / totalArea) >= 0.5;
+}
+
+function getMediaOrientation(width, height) {
+  const w = Number(width);
+  const h = Number(height);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+    return 'landscape';
+  }
+  return h > w ? 'portrait' : 'landscape';
+}
+
+function applyFeedMediaLayout(mediaEl, orientation = 'landscape') {
+  if (!(mediaEl instanceof HTMLElement)) return;
+  const frame = mediaEl.closest('.lodehoy-media-frame');
+  if (!frame) return;
+
+  const isPortrait = orientation === 'portrait';
+  frame.classList.toggle('lodehoy-media-frame--portrait', isPortrait);
+  frame.classList.toggle('lodehoy-media-frame--landscape', !isPortrait);
+  mediaEl.classList.toggle('lodehoy-media-fit-cover', isPortrait);
+  mediaEl.classList.toggle('lodehoy-media-fit-contain', !isPortrait);
+
+  if (isPortrait) {
+    mediaEl.classList.add('h-full');
+    mediaEl.classList.remove('h-auto');
+  } else {
+    mediaEl.classList.add('h-auto');
+    mediaEl.classList.remove('h-full');
+  }
+}
+
+function resolveAndApplyFeedMediaOrientation(mediaEl) {
+  if (mediaEl instanceof HTMLImageElement) {
+    const applyFromImage = () => {
+      const orientation = getMediaOrientation(mediaEl.naturalWidth, mediaEl.naturalHeight);
+      applyFeedMediaLayout(mediaEl, orientation);
+    };
+
+    if (mediaEl.complete && mediaEl.naturalWidth > 0) {
+      applyFromImage();
+    } else {
+      mediaEl.addEventListener('load', applyFromImage, { once: true });
+    }
+    return;
+  }
+
+  if (mediaEl instanceof HTMLVideoElement) {
+    const applyFromVideo = () => {
+      const orientation = getMediaOrientation(mediaEl.videoWidth, mediaEl.videoHeight);
+      applyFeedMediaLayout(mediaEl, orientation);
+    };
+
+    if (mediaEl.readyState >= 1 && mediaEl.videoWidth > 0) {
+      applyFromVideo();
+    } else {
+      mediaEl.addEventListener('loadedmetadata', applyFromVideo, { once: true });
+    }
+  }
+}
+
+function setupPerfilPostMediaLayout() {
+  const scroller = document.getElementById('publicacionesPerfilScroller');
+  if (!scroller) return;
+  const mediaList = scroller.querySelectorAll('[data-role="perfil-post-media"]');
+  mediaList.forEach((mediaEl) => {
+    applyFeedMediaLayout(mediaEl, 'landscape');
+    resolveAndApplyFeedMediaOrientation(mediaEl);
+  });
+}
+
+function getComercioLogoUrl(logo) {
+  if (!logo) return DEFAULT_LOGO;
+  if (/^https?:\/\//i.test(logo)) return logo;
+  return buildStoragePublicUrl(logo) || DEFAULT_LOGO;
+}
+
+function getPerfilVideos() {
+  const scroller = document.getElementById('publicacionesPerfilScroller');
+  if (!scroller) return [];
+  return Array.from(scroller.querySelectorAll('video[data-perfil-video="1"]'));
+}
+
+function readPerfilAudioPreference() {
+  try {
+    const raw = localStorage.getItem(LODEHOY_AUDIO_PREF_KEY);
+    if (raw === '0') return false;
+    if (raw === '1') return true;
+  } catch (_error) {}
+  return true;
+}
+
+function savePerfilAudioPreference() {
+  try {
+    localStorage.setItem(LODEHOY_AUDIO_PREF_KEY, perfilAudioEnabled ? '1' : '0');
+  } catch (_error) {}
+}
+
+function updatePerfilAudioButtons() {
+  const buttons = document.querySelectorAll('[data-action="toggle-audio-perfil"]');
+  buttons.forEach((button) => {
+    const icon = button.querySelector('i');
+    if (icon) {
+      icon.className = perfilAudioEnabled
+        ? 'fa-solid fa-volume-high text-[12px] text-emerald-700'
+        : 'fa-solid fa-volume-xmark text-[12px] text-gray-700';
+    }
+    button.setAttribute('aria-pressed', perfilAudioEnabled ? 'true' : 'false');
+    button.setAttribute('aria-label', perfilAudioEnabled ? 'Silenciar videos' : 'Activar audio de videos');
+    button.classList.toggle('ring-1', perfilAudioEnabled);
+    button.classList.toggle('ring-emerald-200', perfilAudioEnabled);
+  });
+}
+
+function getPerfilVideoAudioControls(videoId) {
+  if (!videoId) return { button: null, badge: null };
+  return {
+    button: document.querySelector(`button[data-action="toggle-audio-perfil"][data-video-id="${videoId}"]`),
+    badge: document.querySelector(`[data-role="perfil-video-no-audio"][data-video-id="${videoId}"]`),
+  };
+}
+
+function inferPerfilVideoAudio(video) {
+  if (!(video instanceof HTMLVideoElement)) return { known: false, hasAudio: true };
+
+  if (typeof video.mozHasAudio === 'boolean') {
+    return { known: true, hasAudio: video.mozHasAudio };
+  }
+
+  const tracks = video.audioTracks;
+  if (tracks && typeof tracks.length === 'number') {
+    if (tracks.length > 0) {
+      return { known: true, hasAudio: true };
+    }
+    if (!IS_IOS_DEVICE) {
+      return { known: true, hasAudio: false };
+    }
+  }
+
+  if (typeof video.webkitAudioDecodedByteCount === 'number') {
+    if (video.webkitAudioDecodedByteCount > 0) {
+      return { known: true, hasAudio: true };
+    }
+  }
+
+  return { known: false, hasAudio: true };
+}
+
+function applyPerfilVideoAudioUI(video, { known, hasAudio }) {
+  const videoId = String(video?.dataset?.postId || '').trim();
+  if (!videoId) return;
+  video.dataset.hasAudio = known ? (hasAudio ? '1' : '0') : 'unknown';
+
+  const { button, badge } = getPerfilVideoAudioControls(videoId);
+  if (!button && !badge) return;
+
+  if (known && !hasAudio) {
+    button?.classList.add('hidden');
+    badge?.classList.remove('hidden');
+    video.muted = true;
+    video.defaultMuted = true;
+    return;
+  }
+
+  button?.classList.remove('hidden');
+  badge?.classList.add('hidden');
+}
+
+function schedulePerfilVideoAudioProbe(video) {
+  if (!(video instanceof HTMLVideoElement)) return;
+  if (video.dataset.audioProbeScheduled === '1') return;
+  video.dataset.audioProbeScheduled = '1';
+
+  const runProbe = () => {
+    const first = inferPerfilVideoAudio(video);
+    applyPerfilVideoAudioUI(video, first);
+
+    if (first.known) return;
+
+    window.setTimeout(() => {
+      const later = inferPerfilVideoAudio(video);
+      applyPerfilVideoAudioUI(video, later);
+    }, 1200);
+  };
+
+  if (video.readyState >= 1) {
+    runProbe();
+  } else {
+    video.addEventListener('loadedmetadata', runProbe, { once: true });
+  }
+}
+
+function applyPerfilAudioStateToVisibleVideos() {
+  getPerfilVideos().forEach((video) => {
+    const isNoAudio = video.dataset.hasAudio === '0';
+    video.muted = isNoAudio ? true : !perfilAudioEnabled;
+    video.defaultMuted = isNoAudio ? true : !perfilAudioEnabled;
+    if (isElementAtLeastHalfVisible(video)) {
+      void playPerfilVideo(video);
+    }
+  });
+}
+
+function bindPerfilPostActions() {
+  if (perfilPostActionsBound) return;
+  const scroller = document.getElementById('publicacionesPerfilScroller');
+  if (!scroller) return;
+  perfilPostActionsBound = true;
+
+  scroller.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-action]');
+    if (!button) return;
+    const action = button.getAttribute('data-action');
+    if (action !== 'toggle-audio-perfil') return;
+
+    perfilAutoplayUnlocked = true;
+    perfilAudioEnabled = !perfilAudioEnabled;
+    savePerfilAudioPreference();
+    updatePerfilAudioButtons();
+    applyPerfilAudioStateToVisibleVideos();
+  });
+}
+
+function pausePerfilVideo(video) {
+  if (!(video instanceof HTMLVideoElement)) return;
+  video.loop = false;
+  video.pause();
+}
+
+function bindPerfilVideoClipLoop(video) {
+  if (!(video instanceof HTMLVideoElement)) return;
+  if (video.dataset.clipLoopBound === '1') return;
+  video.dataset.clipLoopBound = '1';
+  video.loop = false;
+
+  const ensureWindow = () => {
+    const { start, end } = resolvePerfilVideoClipRange(video);
+    if (video.currentTime < start || video.currentTime > end) {
+      video.currentTime = start;
+    }
+  };
+
+  video.addEventListener('loadedmetadata', ensureWindow);
+  video.addEventListener('timeupdate', () => {
+    const { start, end } = resolvePerfilVideoClipRange(video);
+    if (video.currentTime >= end - 0.04) {
+      video.currentTime = start;
+      if (!video.paused) {
+        void video.play().catch(() => {});
+      }
+    }
+  });
+}
+
+async function playPerfilVideo(video) {
+  if (!(video instanceof HTMLVideoElement)) return;
+  schedulePerfilVideoAudioProbe(video);
+  bindPerfilVideoClipLoop(video);
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
+  video.autoplay = true;
+  video.loop = false;
+
+  const clip = resolvePerfilVideoClipRange(video);
+  if (video.currentTime < clip.start || video.currentTime > clip.end) {
+    video.currentTime = clip.start;
+  }
+
+  const isNoAudio = video.dataset.hasAudio === '0';
+  video.muted = isNoAudio ? true : !perfilAudioEnabled;
+  video.defaultMuted = isNoAudio ? true : !perfilAudioEnabled;
+  try {
+    await video.play();
+  } catch (_error) {
+    if (!perfilAutoplayUnlocked || perfilAudioEnabled) {
+      // Fallback iOS/navegadores que bloquean autoplay con audio.
+      video.muted = true;
+      video.defaultMuted = true;
+      try {
+        await video.play();
+      } catch (_errorMuted) {}
+    }
+  }
+}
+
+function syncPerfilViewportVideoPlayback() {
+  getPerfilVideos().forEach((video) => {
+    if (isElementAtLeastHalfVisible(video)) {
+      void playPerfilVideo(video);
+    } else {
+      pausePerfilVideo(video);
+    }
+  });
+}
+
+function setupPerfilVideoObserver() {
+  if (perfilVideoObserver) {
+    perfilVideoObserver.disconnect();
+    perfilVideoObserver = null;
+  }
+
+  const videos = getPerfilVideos();
+  if (!videos.length) return;
+
+  if ('IntersectionObserver' in window) {
+    perfilVideoObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const video = entry.target;
+        if (!(video instanceof HTMLVideoElement)) return;
+        if (entry.intersectionRatio >= 0.5) {
+          void playPerfilVideo(video);
+        } else {
+          pausePerfilVideo(video);
+        }
+      });
+    }, {
+      threshold: [0, 0.5, 1],
+    });
+
+    videos.forEach((video) => perfilVideoObserver.observe(video));
+  }
+
+  syncPerfilViewportVideoPlayback();
+}
+
+function retryVisiblePerfilVideosPlayback() {
+  getPerfilVideos().forEach((video) => {
+    if (isElementAtLeastHalfVisible(video)) {
+      void playPerfilVideo(video);
+    }
+  });
+}
+
+function registerPerfilAutoplayUnlockHandlers() {
+  if (perfilUnlockHandlersBound) return;
+  perfilUnlockHandlersBound = true;
+
+  const unlock = () => {
+    perfilAutoplayUnlocked = true;
+    perfilAudioEnabled = true;
+    savePerfilAudioPreference();
+    updatePerfilAudioButtons();
+    applyPerfilAudioStateToVisibleVideos();
+    retryVisiblePerfilVideosPlayback();
+  };
+
+  document.addEventListener('touchstart', unlock, { once: true, passive: true });
+  document.addEventListener('scroll', unlock, { once: true, passive: true });
+  document.addEventListener('pointerdown', unlock, { once: true, passive: true });
+}
+
+function bindPerfilPlaybackEvents() {
+  if (perfilPlaybackEventsBound) return;
+  perfilPlaybackEventsBound = true;
+
+  window.addEventListener('scroll', syncPerfilViewportVideoPlayback, { passive: true });
+  window.addEventListener('resize', syncPerfilViewportVideoPlayback);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') {
+      getPerfilVideos().forEach((video) => pausePerfilVideo(video));
+      return;
+    }
+    syncPerfilViewportVideoPlayback();
+  });
+}
+
+function renderPublicacionesPerfil(publicaciones = [], comercioData = {}) {
+  const section = document.getElementById('seccionPublicacionesPerfil');
+  const scroller = document.getElementById('publicacionesPerfilScroller');
+  const tituloSeccion = document.getElementById('tituloPublicacionesPerfil');
+  if (!section || !scroller) return;
+  perfilAudioEnabled = readPerfilAudioPreference();
+
+  const nombreComercioRaw = String(comercioData.nombre || '').trim();
+  if (tituloSeccion) {
+    tituloSeccion.textContent = nombreComercioRaw
+      ? `Lo de Hoy en ${nombreComercioRaw}`
+      : 'Lo de Hoy';
+  }
+
+  if (!publicaciones.length) {
+    scroller.innerHTML = '';
+    if (perfilVideoObserver) {
+      perfilVideoObserver.disconnect();
+      perfilVideoObserver = null;
+    }
+    section.classList.add('hidden');
+    return;
+  }
+
+  const nombreComercio = escapeHtml(comercioData.nombre || 'Comercio');
+  const municipio = escapeHtml(comercioData.municipio || 'Puerto Rico');
+  const logoUrlSafe = escapeHtml(getComercioLogoUrl(comercioData.logo));
+  const profileUrlSafe = escapeHtml(`${window.location.origin}${isLocalEnv ? '/public' : ''}/perfilComercio.html?id=${Number(comercioData.id || 0)}`);
+
+  scroller.innerHTML = publicaciones.map((row) => {
+    const mediaUrl = escapeHtml(buildStoragePublicUrl(row.media_path));
+    const titulo = escapeHtml(String(row.titulo || '').trim());
+    const texto = escapeHtml(String(row.texto || '').trim());
+    const hora = escapeHtml(formatHoraPR(row.created_at));
+    const mediaTipo = String(row.media_tipo || '').toLowerCase();
+    const clipStart = Number.isFinite(Number(row.clip_start_sec)) ? Number(row.clip_start_sec) : 0;
+    const clipEnd = Number.isFinite(Number(row.clip_end_sec)) ? Number(row.clip_end_sec) : '';
+    const hasAudioAttr = row.media_has_audio === true
+      ? '1'
+      : (row.media_has_audio === false && !IS_IOS_DEVICE ? '0' : 'unknown');
+    const mediaHtml = mediaTipo === 'video'
+      ? `<video class="lodehoy-media-content cursor-zoom-in" src="${mediaUrl}" controls autoplay muted playsinline webkit-playsinline preload="metadata" data-role="perfil-post-media" data-perfil-video="1" data-post-id="${row.id}" data-has-audio="${hasAudioAttr}" data-clip-start="${clipStart}" data-clip-end="${clipEnd}"></video>`
+      : `<img class="lodehoy-media-content cursor-zoom-in" src="${mediaUrl}" alt="Publicación del comercio" loading="lazy" data-role="perfil-post-media">`;
+
+    return `
+      <article class="min-w-[92%] snap-center rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <header class="px-3 py-3 flex items-center gap-3">
+          <button
+            type="button"
+            class="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full"
+            aria-label="Favorito del comercio"
+          >
+            <i class="fa-regular fa-heart text-2xl text-[#1f2937]"></i>
+          </button>
+          <a
+            href="${profileUrlSafe}"
+            class="min-w-0 flex-1 flex items-center gap-3 hover:opacity-90 transition"
+            aria-label="Ver perfil de ${nombreComercio}"
+          >
+            <img src="${logoUrlSafe}" alt="${nombreComercio}" class="w-11 h-11 rounded-full object-cover border border-gray-200">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-gray-900 truncate">${nombreComercio}</p>
+              <p class="text-xs text-gray-500 truncate">${municipio}</p>
+            </div>
+          </a>
+          <div class="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              class="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full"
+              aria-label="Me gusta del comercio"
+            >
+              <img src="${escapeHtml(LIKE_OFF_ICON_URL)}" alt="Me gusta inactivo" class="w-8 h-8">
+            </button>
+            <button
+              type="button"
+              class="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full"
+              aria-label="Compartir publicación"
+            >
+              <img src="${escapeHtml(SHARE_ICON_URL)}" alt="Compartir" class="w-8 h-8">
+            </button>
+          </div>
+        </header>
+        <div class="lodehoy-media-frame lodehoy-media-frame--landscape bg-gray-100 flex items-center justify-center overflow-hidden relative">
+          ${mediaHtml}
+          ${mediaTipo === 'video' ? `
+            <div class="absolute right-2 bottom-2 z-10 flex items-center gap-2">
+              <span data-role="perfil-video-no-audio" data-video-id="${row.id}" class="hidden px-2 py-0.5 rounded-full bg-white/95 text-[10px] font-semibold text-gray-700 shadow-sm">
+                Video sin Audio
+              </span>
+              <button
+                type="button"
+                data-action="toggle-audio-perfil"
+                data-video-id="${row.id}"
+                class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/95 shadow-sm border border-gray-100"
+                aria-label="${perfilAudioEnabled ? 'Silenciar videos' : 'Activar audio de videos'}"
+                aria-pressed="${perfilAudioEnabled ? 'true' : 'false'}"
+              >
+                <i class="${perfilAudioEnabled ? 'fa-solid fa-volume-high text-[12px] text-emerald-700' : 'fa-solid fa-volume-xmark text-[12px] text-gray-700'}"></i>
+              </button>
+            </div>
+          ` : ''}
+        </div>
+        <div class="px-3 py-3 border-t border-gray-100 space-y-2">
+          ${titulo ? `
+            <p class="text-[18px] leading-tight font-semibold text-gray-900 text-center" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+              ${titulo}
+            </p>
+          ` : ''}
+          ${texto ? `
+            <p class="text-[16px] leading-snug font-normal text-gray-700 text-center line-clamp-3">
+              ${texto}
+            </p>
+          ` : ''}
+          <p class="text-[13px] leading-tight font-normal text-gray-500 text-center">
+            Publicado: ${hora || '—'}
+          </p>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  setupPerfilPostMediaLayout();
+  bindPerfilPostActions();
+  updatePerfilAudioButtons();
+  setupPerfilVideoObserver();
+  registerPerfilAutoplayUnlockHandlers();
+  bindPerfilPlaybackEvents();
+  getPerfilVideos().forEach((video) => {
+    bindPerfilVideoClipLoop(video);
+    const hasAudioAttr = String(video.dataset.hasAudio || '').trim();
+    const knownAudio = hasAudioAttr === '1' || hasAudioAttr === '0';
+    const hasAudio = hasAudioAttr !== '0';
+    applyPerfilVideoAudioUI(video, { known: knownAudio, hasAudio });
+    if (!knownAudio) {
+      schedulePerfilVideoAudioProbe(video);
+    }
+  });
+  section.classList.remove('hidden');
+}
+
+async function cargarPublicacionesPerfil(idComercioValue, comercioData = {}) {
+  const section = document.getElementById('seccionPublicacionesPerfil');
+  const scroller = document.getElementById('publicacionesPerfilScroller');
+  if (!section || !scroller) return;
+
+  const nowIso = new Date().toISOString();
+  let data = null;
+  let error = null;
+
+  const attempts = [
+    'id,idcomercio,titulo,texto,media_path,media_tipo,media_has_audio,created_at,expira_en,clip_start_sec,clip_end_sec',
+    'id,idcomercio,titulo,texto,media_path,media_tipo,created_at,expira_en,clip_start_sec,clip_end_sec',
+    'id,idcomercio,titulo,texto,media_path,media_tipo,media_has_audio,created_at,expira_en',
+    'id,idcomercio,titulo,texto,media_path,media_tipo,created_at,expira_en',
+    'id,idcomercio,texto,media_path,media_tipo,created_at,expira_en',
+  ];
+
+  for (const columns of attempts) {
+    const response = await supabase
+      .from('publicaciones_hoy')
+      .select(columns)
+      .eq('idcomercio', idComercioValue)
+      .gt('expira_en', nowIso)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (!response.error) {
+      data = response.data || [];
+      error = null;
+      break;
+    }
+
+    error = response.error;
+    const message = String(response.error.message || '').toLowerCase();
+    if (
+      !message.includes('titulo')
+      && !message.includes('media_has_audio')
+      && !message.includes('clip_start_sec')
+      && !message.includes('clip_end_sec')
+    ) {
+      break;
+    }
+  }
+
+  if (error) {
+    console.warn('No se pudieron cargar publicaciones para perfil del comercio:', error);
+    scroller.innerHTML = '';
+    section.classList.add('hidden');
+    return;
+  }
+
+  renderPublicacionesPerfil(data || [], comercioData);
+}
 
 async function cargarCuponesComercio(idComercio) {
   const seccion = document.getElementById('seccionCupones');
@@ -535,6 +1183,7 @@ export async function obtenerComercioPorID(idComercio) {
   }
   if (data.email) document.getElementById('linkEmail')?.setAttribute('href', `mailto:${data.email}`);
 
+  let logoPerfilUrl = data.logo || '';
   const { data: imagenLogo } = await supabase
     .from('imagenesComercios')
     .select('imagen')
@@ -545,6 +1194,10 @@ export async function obtenerComercioPorID(idComercio) {
   if (imagenLogo?.imagen) {
     const url = supabase.storage.from('galeriacomercios').getPublicUrl(imagenLogo.imagen).data.publicUrl;
     document.getElementById('logoComercio').src = url;
+    logoPerfilUrl = url;
+  } else if (logoPerfilUrl) {
+    document.getElementById('logoComercio').src = getComercioLogoUrl(logoPerfilUrl);
+    logoPerfilUrl = getComercioLogoUrl(logoPerfilUrl);
   }
 
   if (latUsuario && lonUsuario && data.latitud && data.longitud) {
@@ -583,6 +1236,12 @@ export async function obtenerComercioPorID(idComercio) {
   if (data.tieneSucursales) await mostrarSucursales(idComercio, data.nombre);
 
   await cargarCuponesComercio(idComercio);
+  await cargarPublicacionesPerfil(idComercio, {
+    id: idComercio,
+    nombre: data.nombre,
+    municipio: data.municipio,
+    logo: logoPerfilUrl || DEFAULT_LOGO,
+  });
 
   comercioActual = data;
   void trackAnalyticsEvent({

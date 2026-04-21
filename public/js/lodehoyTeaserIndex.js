@@ -1,0 +1,316 @@
+import { supabase } from '../shared/supabaseClient.js';
+
+const PUBLIC_BUCKET_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios';
+const DEFAULT_LOGO = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoPerfil.png';
+const APP_PREFIX = ['localhost', '127.0.0.1', '::1'].includes(String(window.location.hostname || '').toLowerCase()) ? '/public' : '';
+const MAX_RENDER = 10;
+const TOP_POOL = 40;
+const FETCH_LIMIT = 120;
+const MAX_PER_COMERCIO = 2;
+
+const section = document.getElementById('lodehoyTeaserSection');
+const statusEl = document.getElementById('lodehoyTeaserStatus');
+const listEl = document.getElementById('lodehoyTeaserList');
+const teaserBtnEl = document.getElementById('lodehoyTeaserBtn');
+
+let loaded = false;
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function toNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function encodeStoragePath(path) {
+  const clean = String(path || '')
+    .trim()
+    .replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/public\/galeriacomercios\//i, '')
+    .replace(/^\/+/, '')
+    .replace(/^public\//i, '')
+    .replace(/^galeriacomercios\//i, '');
+
+  return clean
+    .split('/')
+    .filter(Boolean)
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+}
+
+function buildStoragePublicUrl(path) {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+  const encoded = encodeStoragePath(path);
+  return encoded ? `${PUBLIC_BUCKET_BASE}/${encoded}` : '';
+}
+
+function formatHoraPR(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('es-PR', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'America/Puerto_Rico',
+  }).format(date);
+}
+
+function shuffle(list = []) {
+  const arr = [...list];
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function setStatus(message = '') {
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.classList.toggle('hidden', !message);
+}
+
+async function loadPostsActivas() {
+  const nowIso = new Date().toISOString();
+  const attempts = [
+    'id,idcomercio,titulo,texto,media_path,media_tipo,created_at,expira_en',
+    'id,idcomercio,texto,media_path,media_tipo,created_at,expira_en',
+  ];
+
+  for (const columns of attempts) {
+    const response = await supabase
+      .from('publicaciones_hoy')
+      .select(columns)
+      .gt('expira_en', nowIso)
+      .order('created_at', { ascending: false })
+      .limit(FETCH_LIMIT);
+
+    if (!response.error) {
+      return response.data || [];
+    }
+
+    const msg = String(response.error.message || '').toLowerCase();
+    if (!msg.includes('titulo')) {
+      throw response.error;
+    }
+  }
+  return [];
+}
+
+async function loadComerciosMap(comercioIds = []) {
+  const map = new Map();
+  if (!comercioIds.length) return map;
+
+  const attempts = [
+    'id,nombre,logo,municipio',
+    'id,nombre,logo',
+    'id,nombre',
+  ];
+
+  for (const columns of attempts) {
+    const response = await supabase
+      .from('Comercios')
+      .select(columns)
+      .in('id', comercioIds);
+
+    if (response.error) continue;
+    (response.data || []).forEach((row) => {
+      const id = toNumber(row?.id);
+      if (!id) return;
+      map.set(id, row);
+    });
+    return map;
+  }
+
+  return map;
+}
+
+async function loadLikesCountMap(comercioIds = []) {
+  const counter = new Map(comercioIds.map((id) => [id, 0]));
+  if (!comercioIds.length) return counter;
+
+  const response = await supabase
+    .from('lodehoy_likes_comercio')
+    .select('idcomercio,idusuario')
+    .in('idcomercio', comercioIds);
+
+  if (response.error) {
+    return counter;
+  }
+
+  const usersByComercio = new Map(comercioIds.map((id) => [id, new Set()]));
+  (response.data || []).forEach((row) => {
+    const comercioId = toNumber(row?.idcomercio);
+    const userId = String(row?.idusuario || '').trim();
+    if (!comercioId || !userId) return;
+    if (!usersByComercio.has(comercioId)) {
+      usersByComercio.set(comercioId, new Set());
+    }
+    usersByComercio.get(comercioId).add(userId);
+  });
+
+  usersByComercio.forEach((users, comercioId) => {
+    counter.set(comercioId, users.size);
+  });
+  return counter;
+}
+
+function pickRandomTopPosts(posts = []) {
+  const sorted = [...posts].sort((a, b) => {
+    if (b.likeCount !== a.likeCount) return b.likeCount - a.likeCount;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  const pool = sorted.slice(0, Math.min(TOP_POOL, sorted.length));
+  const randomized = shuffle(pool);
+  const selected = [];
+  const perComercio = new Map();
+
+  for (const item of randomized) {
+    if (selected.length >= MAX_RENDER) break;
+    const comercioId = toNumber(item.idcomercio);
+    const used = perComercio.get(comercioId) || 0;
+    if (used >= MAX_PER_COMERCIO) continue;
+    selected.push(item);
+    perComercio.set(comercioId, used + 1);
+  }
+
+  if (selected.length < Math.min(MAX_RENDER, randomized.length)) {
+    for (const item of randomized) {
+      if (selected.length >= MAX_RENDER) break;
+      if (selected.some((it) => it.id === item.id)) continue;
+      selected.push(item);
+    }
+  }
+  return selected;
+}
+
+function renderTeaser(posts = []) {
+  if (!section || !listEl) return;
+
+  if (!posts.length) {
+    listEl.innerHTML = '';
+    section.classList.add('hidden');
+    return;
+  }
+
+  listEl.innerHTML = posts.map((post) => {
+    const mediaUrl = escapeHtml(buildStoragePublicUrl(post.media_path));
+    const rawTitle = String(post.titulo || post.texto || '').trim();
+    const title = escapeHtml(rawTitle);
+    const hora = escapeHtml(formatHoraPR(post.created_at));
+    const comercioNombre = escapeHtml(String(post.comercioNombre || 'Comercio').trim());
+    const logoUrl = escapeHtml(String(post.comercioLogo || DEFAULT_LOGO));
+    const href = `${window.location.origin}${APP_PREFIX}/lodehoy.html?post=${post.id}`;
+
+    const mediaNode = post.media_tipo === 'video'
+      ? `<video class="w-full h-full object-cover" src="${mediaUrl}" autoplay loop muted playsinline webkit-playsinline preload="metadata"></video>`
+      : `<img class="w-full h-full object-cover" src="${mediaUrl}" alt="${title}" loading="lazy">`;
+
+    return `
+      <a href="${escapeHtml(href)}" class="min-w-[152px] max-w-[152px] snap-start block">
+        <article class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div class="aspect-[4/5] bg-gray-100 overflow-hidden relative">
+            ${mediaNode}
+          </div>
+          <div class="px-2 py-2">
+            <div class="flex items-center justify-center gap-2 mb-1">
+              <img src="${logoUrl}" alt="${comercioNombre}" class="w-5 h-5 rounded-full object-cover border border-gray-200">
+              <p class="text-[11px] text-gray-700 truncate text-center">${comercioNombre}</p>
+            </div>
+            <p class="text-[12px] font-semibold text-gray-900 truncate text-center">${title || ' '}</p>
+            <div class="mt-1 flex items-center justify-center">
+              <p class="text-[10px] text-gray-500 text-center">${hora || '--'}</p>
+            </div>
+          </div>
+        </article>
+      </a>
+    `;
+  }).join('');
+
+  section.classList.remove('hidden');
+}
+
+async function loadTeaser() {
+  if (loaded || !section || !listEl) return;
+  loaded = true;
+  setStatus('Cargando Lo de Hoy...');
+
+  try {
+    const postsRaw = await loadPostsActivas();
+    if (!postsRaw.length) {
+      renderTeaser([]);
+      return;
+    }
+
+    const comercioIds = [...new Set(postsRaw.map((row) => toNumber(row.idcomercio)).filter(Boolean))];
+    const [comercioMap, likesMap] = await Promise.all([
+      loadComerciosMap(comercioIds),
+      loadLikesCountMap(comercioIds),
+    ]);
+
+    const enriched = postsRaw
+      .filter((row) => row?.media_path && row?.media_tipo)
+      .map((row) => {
+        const comercioId = toNumber(row.idcomercio);
+        const comercio = comercioMap.get(comercioId) || {};
+        const logoRaw = String(comercio.logo || '').trim();
+        const logoUrl = logoRaw ? (logoRaw.startsWith('http') ? logoRaw : buildStoragePublicUrl(logoRaw)) : DEFAULT_LOGO;
+        return {
+          ...row,
+          likeCount: Number(likesMap.get(comercioId) || 0),
+          comercioNombre: comercio.nombre || 'Comercio',
+          comercioLogo: logoUrl || DEFAULT_LOGO,
+        };
+      });
+
+    const selected = pickRandomTopPosts(enriched);
+    renderTeaser(selected);
+  } catch (error) {
+    console.warn('No se pudo cargar teaser de Lo de Hoy:', error?.message || error);
+    section.classList.add('hidden');
+  } finally {
+    setStatus('');
+  }
+}
+
+function initTeaser() {
+  if (!section || !listEl) return;
+
+  if (teaserBtnEl) {
+    teaserBtnEl.href = `${APP_PREFIX}/lodehoy.html`;
+  }
+
+  if (!('IntersectionObserver' in window)) {
+    void loadTeaser();
+    return;
+  }
+
+  const triggerEl = document.getElementById('categoriasSection') || section;
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      observer.disconnect();
+      void loadTeaser();
+    });
+  }, {
+    root: null,
+    threshold: 0.12,
+    rootMargin: '320px 0px',
+  });
+
+  observer.observe(triggerEl);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initTeaser, { once: true });
+} else {
+  initTeaser();
+}

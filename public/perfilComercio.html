@@ -21,6 +21,38 @@
     body {
       font-family: 'Kanit', sans-serif;
     }
+    .perfil-publicaciones-scroll {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .perfil-publicaciones-scroll::-webkit-scrollbar {
+      display: none;
+    }
+    .line-clamp-3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .lodehoy-media-frame {
+      max-height: min(60vh, 560px);
+    }
+    .lodehoy-media-frame--portrait {
+      height: min(60vh, 560px);
+      min-height: 220px;
+    }
+    .lodehoy-media-frame--landscape {
+      height: auto;
+      min-height: 0;
+    }
+    .lodehoy-media-content {
+      width: 100%;
+      max-height: min(60vh, 560px);
+      object-position: center center;
+      display: block;
+    }
+    .lodehoy-media-fit-cover { object-fit: cover; }
+    .lodehoy-media-fit-contain { object-fit: contain; }
   </style>
   <script type="module" src="./js/i18n.js"></script>
 </head>
@@ -182,7 +214,7 @@
 
 
 
-    <section class="px-6 md:px-10 mt-6">
+<section class="px-6 md:px-10 mt-6">
   <div class="bg-white rounded-lg shadow-sm p-5">
     <p id="descripcionTexto" class="text-sm text-justify overflow-hidden line-clamp-5 transition-all duration-500 ease-in-out"></p>
     <div class="text-center mt-3">
@@ -190,6 +222,17 @@
         Ver toda la información
       </button>
     </div>
+  </div>
+</section>
+
+<section id="seccionPublicacionesPerfil" class="px-6 md:px-10 mt-6 hidden">
+  <div class="bg-white rounded-lg shadow-sm p-5">
+    <h2 id="tituloPublicacionesPerfil" class="text-center text-xl font-semibold mb-4 text-[#424242]">Lo de Hoy</h2>
+    <div
+      id="publicacionesPerfilScroller"
+      class="perfil-publicaciones-scroll flex gap-3 overflow-x-auto snap-x snap-mandatory pb-1"
+      aria-label="Publicaciones activas del comercio"
+    ></div>
   </div>
 </section>
 

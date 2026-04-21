@@ -20,7 +20,17 @@ video::-webkit-media-controls-enclosure {
 
 video::-webkit-media-controls-overlay-play-button {
   display: none !important;
-}</style>
+}
+
+.teaser-scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.teaser-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+</style>
 
 </head>
 <body class="bg-[#121212]">
@@ -45,6 +55,23 @@ video::-webkit-media-controls-overlay-play-button {
   <p id="toggleCategorias" class="mt-4 text-sm text-gray-500 cursor-pointer hover:text-gray-700">
   <span data-i18n="home.verTodasCategorias">Ver todas las Categorías...</span>
 </p>
+</section>
+
+<section id="lodehoyTeaserSection" class="mt-5 px-4 hidden">
+  <div class="text-center mb-2">
+    <h2 class="text-2xl font-medium mb-4">Chequea Lo de Hoy en Findixi</h2>
+  </div>
+  <p id="lodehoyTeaserStatus" class="text-xs text-gray-500 mb-2 text-left">Cargando...</p>
+  <div id="lodehoyTeaserList" class="teaser-scrollbar-hidden flex gap-3 overflow-x-auto snap-x snap-mandatory pb-1"></div>
+  <div class="flex justify-center mt-3">
+    <a
+      id="lodehoyTeaserBtn"
+      href="lodehoy.html"
+      class="inline-flex items-center justify-center bg-[#023047] hover:bg-[#012737] text-white text-sm font-light py-1.5 px-6 rounded-lg shadow transition"
+    >
+      Ver mas publicaciones
+    </a>
+  </div>
 </section>
 
 <section id="bannerEspeciales" class="my-8 text-center mx-auto w-[90%] max-w-3xl">
@@ -76,11 +103,27 @@ video::-webkit-media-controls-overlay-play-button {
 <section class="text-center my-6 px-4">
   <h2 class="text-2xl font-medium mb-4" data-i18n="home.comidaTitulo">¡Aquí sí, se come Brutal!</h2>
   <div id="comidaCarousel"></div>
+  <div class="flex justify-center mt-3">
+    <a
+      href="listadoComercios.html?idCategoria=1"
+      class="inline-flex items-center justify-center bg-[#023047] hover:bg-[#012737] text-white text-sm font-light py-1.5 px-6 rounded-lg shadow transition"
+    >
+      Ver mas opciones
+    </a>
+  </div>
 </section>
 
 <section class="text-center my-6 px-4">
   <h2 class="text-2xl font-medium mb-4" data-i18n="home.jangueoTitulo">¿Nos Fuimos pal Jangueo?</h2>
   <div id="jangueoCarousel"></div>
+  <div class="flex justify-center mt-3">
+    <a
+      href="listadoComercios.html?idCategoria=11"
+      class="inline-flex items-center justify-center bg-[#023047] hover:bg-[#012737] text-white text-sm font-light py-1.5 px-6 rounded-lg shadow transition"
+    >
+      Ver mas lugares
+    </a>
+  </div>
 </section>
 
 <section class="text-center my-6 px-4">
@@ -163,6 +206,7 @@ video::-webkit-media-controls-overlay-play-button {
 <script type="module" src="./js/categoriasIndex.js"></script>
 <script type="module" src="./js/areasIndex.js"></script>
 <script type="module" src="./js/especialesBanner.js"></script>
+<script type="module" src="./js/lodehoyTeaserIndex.js"></script>
 
 <script type="module" src="./js/bannerCarousel.js"></script>
 <script type="module">
