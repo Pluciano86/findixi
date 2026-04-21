@@ -355,11 +355,13 @@ function renderTeaser(posts = []) {
               <img src="${logoUrl}" alt="${comercioNombre}" class="w-5 h-5 rounded-full object-cover border border-gray-200">
               <p class="text-[11px] text-gray-700 truncate text-center">${comercioNombre}</p>
             </div>
-            <p class="text-[12px] font-semibold text-gray-900 text-center leading-tight min-h-[30px]" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
-              ${titleHtml}
-            </p>
+            <div class="h-[34px] flex items-center justify-center">
+              <p class="w-full text-[12px] font-semibold text-gray-900 text-center leading-tight" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+                ${titleHtml}
+              </p>
+            </div>
             <div class="mt-1 flex items-center justify-center">
-              <p class="text-[10px] text-gray-500 text-center">${hora || '--'}</p>
+              <p class="text-[10px] text-gray-500 text-center">Publicado: ${hora || '--'}</p>
             </div>
           </div>
         </article>
