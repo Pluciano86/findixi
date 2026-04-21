@@ -921,6 +921,7 @@ function renderPublicaciones(list = publicaciones) {
     const horaPublicada = formatHoraPR(post.created_at);
     const logoUrlSafe = escapeHtml(logoUrl);
     const mediaUrlSafe = escapeHtml(mediaUrl);
+    const profileUrlSafe = escapeHtml(getProfileUrl(comercioId));
     const clipStart = Number.isFinite(Number(post.clip_start_sec)) ? Number(post.clip_start_sec) : 0;
     const clipEnd = Number.isFinite(Number(post.clip_end_sec)) ? Number(post.clip_end_sec) : '';
     const hasAudioAttr = post.media_has_audio === true
@@ -948,11 +949,17 @@ function renderPublicaciones(list = publicaciones) {
           >
             <i class="${favoriteClass}"></i>
           </button>
-          <img src="${logoUrlSafe}" alt="${nombreComercio}" class="w-11 h-11 rounded-full object-cover border border-gray-200">
-          <div class="min-w-0">
-            <p class="text-sm font-semibold text-gray-900 truncate">${nombreComercio}</p>
-            <p class="text-xs text-gray-500 truncate">${municipio || 'Puerto Rico'}</p>
-          </div>
+          <a
+            href="${profileUrlSafe}"
+            class="min-w-0 flex-1 flex items-center gap-3 hover:opacity-90 transition"
+            aria-label="Ver perfil de ${nombreComercio}"
+          >
+            <img src="${logoUrlSafe}" alt="${nombreComercio}" class="w-11 h-11 rounded-full object-cover border border-gray-200">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-gray-900 truncate">${nombreComercio}</p>
+              <p class="text-xs text-gray-500 truncate">${municipio || 'Puerto Rico'}</p>
+            </div>
+          </a>
           <div class="ml-auto flex items-center gap-2">
             <button
               type="button"

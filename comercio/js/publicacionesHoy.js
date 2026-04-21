@@ -13,7 +13,7 @@ const ALLOWED_MIME = new Set([
 ]);
 const MAX_FILE_SIZE_MB = 45;
 const MAX_CLIP_SECONDS = 12;
-const MIN_CLIP_SECONDS = 0.5;
+const MIN_CLIP_SECONDS = 1;
 const TRIM_RECORDING_TIMESLICE_MS = 200;
 const USER_AGENT = String(window.navigator?.userAgent || '').toLowerCase();
 const IS_IOS_DEVICE = /iphone|ipad|ipod/.test(USER_AGENT)
@@ -35,8 +35,10 @@ const listaPublicacionesComercio = document.getElementById('listaPublicacionesCo
 const btnRecargar = document.getElementById('btnRecargar');
 const subtituloComercio = document.getElementById('subtituloComercio');
 const videoClipEditor = document.getElementById('videoClipEditor');
-const clipStartRange = document.getElementById('clipStartRange');
-const clipDurationRange = document.getElementById('clipDurationRange');
+const clipTimeline = document.getElementById('clipTimeline');
+const clipTimelineWindow = document.getElementById('clipTimelineWindow');
+const clipHandleStart = document.getElementById('clipHandleStart');
+const clipHandleEnd = document.getElementById('clipHandleEnd');
 const clipStartValue = document.getElementById('clipStartValue');
 const clipDurationValue = document.getElementById('clipDurationValue');
 const clipResumen = document.getElementById('clipResumen');
@@ -50,6 +52,7 @@ let previewObjectUrl = null;
 let publicacionesActivas = [];
 let likesCountByComercio = new Map();
 let editingPostId = null;
+let clipDragState = null;
 let selectedClip = {
   enabled: false,
   startSec: 0,
@@ -80,6 +83,31 @@ function formatSeconds(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return '0.0s';
   return `${num.toFixed(1)}s`;
+}
+
+function getFileSizeMb(file) {
+  return Number(file?.size || 0) / (1024 * 1024);
+}
+
+function getClipDurations(sourceDuration) {
+  const safeSourceDuration = Math.max(0, Number(sourceDuration || 0));
+  const minDuration = safeSourceDuration > 0
+    ? Math.min(MIN_CLIP_SECONDS, safeSourceDuration)
+    : MIN_CLIP_SECONDS;
+  const maxDuration = safeSourceDuration > 0
+    ? clamp(safeSourceDuration, minDuration, MAX_CLIP_SECONDS)
+    : MAX_CLIP_SECONDS;
+  return { minDuration, maxDuration };
+}
+
+function getTimelineClientXToSec(clientX) {
+  if (!clipTimeline) return 0;
+  const rect = clipTimeline.getBoundingClientRect();
+  const width = Number(rect.width || 0);
+  if (!width) return 0;
+  const ratio = clamp((clientX - rect.left) / width, 0, 1);
+  const sourceDuration = Math.max(0, Number(selectedClip.sourceDurationSec || 0));
+  return ratio * sourceDuration;
 }
 
 function isVideoMeta(meta) {
@@ -130,12 +158,12 @@ function getClipWindow() {
   const start = Number(selectedClip.startSec || 0);
   const duration = Number(selectedClip.durationSec || 0);
   const sourceDuration = Number(selectedClip.sourceDurationSec || 0);
-  const minDuration = sourceDuration > 0 ? Math.min(MIN_CLIP_SECONDS, sourceDuration) : MIN_CLIP_SECONDS;
+  const { minDuration } = getClipDurations(sourceDuration);
   const safeStart = Number.isFinite(start) ? Math.max(0, start) : 0;
   const safeDuration = Number.isFinite(duration) ? Math.max(minDuration, duration) : minDuration;
   const maxEnd = Number.isFinite(sourceDuration) && sourceDuration > 0 ? sourceDuration : safeStart + safeDuration;
   const end = Math.min(maxEnd, safeStart + safeDuration);
-  return { start, end, duration: Math.max(0, end - safeStart), sourceDuration };
+  return { start: safeStart, end, duration: Math.max(0, end - safeStart), sourceDuration };
 }
 
 function setEstadoAcceso(message, isError = false) {
@@ -174,7 +202,168 @@ function updateContadorTitulo() {
   contadorTitulo.textContent = `${inputTitulo.value.length} / 50`;
 }
 
+function clearClipDragState() {
+  clipDragState = null;
+  clipTimelineWindow?.classList.remove('cursor-grabbing');
+  clipTimelineWindow?.classList.add('cursor-grab');
+}
+
+function updateClipWindow(startSec, durationSec) {
+  const sourceDuration = Math.max(0, Number(selectedClip.sourceDurationSec || 0));
+  const { minDuration, maxDuration } = getClipDurations(sourceDuration);
+  const safeDuration = clamp(Number(durationSec || 0), minDuration, maxDuration);
+  const maxStart = Math.max(0, sourceDuration - safeDuration);
+  const safeStart = clamp(Number(startSec || 0), 0, maxStart);
+
+  selectedClip.startSec = safeStart;
+  selectedClip.durationSec = safeDuration;
+  selectedClip.endSec = Math.min(sourceDuration, safeStart + safeDuration);
+}
+
+function updateClipEditorUI() {
+  const sourceDuration = Math.max(0, Number(selectedClip.sourceDurationSec || 0));
+  if (!selectedClip.enabled || !sourceDuration) {
+    videoClipEditor?.classList.add('hidden');
+    clearClipDragState();
+    return;
+  }
+
+  videoClipEditor?.classList.remove('hidden');
+
+  updateClipWindow(selectedClip.startSec, selectedClip.durationSec);
+  const { startSec, durationSec, endSec } = selectedClip;
+
+  if (clipStartValue) clipStartValue.textContent = formatSeconds(startSec);
+  if (clipDurationValue) clipDurationValue.textContent = formatSeconds(durationSec);
+  if (clipResumen) {
+    clipResumen.textContent = `Fragmento: ${formatSeconds(startSec)} a ${formatSeconds(endSec)} (duración ${formatSeconds(endSec - startSec)}).`;
+  }
+
+  const startPct = clamp((startSec / sourceDuration) * 100, 0, 100);
+  const endPct = clamp((endSec / sourceDuration) * 100, 0, 100);
+  const widthPct = Math.max(0, endPct - startPct);
+
+  if (clipTimelineWindow) {
+    clipTimelineWindow.style.left = `${startPct}%`;
+    clipTimelineWindow.style.width = `${widthPct}%`;
+  }
+  if (clipHandleStart) {
+    clipHandleStart.style.left = `${startPct}%`;
+  }
+  if (clipHandleEnd) {
+    clipHandleEnd.style.left = `${endPct}%`;
+  }
+}
+
+function syncClipFromPointer(event) {
+  if (!clipDragState) return;
+
+  const sourceDuration = Math.max(0, Number(selectedClip.sourceDurationSec || 0));
+  if (!sourceDuration) return;
+  const { minDuration } = getClipDurations(sourceDuration);
+  const pointerSec = getTimelineClientXToSec(event.clientX);
+
+  if (clipDragState.mode === 'move') {
+    const duration = Number(clipDragState.durationSec || selectedClip.durationSec || MAX_CLIP_SECONDS);
+    const maxStart = Math.max(0, sourceDuration - duration);
+    const nextStart = clamp(pointerSec - clipDragState.offsetSec, 0, maxStart);
+    updateClipWindow(nextStart, duration);
+    return;
+  }
+
+  if (clipDragState.mode === 'start') {
+    const endFixed = Number(clipDragState.endSec || selectedClip.endSec || 0);
+    const minStart = Math.max(0, endFixed - MAX_CLIP_SECONDS);
+    const maxStart = Math.max(0, endFixed - minDuration);
+    const nextStart = clamp(pointerSec, minStart, maxStart);
+    updateClipWindow(nextStart, endFixed - nextStart);
+    return;
+  }
+
+  if (clipDragState.mode === 'end') {
+    const startFixed = Number(clipDragState.startSec || selectedClip.startSec || 0);
+    const minEnd = startFixed + minDuration;
+    const maxEnd = Math.min(sourceDuration, startFixed + MAX_CLIP_SECONDS);
+    const nextEnd = clamp(pointerSec, minEnd, maxEnd);
+    updateClipWindow(startFixed, nextEnd - startFixed);
+  }
+}
+
+function handleClipPointerMove(event) {
+  if (!clipDragState || event.pointerId !== clipDragState.pointerId) return;
+  event.preventDefault();
+  syncClipFromPointer(event);
+  updateClipEditorUI();
+  syncPreviewVideoClipWindow();
+}
+
+function handleClipPointerUp(event) {
+  if (!clipDragState || event.pointerId !== clipDragState.pointerId) return;
+  event.preventDefault();
+  clearClipDragState();
+  window.removeEventListener('pointermove', handleClipPointerMove);
+  window.removeEventListener('pointerup', handleClipPointerUp);
+  window.removeEventListener('pointercancel', handleClipPointerUp);
+  syncPreviewVideoClipWindow();
+}
+
+function startClipDrag(mode, event) {
+  if (!selectedClip.enabled) return;
+  const sourceDuration = Math.max(0, Number(selectedClip.sourceDurationSec || 0));
+  if (!sourceDuration) return;
+
+  const pointerSec = getTimelineClientXToSec(event.clientX);
+  const durationSec = Number(selectedClip.durationSec || MAX_CLIP_SECONDS);
+  clipDragState = {
+    mode,
+    pointerId: event.pointerId,
+    startSec: Number(selectedClip.startSec || 0),
+    endSec: Number(selectedClip.endSec || 0),
+    durationSec,
+    offsetSec: clamp(pointerSec - Number(selectedClip.startSec || 0), 0, durationSec),
+  };
+
+  clipTimelineWindow?.classList.remove('cursor-grab');
+  clipTimelineWindow?.classList.add('cursor-grabbing');
+  window.addEventListener('pointermove', handleClipPointerMove, { passive: false });
+  window.addEventListener('pointerup', handleClipPointerUp, { passive: false });
+  window.addEventListener('pointercancel', handleClipPointerUp, { passive: false });
+}
+
+function handleClipTimelinePointerDown(event) {
+  if (!selectedClip.enabled) return;
+  if (event.button !== 0) return;
+  event.preventDefault();
+
+  const target = event.target instanceof Element ? event.target : null;
+  if (target?.closest('[data-handle="start"]')) {
+    startClipDrag('start', event);
+    return;
+  }
+  if (target?.closest('[data-handle="end"]')) {
+    startClipDrag('end', event);
+    return;
+  }
+  if (target?.closest('#clipTimelineWindow')) {
+    startClipDrag('move', event);
+    return;
+  }
+
+  const sourceDuration = Math.max(0, Number(selectedClip.sourceDurationSec || 0));
+  const durationSec = Number(selectedClip.durationSec || MAX_CLIP_SECONDS);
+  const pointerSec = getTimelineClientXToSec(event.clientX);
+  const nextStart = clamp(pointerSec - (durationSec / 2), 0, Math.max(0, sourceDuration - durationSec));
+  updateClipWindow(nextStart, durationSec);
+  updateClipEditorUI();
+  syncPreviewVideoClipWindow();
+  startClipDrag('move', event);
+}
+
 function resetClipEditor() {
+  clearClipDragState();
+  window.removeEventListener('pointermove', handleClipPointerMove);
+  window.removeEventListener('pointerup', handleClipPointerUp);
+  window.removeEventListener('pointercancel', handleClipPointerUp);
   selectedClip = {
     enabled: false,
     startSec: 0,
@@ -183,52 +372,6 @@ function resetClipEditor() {
     sourceDurationSec: 0,
   };
   videoClipEditor?.classList.add('hidden');
-}
-
-function updateClipEditorUI() {
-  if (!selectedClip.enabled) {
-    videoClipEditor?.classList.add('hidden');
-    return;
-  }
-
-  const sourceDuration = Math.max(0, Number(selectedClip.sourceDurationSec || 0));
-  if (!sourceDuration) {
-    videoClipEditor?.classList.add('hidden');
-    return;
-  }
-
-  videoClipEditor?.classList.remove('hidden');
-
-  const minDuration = Math.min(MIN_CLIP_SECONDS, sourceDuration);
-  const maxDuration = clamp(sourceDuration, minDuration, MAX_CLIP_SECONDS);
-  let durationSec = clamp(Number(selectedClip.durationSec || maxDuration), minDuration, maxDuration);
-  const maxStart = Math.max(0, sourceDuration - durationSec);
-  let startSec = clamp(Number(selectedClip.startSec || 0), 0, maxStart);
-  const endSec = Math.min(sourceDuration, startSec + durationSec);
-
-  selectedClip.startSec = startSec;
-  selectedClip.durationSec = durationSec;
-  selectedClip.endSec = endSec;
-
-  if (clipStartRange) {
-    clipStartRange.min = '0';
-    clipStartRange.max = String(maxStart);
-    clipStartRange.step = '0.1';
-    clipStartRange.value = String(startSec);
-  }
-
-  if (clipDurationRange) {
-    clipDurationRange.min = String(minDuration);
-    clipDurationRange.max = String(maxDuration);
-    clipDurationRange.step = '0.1';
-    clipDurationRange.value = String(durationSec);
-  }
-
-  if (clipStartValue) clipStartValue.textContent = formatSeconds(startSec);
-  if (clipDurationValue) clipDurationValue.textContent = formatSeconds(durationSec);
-  if (clipResumen) {
-    clipResumen.textContent = `Fragmento: ${formatSeconds(startSec)} a ${formatSeconds(endSec)} (duración ${formatSeconds(endSec - startSec)}).`;
-  }
 }
 
 function syncPreviewVideoClipWindow() {
@@ -266,7 +409,7 @@ function setupClipEditorForVideo(videoDuration) {
     return;
   }
 
-  selectedClip.enabled = true;
+  selectedClip.enabled = safeDuration > MAX_CLIP_SECONDS;
   selectedClip.sourceDurationSec = safeDuration;
   selectedClip.durationSec = Math.min(MAX_CLIP_SECONDS, safeDuration);
   selectedClip.startSec = 0;
@@ -381,29 +524,32 @@ function getMediaMetadata(file) {
   });
 }
 
-async function validateAndPrepareFile(file) {
+async function validateAndPrepareFile(file, { ignoreSizeLimitForVideo = false } = {}) {
   if (!file) {
     throw new Error('Selecciona un archivo para publicar.');
   }
 
-  if (!ALLOWED_MIME.has(file.type)) {
+  const mime = normalizeMimeType(file.type);
+  if (!ALLOWED_MIME.has(mime)) {
     throw new Error('Formato no permitido. Usa JPG, PNG, GIF, MP4 o MOV.');
   }
 
-  const sizeMb = file.size / (1024 * 1024);
-  if (sizeMb > MAX_FILE_SIZE_MB) {
+  const isVideo = mime.startsWith('video/');
+  const sizeMb = getFileSizeMb(file);
+  if (sizeMb > MAX_FILE_SIZE_MB && !(isVideo && ignoreSizeLimitForVideo)) {
     throw new Error(`El archivo supera ${MAX_FILE_SIZE_MB}MB.`);
   }
 
   const meta = await getMediaMetadata(file);
 
   return {
-    mime: file.type,
-    media_tipo: String(file.type || '').startsWith('video/') ? 'video' : 'image',
+    mime,
+    media_tipo: isVideo ? 'video' : 'image',
     width: meta.width,
     height: meta.height,
     durationSec: Number.isFinite(meta.durationSec) ? meta.durationSec : null,
     hasAudio: typeof meta.hasAudio === 'boolean' ? meta.hasAudio : null,
+    sourceSizeMb: sizeMb,
   };
 }
 
@@ -682,7 +828,7 @@ async function trimVideoFilePhysically(file, meta) {
       lastModified: Date.now(),
     });
 
-    const clippedMeta = await validateAndPrepareFile(clippedFile);
+    const clippedMeta = await validateAndPrepareFile(clippedFile, { ignoreSizeLimitForVideo: true });
 
     return {
       file: clippedFile,
@@ -813,10 +959,23 @@ function renderListaPublicaciones() {
 }
 
 async function loadLikesCount() {
-  const { count, error } = await supabase
+  const createdAtValues = (publicacionesActivas || [])
+    .map((row) => String(row?.created_at || '').trim())
+    .filter(Boolean);
+  const sinceIso = createdAtValues.length
+    ? createdAtValues.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0]
+    : null;
+
+  let query = supabase
     .from(LODEHOY_LIKES_TABLE)
-    .select('idcomercio', { count: 'exact', head: true })
+    .select('idusuario,created_at')
     .eq('idcomercio', idComercio);
+
+  if (sinceIso) {
+    query = query.gte('created_at', sinceIso);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     if (error.code !== '42P01') {
@@ -826,7 +985,12 @@ async function loadLikesCount() {
     return;
   }
 
-  likesCountByComercio.set(idComercio, toNumber(count) || 0);
+  const uniqueUsers = new Set(
+    (data || [])
+      .map((row) => String(row?.idusuario || '').trim())
+      .filter(Boolean)
+  );
+  likesCountByComercio.set(idComercio, uniqueUsers.size);
 }
 
 async function loadPublicacionesActivas() {
@@ -1010,7 +1174,7 @@ async function handleSubmit(event) {
   const text = String(inputTexto?.value || '').trim();
 
   try {
-    const baseMeta = selectedFileMeta || await validateAndPrepareFile(file);
+    const baseMeta = selectedFileMeta || await validateAndPrepareFile(file, { ignoreSizeLimitForVideo: true });
 
     btnPublicar.disabled = true;
     btnPublicar.classList.add('opacity-60', 'cursor-not-allowed');
@@ -1025,6 +1189,16 @@ async function handleSubmit(event) {
 
     const fileToUpload = trimResult.file;
     const meta = trimResult.meta;
+    const outputSizeMb = getFileSizeMb(fileToUpload);
+
+    if (outputSizeMb > MAX_FILE_SIZE_MB) {
+      const sizeText = outputSizeMb.toFixed(1);
+      if (isVideoMeta(meta) && !trimResult.clippedPhysically && !canPhysicallyTrimVideo()) {
+        throw new Error(`El video pesa ${sizeText}MB. En este dispositivo no se pudo recortar físicamente para bajar de ${MAX_FILE_SIZE_MB}MB. Usa un video más liviano o recórtalo antes de subir.`);
+      }
+      throw new Error(`El archivo final quedó en ${sizeText}MB. Debe ser ${MAX_FILE_SIZE_MB}MB o menos para publicar.`);
+    }
+
     const clipPayload = trimResult.clippedPhysically
       ? { clip_start_sec: null, clip_end_sec: null, media_has_audio: meta?.hasAudio === true ? true : null }
       : getClipPayload(meta);
@@ -1122,19 +1296,7 @@ function bindEvents() {
   inputTitulo?.addEventListener('input', updateContadorTitulo);
   inputTexto?.addEventListener('input', updateContadorTexto);
 
-  clipStartRange?.addEventListener('input', () => {
-    if (!selectedClip.enabled) return;
-    selectedClip.startSec = Number(clipStartRange.value || 0);
-    updateClipEditorUI();
-    syncPreviewVideoClipWindow();
-  });
-
-  clipDurationRange?.addEventListener('input', () => {
-    if (!selectedClip.enabled) return;
-    selectedClip.durationSec = Number(clipDurationRange.value || MAX_CLIP_SECONDS);
-    updateClipEditorUI();
-    syncPreviewVideoClipWindow();
-  });
+  clipTimeline?.addEventListener('pointerdown', handleClipTimelinePointerDown);
 
   inputArchivo?.addEventListener('change', async () => {
     const file = inputArchivo.files?.[0];
@@ -1145,9 +1307,14 @@ function bindEvents() {
 
     try {
       setEstadoGuardado('Validando archivo...');
-      const meta = await validateAndPrepareFile(file);
+      const meta = await validateAndPrepareFile(file, { ignoreSizeLimitForVideo: true });
       renderPreview(file, meta);
-      setEstadoGuardado('Archivo listo para publicar.');
+      const sourceSizeMb = getFileSizeMb(file);
+      if (meta.media_tipo === 'video' && sourceSizeMb > MAX_FILE_SIZE_MB) {
+        setEstadoGuardado(`Video cargado (${sourceSizeMb.toFixed(1)}MB). Recórtalo; al publicar debe quedar en ${MAX_FILE_SIZE_MB}MB o menos.`);
+      } else {
+        setEstadoGuardado('Archivo listo para publicar.');
+      }
     } catch (error) {
       inputArchivo.value = '';
       clearPreview();

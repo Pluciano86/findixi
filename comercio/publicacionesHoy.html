@@ -23,6 +23,14 @@
       margin: 0 auto;
       display: block;
     }
+    .clip-timeline {
+      touch-action: none;
+      user-select: none;
+    }
+    .clip-handle {
+      touch-action: none;
+      user-select: none;
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -73,34 +81,41 @@
 
         <div>
           <p class="text-sm font-semibold text-gray-700 mb-2">Vista previa (proporción original, máx. 60% pantalla)</p>
-          <div class="max-w-[280px] w-full publicacion-media-frame rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
+          <div class="relative max-w-[280px] w-full publicacion-media-frame rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
             <div id="previewMedia" class="w-full h-full flex items-center justify-center text-gray-400 text-xs px-3 text-center">
               Selecciona un archivo para ver la vista previa.
             </div>
-          </div>
-        </div>
+            <div id="videoClipEditor" class="hidden absolute left-2 right-2 bottom-2 rounded-xl bg-transparent p-2">
+              <p class="text-[11px] font-semibold text-white text-center [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]">Recorte automático (máx. 12s)</p>
 
-        <div id="videoClipEditor" class="hidden rounded-xl border border-fuchsia-100 bg-fuchsia-50/40 p-3 space-y-3">
-          <p class="text-sm font-semibold text-gray-800">Recorte de video (máx. 12s)</p>
-          <p class="text-xs text-gray-600">Selecciona desde qué segundo empieza el fragmento y cuánto dura (máximo 12 segundos).</p>
+              <div class="space-y-2">
+                <div class="relative h-9 clip-timeline" id="clipTimeline" aria-label="Selector de recorte de video">
+                  <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-2 rounded-full bg-fuchsia-100"></div>
+                  <div id="clipTimelineWindow" class="absolute top-1/2 -translate-y-1/2 h-3 rounded-full bg-fuchsia-500/75 border border-fuchsia-700 shadow-sm cursor-grab"></div>
+                  <button
+                    id="clipHandleStart"
+                    type="button"
+                    data-handle="start"
+                    class="clip-handle absolute top-1/2 -translate-y-1/2 -ml-2.5 w-5 h-5 rounded-full border border-fuchsia-700 bg-white shadow cursor-ew-resize"
+                    aria-label="Ajustar inicio del recorte"
+                  ></button>
+                  <button
+                    id="clipHandleEnd"
+                    type="button"
+                    data-handle="end"
+                    class="clip-handle absolute top-1/2 -translate-y-1/2 -ml-2.5 w-5 h-5 rounded-full border border-fuchsia-700 bg-white shadow cursor-ew-resize"
+                    aria-label="Ajustar final del recorte"
+                  ></button>
+                </div>
 
-          <div class="space-y-1">
-            <div class="flex items-center justify-between text-xs text-gray-700">
-              <label for="clipStartRange" class="font-medium">Inicio</label>
-              <span id="clipStartValue">0.0s</span>
+                <div class="flex items-center justify-center gap-4 text-[11px] text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]">
+                  <span><span class="font-medium">Inicio:</span> <span id="clipStartValue">0.0s</span></span>
+                  <span><span class="font-medium">Duración:</span> <span id="clipDurationValue">12.0s</span></span>
+                </div>
+              </div>
             </div>
-            <input id="clipStartRange" type="range" min="0" max="0" step="0.1" value="0" class="w-full accent-fuchsia-600">
           </div>
-
-          <div class="space-y-1">
-            <div class="flex items-center justify-between text-xs text-gray-700">
-              <label for="clipDurationRange" class="font-medium">Duración</label>
-              <span id="clipDurationValue">12.0s</span>
-            </div>
-            <input id="clipDurationRange" type="range" min="1" max="12" step="0.1" value="12" class="w-full accent-fuchsia-600">
-          </div>
-
-          <p id="clipResumen" class="text-xs text-gray-600"></p>
+          <p class="mt-2 text-xs text-gray-600">Si el video supera 12 segundos, usa la barra sobre el preview para escoger el fragmento (1s a 12s).</p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
