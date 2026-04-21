@@ -21,6 +21,7 @@ let teaserVideoObserver = null;
 let teaserAutoplayUnlocked = !IS_IOS_DEVICE;
 let teaserUnlockHandlersBound = false;
 let teaserPlaybackEventsBound = false;
+let teaserListScrollBound = false;
 
 function escapeHtml(value) {
   return String(value || '')
@@ -113,6 +114,9 @@ async function playTeaserVideo(video) {
   if (IS_IOS_DEVICE && !teaserAutoplayUnlocked) return;
   video.setAttribute('playsinline', '');
   video.setAttribute('webkit-playsinline', '');
+  video.setAttribute('muted', '');
+  video.setAttribute('autoplay', '');
+  video.setAttribute('loop', '');
   video.muted = true;
   video.defaultMuted = true;
   video.loop = true;
@@ -191,6 +195,11 @@ function bindTeaserPlaybackEvents() {
     }
     syncTeaserVideoPlayback();
   });
+
+  if (listEl && !teaserListScrollBound) {
+    teaserListScrollBound = true;
+    listEl.addEventListener('scroll', syncTeaserVideoPlayback, { passive: true });
+  }
 }
 
 async function loadPostsActivas() {
@@ -325,6 +334,7 @@ function renderTeaser(posts = []) {
     const mediaUrl = escapeHtml(buildStoragePublicUrl(post.media_path));
     const rawTitle = String(post.titulo || post.texto || '').trim();
     const title = escapeHtml(rawTitle);
+    const titleHtml = title || '&nbsp;';
     const hora = escapeHtml(formatHoraPR(post.created_at));
     const comercioNombre = escapeHtml(String(post.comercioNombre || 'Comercio').trim());
     const logoUrl = escapeHtml(String(post.comercioLogo || DEFAULT_LOGO));
@@ -336,16 +346,18 @@ function renderTeaser(posts = []) {
 
     return `
       <a href="${escapeHtml(href)}" class="min-w-[152px] max-w-[152px] snap-start block">
-        <article class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <div class="aspect-[4/5] bg-gray-100 overflow-hidden relative">
+        <article class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden h-[282px] flex flex-col">
+          <div class="aspect-[4/5] bg-gray-100 overflow-hidden relative shrink-0">
             ${mediaNode}
           </div>
-          <div class="px-2 py-2">
+          <div class="px-2 py-2 min-h-[86px] flex flex-col justify-between">
             <div class="flex items-center justify-center gap-2 mb-1">
               <img src="${logoUrl}" alt="${comercioNombre}" class="w-5 h-5 rounded-full object-cover border border-gray-200">
               <p class="text-[11px] text-gray-700 truncate text-center">${comercioNombre}</p>
             </div>
-            <p class="text-[12px] font-semibold text-gray-900 truncate text-center">${title || ' '}</p>
+            <p class="text-[12px] font-semibold text-gray-900 text-center leading-tight min-h-[30px]" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+              ${titleHtml}
+            </p>
             <div class="mt-1 flex items-center justify-center">
               <p class="text-[10px] text-gray-500 text-center">${hora || '--'}</p>
             </div>
