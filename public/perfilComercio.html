@@ -60,6 +60,8 @@
       overflow: visible;
     }
     .perfil-modal-swiper .swiper-slide {
+      position: relative;
+      z-index: 1;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -93,6 +95,7 @@
       transform: scale(0.9);
     }
     .perfil-modal-swiper .swiper-slide-active {
+      z-index: 10;
       opacity: 1;
       filter: none;
       transform: scale(1);
@@ -105,6 +108,13 @@
     }
     .perfil-modal-swiper .swiper-slide-zoomed .swiper-zoom-container {
       cursor: zoom-out;
+    }
+    .perfil-modal-swiper .swiper-slide.swiper-slide-zoomed {
+      z-index: 999;
+    }
+    .perfil-modal-swiper .swiper-slide.swiper-slide-zoomed img {
+      position: relative;
+      z-index: 1000;
     }
   </style>
   <script type="module" src="./js/i18n.js"></script>
