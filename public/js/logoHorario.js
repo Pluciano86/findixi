@@ -22,9 +22,13 @@ const iconoEl = document.querySelector('#estadoHorarioContainer i');
 const textoEl = document.querySelector('#estadoHorarioContainer p');
 const subtituloEl = document.createElement('p');
 subtituloEl.className = 'text-xs text-gray-500 font-light';
-textoEl.insertAdjacentElement('afterend', subtituloEl);
+const estadoHorarioContainer = document.getElementById('estadoHorarioContainer');
+if (textoEl) {
+  textoEl.insertAdjacentElement('afterend', subtituloEl);
+}
 
 async function verificarHorario() {
+  if (!iconoEl || !textoEl) return;
   const hoy = new Date();
   const diaSemana = hoy.getDay();
   const horaActual = hoy.toTimeString().slice(0, 5);
@@ -45,12 +49,11 @@ async function verificarHorario() {
   );
 
   if (!Array.isArray(horariosValidos) || !horariosValidos.length || horaMinutos === null) {
-    textoEl.textContent = t('perfilComercio.horarioNoDisponible');
-    subtituloEl.textContent = '';
-    iconoEl.className = 'fa-regular fa-clock text-gray-400 text-4xl';
+    estadoHorarioContainer?.classList.add('hidden');
     return;
   }
 
+  estadoHorarioContainer?.classList.remove('hidden');
   const hoyHorario = horariosValidos.find((h) => h.diaSemana === diaSemana);
   const estado = evaluarHorarioActual(horariosValidos, diaSemana, horaActual);
   const abierto = estado.abierto;

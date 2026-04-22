@@ -637,11 +637,7 @@ function getClipPayload(meta) {
 
   const sourceDuration = Number(meta?.durationSec || selectedClip.sourceDurationSec || 0);
   if (!Number.isFinite(sourceDuration) || sourceDuration <= 0) {
-    return {
-      clip_start_sec: 0,
-      clip_end_sec: null,
-      media_has_audio: meta?.hasAudio === true ? true : null,
-    };
+    return { clip_start_sec: null, clip_end_sec: null, media_has_audio: meta?.hasAudio === true ? true : null };
   }
 
   const { start, end } = getClipWindow();
@@ -1402,6 +1398,8 @@ async function handleSubmit(event) {
       const shouldRetry = (
         msg.includes('clip_start_sec')
         || msg.includes('clip_end_sec')
+        || msg.includes('clip_window_check')
+        || msg.includes('check constraint')
         || msg.includes('media_has_audio')
         || msg.includes('titulo')
       );

@@ -21,6 +21,7 @@ async function cargarDescripcion() {
     comercioBase = data;
   }
 
+  const seccionDescripcion = document.getElementById('seccionDescripcion');
   const descripcionEl = document.getElementById('descripcionTexto');
   const toggleBtn = document.getElementById('toggleDescripcion');
 
@@ -33,9 +34,17 @@ async function cargarDescripcion() {
     if (traducida) descripcionTexto = traducida;
   }
 
-  const descripcion = String(descripcionTexto || '').replace(/\n/g, '<br>');
+  const descripcionPlano = String(descripcionTexto || '').trim();
+  if (!descripcionPlano) {
+    descripcionEl.innerHTML = '';
+    toggleBtn.classList.add('hidden');
+    seccionDescripcion?.classList.add('hidden');
+    return;
+  }
 
-  // Mostrar todo como un solo párrafo
+  seccionDescripcion?.classList.remove('hidden');
+  const descripcion = descripcionPlano.replace(/\n/g, '<br>');
+
   descripcionEl.innerHTML = `
   <span class="text-base leading-relaxed">
     <span class="font-light">${descripcion}</span>
@@ -43,14 +52,18 @@ async function cargarDescripcion() {
 `;
 
   let expandido = false;
+  const mostrarToggle = descripcionPlano.length > 220 || descripcionPlano.includes('\n');
+  descripcionEl.classList.toggle('line-clamp-5', mostrarToggle);
+  toggleBtn.classList.toggle('hidden', !mostrarToggle);
+  toggleBtn.textContent = t('perfilComercio.verInfo');
 
-  toggleBtn.addEventListener('click', () => {
+  toggleBtn.onclick = () => {
     expandido = !expandido;
     descripcionEl.classList.toggle('line-clamp-5', !expandido);
     toggleBtn.textContent = expandido
       ? t('perfilComercio.ocultarInfo')
       : t('perfilComercio.verInfo');
-  });
+  };
 }
 
 document.addEventListener('DOMContentLoaded', cargarDescripcion);

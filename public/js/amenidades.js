@@ -36,6 +36,7 @@ function traducirAmenidad(nombre) {
 }
 
 async function cargarAmenidades() {
+  const seccionAmenidades = document.getElementById('seccionAmenidades');
   const contenedor = document.getElementById('contenedorAmenidades');
   const titulo = document.getElementById('tituloAmenidades');
   if (!contenedor || !titulo) return;
@@ -56,12 +57,14 @@ async function cargarAmenidades() {
     .eq('idComercio', idComercio);
 
   if (error || !relaciones) {
-    contenedor.innerHTML = `<p class="text-sm text-red-600">${t('amenidades.errorCarga')}</p>`;
+    contenedor.innerHTML = '';
+    seccionAmenidades?.classList.add('hidden');
     return;
   }
 
   if (relaciones.length === 0) {
-    contenedor.innerHTML = `<p class="text-sm text-gray-500 col-span-full">${t('amenidades.sinAmenidades')}</p>`;
+    contenedor.innerHTML = '';
+    seccionAmenidades?.classList.add('hidden');
     return;
   }
 
@@ -72,10 +75,18 @@ async function cargarAmenidades() {
     .in('id', ids);
 
   if (errorAmenidades || !amenidades) {
-    contenedor.innerHTML = `<p class="text-sm text-red-600">${t('amenidades.errorDetalles')}</p>`;
+    contenedor.innerHTML = '';
+    seccionAmenidades?.classList.add('hidden');
     return;
   }
 
+  if (!amenidades.length) {
+    contenedor.innerHTML = '';
+    seccionAmenidades?.classList.add('hidden');
+    return;
+  }
+
+  seccionAmenidades?.classList.remove('hidden');
   contenedor.innerHTML = '';
   amenidades.forEach(amenidad => {
   const div = document.createElement('div');

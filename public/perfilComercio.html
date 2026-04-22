@@ -53,6 +53,59 @@
     }
     .lodehoy-media-fit-cover { object-fit: cover; }
     .lodehoy-media-fit-contain { object-fit: contain; }
+    #modalGaleria {
+      overscroll-behavior: contain;
+    }
+    .perfil-modal-swiper {
+      overflow: visible;
+    }
+    .perfil-modal-swiper .swiper-slide {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: auto;
+      transition: transform 0.35s ease, filter 0.35s ease, opacity 0.35s ease;
+    }
+    .perfil-modal-swiper .swiper-slide .swiper-zoom-container {
+      width: min(92vw, 430px);
+      height: auto;
+      max-width: min(92vw, 430px);
+      max-height: 72vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
+      background: transparent;
+    }
+    .perfil-modal-swiper .swiper-slide img {
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 18px;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    .perfil-modal-swiper .swiper-slide:not(.swiper-slide-active) {
+      opacity: 0.62;
+      filter: brightness(0.68) blur(1px);
+      transform: scale(0.9);
+    }
+    .perfil-modal-swiper .swiper-slide-active {
+      opacity: 1;
+      filter: none;
+      transform: scale(1);
+    }
+    .perfil-modal-swiper .swiper-slide-active .swiper-zoom-container {
+      cursor: zoom-in;
+    }
+    .perfil-modal-swiper .swiper-slide-active img {
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.42);
+    }
+    .perfil-modal-swiper .swiper-slide-zoomed .swiper-zoom-container {
+      cursor: zoom-out;
+    }
   </style>
   <script type="module" src="./js/i18n.js"></script>
 </head>
@@ -64,22 +117,23 @@
 <div id="headerContainer"></div>
 <script type="module" src="js/header.js"></script>
 
-<section class="relative pb-8">
+<section id="galeriaSection" class="relative pb-8">
   <div id="galeriaImagenes" class="w-full h-64 overflow-x-auto scroll-smooth flex snap-x snap-mandatory whitespace-nowrap">
   </div>
   
 </section>
 
-<div id="modalGaleria" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden">
-  <div class="relative w-full max-w-lg">
-    <button id="cerrarModal" class="absolute top-3 right-4 text-white text-4xl font-bold z-50">&times;</button>
-    
-    <div class="relative overflow-hidden">
-      <div id="sliderModal" class="flex overflow-hidden transition-transform duration-500 ease-in-out">
+<div id="modalGaleria" class="fixed inset-0 z-[100000] hidden">
+  <div data-modal-backdrop="true" class="absolute inset-0 bg-black/90"></div>
+  <div class="relative h-full w-full flex items-center justify-center px-4 py-6">
+    <button id="cerrarModal" class="fixed top-2 right-3 text-white text-4xl font-bold z-[100001] leading-none">&times;</button>
+    <div class="pointer-events-none absolute top-0 left-0 w-full h-16 bg-gradient-to-b from-black/75 to-transparent"></div>
+    <div class="pointer-events-none absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-black/75 to-transparent"></div>
+
+    <div class="relative w-full max-w-md h-[86vh]">
+      <div id="sliderModal" class="swiper perfil-modal-swiper h-full">
+        <div id="sliderModalWrapper" class="swiper-wrapper"></div>
       </div>
-    <!--  <button id="prevModal" class="absolute left-0 top-1/2 -translate-y-1/2 bg-white/30 hover:bg-white/50 text-white font-bold px-2 py-1 rounded-l">&#8249;</button>
-      <button id="nextModal" class="absolute right-0 top-1/2 -translate-y-1/2 bg-white/30 hover:bg-white/50 text-white font-bold px-2 py-1 rounded-r">&#8250;</button>
-    -->
     </div>
   </div>
 </div>
@@ -123,7 +177,7 @@
   <i class="fas fa-car"></i> <span data-i18n="perfilComercio.cargandoDistancia">Cargando distancia...</span>
 </p>
 
-    <div class="flex justify-center gap-4 mb-6">
+    <div id="mapasContainer" class="flex justify-center gap-4 mb-6">
 <a id="btnGoogleMaps" href="#" target="_blank">
     <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg"
          alt="Google Maps" class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-10">
@@ -134,7 +188,7 @@
   </a>
 </div>
 
-<div class="flex justify-center gap-3 mb-6">
+<div id="redesSocialesContainer" class="flex justify-center gap-3 mb-6">
   <a href="#" id="linkFacebook" class="w-10 h-10">
     <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//logoFacebook.png" alt="Facebook">
   </a>
@@ -214,7 +268,7 @@
 
 
 
-<section class="px-6 md:px-10 mt-6">
+<section id="seccionDescripcion" class="px-6 md:px-10 mt-6">
   <div class="bg-white rounded-lg shadow-sm p-5">
     <p id="descripcionTexto" class="text-sm text-justify overflow-hidden line-clamp-5 transition-all duration-500 ease-in-out"></p>
     <div class="text-center mt-3">
@@ -237,7 +291,7 @@
 </section>
 
 
-<section class="px-4 py-6 flex justify-center">
+<section id="seccionHorario" class="px-4 py-6 flex justify-center">
   <div class="bg-white rounded-lg shadow-sm p-6 w-full max-w-md">
     <h2 id="tituloHorario" class="text-center text-xl font-semibold mb-1 text-[#424242]" data-i18n="perfilComercio.horarioDeNombre">
       Horario de Nombre
@@ -250,7 +304,7 @@
   </div>
 </section>
 
-<section class="px-6 md:px-10 mt-6">
+<section id="seccionAmenidades" class="px-6 md:px-10 mt-6">
   <div class="bg-white rounded-lg shadow-sm p-6">
     <h2 id="tituloAmenidades" class="text-center text-xl font-semibold mb-4 text-[#424242]" data-i18n="perfilComercio.amenidades">[Nombre] cuenta con:</h2>
     <div id="contenedorAmenidades" class="grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-5 text-center">

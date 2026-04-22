@@ -21,6 +21,7 @@ const getDiasSemana = () => ([
 const tituloHorario = document.getElementById('tituloHorario');
 const estadoHorario = document.getElementById('estadoHorario');
 const tablaHorarios = document.getElementById('tablaHorarios');
+const seccionHorario = document.getElementById('seccionHorario');
 
 async function cargarHorarios() {
   const { data: comercio } = await supabase.from('Comercios').select('nombre').eq('id', idComercio).maybeSingle();
@@ -32,6 +33,7 @@ async function cargarHorarios() {
 
   if (!horarios || error) {
     console.error('No se pudieron cargar horarios', error);
+    seccionHorario?.classList.add('hidden');
     return;
   }
 
@@ -47,15 +49,12 @@ async function cargarHorarios() {
   );
 
   if (!horariosValidos.length) {
-    tituloHorario.textContent = t('perfilComercio.horarioDe', { nombre: comercio?.nombre || '' });
-    estadoHorario.innerHTML = `
-      <p class="font-semibold text-2xl text-gray-500">${t('perfilComercio.horarioNoDisponible')}</p>
-      <p class="text-sm font-normal text-gray-600"></p>
-    `;
+    seccionHorario?.classList.add('hidden');
     tablaHorarios.innerHTML = '';
     return;
   }
 
+  seccionHorario?.classList.remove('hidden');
   const now = new Date();
   const diaActual = now.getDay();
   const horaActual = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;

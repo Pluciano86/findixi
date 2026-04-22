@@ -1090,7 +1090,15 @@ export async function obtenerComercioPorID(idComercio) {
   if (data.nombreSucursal) {
     document.getElementById('nombreSucursal').textContent = data.nombreSucursal;
   }
-  document.getElementById('textoDireccion').textContent = data.direccion;
+  const direccionTexto = String(data.direccion || '').trim();
+  const direccionEl = document.getElementById('direccionComercio');
+  const textoDireccionEl = document.getElementById('textoDireccion');
+  if (direccionTexto) {
+    if (textoDireccionEl) textoDireccionEl.textContent = direccionTexto;
+    direccionEl?.classList.remove('hidden');
+  } else {
+    direccionEl?.classList.add('hidden');
+  }
 
   // ✅ Mostrar teléfono solo si NO es categoría Jangueo (id 11)
   const esJangueo = data.ComercioCategorias?.some((c) => c.idCategoria === 11);
@@ -1200,14 +1208,20 @@ export async function obtenerComercioPorID(idComercio) {
     logoPerfilUrl = getComercioLogoUrl(logoPerfilUrl);
   }
 
+  const mapasContainer = document.getElementById('mapasContainer');
+  const tiempoVehiculoEl = document.getElementById('tiempoVehiculo');
   if (latUsuario && lonUsuario && data.latitud && data.longitud) {
+    mapasContainer?.classList.remove('hidden');
+    tiempoVehiculoEl?.classList.remove('hidden');
     const [conTiempo] = await calcularTiemposParaLista([data], {
       lat: latUsuario,
       lon: lonUsuario
     });
 
     if (conTiempo?.tiempoVehiculo) {
-      document.getElementById('tiempoVehiculo').innerHTML = `<i class="fas fa-car"></i> ${conTiempo.tiempoVehiculo}`;
+      tiempoVehiculoEl.innerHTML = `<i class="fas fa-car"></i> ${conTiempo.tiempoVehiculo}`;
+    } else {
+      tiempoVehiculoEl?.classList.add('hidden');
     }
 
     const googleMapsURL = `https://www.google.com/maps/search/?api=1&query=${data.latitud},${data.longitud}`;
@@ -1231,6 +1245,9 @@ export async function obtenerComercioPorID(idComercio) {
       dedupeKey: `perfil:waze:${idComercio}`,
       dedupeMs: 1500,
     });
+  } else {
+    mapasContainer?.classList.add('hidden');
+    tiempoVehiculoEl?.classList.add('hidden');
   }
 
   if (data.tieneSucursales) await mostrarSucursales(idComercio, data.nombre);

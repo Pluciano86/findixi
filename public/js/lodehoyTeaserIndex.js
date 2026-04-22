@@ -331,6 +331,7 @@ function renderTeaser(posts = []) {
   }
 
   listEl.innerHTML = posts.map((post) => {
+    const comercioId = toNumber(post.idcomercio);
     const mediaUrl = escapeHtml(buildStoragePublicUrl(post.media_path));
     const rawTitle = String(post.titulo || post.texto || '').trim();
     const title = escapeHtml(rawTitle);
@@ -338,7 +339,9 @@ function renderTeaser(posts = []) {
     const hora = escapeHtml(formatHoraPR(post.created_at));
     const comercioNombre = escapeHtml(String(post.comercioNombre || 'Comercio').trim());
     const logoUrl = escapeHtml(String(post.comercioLogo || DEFAULT_LOGO));
-    const href = `${window.location.origin}${APP_PREFIX}/lodehoy.html?post=${post.id}`;
+    const href = comercioId
+      ? `${window.location.origin}${APP_PREFIX}/perfilComercio.html?id=${comercioId}`
+      : `${window.location.origin}${APP_PREFIX}/lodehoy.html`;
 
     const mediaNode = post.media_tipo === 'video'
       ? `<video class="w-full h-full object-cover" src="${mediaUrl}" autoplay loop muted playsinline webkit-playsinline preload="metadata" data-teaser-video="1"></video>`
