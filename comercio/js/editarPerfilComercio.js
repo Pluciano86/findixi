@@ -15,6 +15,7 @@ const horariosContainer = document.getElementById('horariosContainer');
 const feriadosContainer = document.getElementById('feriadosContainer');
 const btnGuardar = document.getElementById('btn-guardar');
 const btnAdminMenu = document.getElementById('btnAdminMenu');
+const btnStaffServicios = document.getElementById('btnStaffServicios');
 const btnAdministrarEspeciales = document.getElementById('btnAdministrarEspeciales');
 const btnAgregarFeriado = document.getElementById('agregarFeriado');
 const planBadge = document.getElementById('planBadge');
@@ -917,6 +918,7 @@ async function cargarDatos() {
 
   // links
   if (btnAdminMenu) btnAdminMenu.href = `./adminMenuComercio.html?id=${idComercio}`;
+  if (btnStaffServicios) btnStaffServicios.href = `./staffServicios.html?id=${idComercio}`;
   if (btnAdministrarEspeciales) btnAdministrarEspeciales.href = `./especiales/index.html?id=${idComercio}`;
 }
 

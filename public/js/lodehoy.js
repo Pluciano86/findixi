@@ -53,6 +53,19 @@ const filterState = {
   categoriaId: '',
   orden: 'recientes',
 };
+const initialScopeFromQuery = (() => {
+  const params = new URLSearchParams(window.location.search);
+  const municipioId = toNumber(params.get('idMunicipio'));
+  const areaId = toNumber(params.get('idArea'));
+  if (municipioId && municipioId > 0) {
+    return { scopeType: 'municipio', scopeValue: String(municipioId) };
+  }
+  if (areaId && areaId > 0) {
+    return { scopeType: 'area', scopeValue: String(areaId) };
+  }
+  return null;
+})();
+let initialScopeApplied = false;
 
 function toNumber(value) {
   const parsed = Number(value);
@@ -921,6 +934,15 @@ function refreshFiltersUI() {
   refreshCategoriaOptions();
 }
 
+function applyInitialScopeFromQuery() {
+  if (initialScopeApplied) return;
+  initialScopeApplied = true;
+  if (!initialScopeFromQuery) return;
+  filterState.scopeType = initialScopeFromQuery.scopeType;
+  filterState.scopeValue = initialScopeFromQuery.scopeValue;
+  ubicacionInteracted = true;
+}
+
 function getProfileUrl(comercioId) {
   const id = toNumber(comercioId);
   return `${window.location.origin}${APP_PREFIX}/perfilComercio.html?id=${id}`;
@@ -1436,6 +1458,7 @@ async function loadPublicaciones() {
   ]);
   syncCategoryFallbackFromComercios();
 
+  applyInitialScopeFromQuery();
   refreshFiltersUI();
   await applyFiltersAndRender();
 }

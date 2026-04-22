@@ -10,6 +10,7 @@ const MAX_RENDER = 10;
 const TOP_POOL = 40;
 const FETCH_LIMIT = 120;
 const MAX_PER_COMERCIO = 2;
+const IS_LISTADO_AREA_PAGE = String(window.location.pathname || '').toLowerCase().includes('listadoarea');
 
 const section = document.getElementById('lodehoyTeaserSection');
 const statusEl = document.getElementById('lodehoyTeaserStatus');
@@ -17,6 +18,8 @@ const listEl = document.getElementById('lodehoyTeaserList');
 const teaserBtnEl = document.getElementById('lodehoyTeaserBtn');
 
 let loaded = false;
+let loadingPromise = null;
+let lastFiltersKey = '';
 let teaserVideoObserver = null;
 let teaserAutoplayUnlocked = !IS_IOS_DEVICE;
 let teaserUnlockHandlersBound = false;
@@ -35,6 +38,53 @@ function escapeHtml(value) {
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeFilterId(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function readAreaFilters() {
+  if (!IS_LISTADO_AREA_PAGE) {
+    return { idArea: null, idMunicipio: null };
+  }
+
+  const globalFilters = window.filtrosArea || {};
+  const fromGlobalMunicipio = normalizeFilterId(globalFilters.idMunicipio);
+  const fromGlobalArea = normalizeFilterId(globalFilters.idArea);
+
+  if (fromGlobalMunicipio || fromGlobalArea) {
+    return {
+      idArea: fromGlobalArea,
+      idMunicipio: fromGlobalMunicipio,
+    };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return {
+    idArea: normalizeFilterId(params.get('idArea')),
+    idMunicipio: normalizeFilterId(params.get('idMunicipio')),
+  };
+}
+
+function buildFiltersKey(filters = {}) {
+  const idArea = normalizeFilterId(filters.idArea) || 0;
+  const idMunicipio = normalizeFilterId(filters.idMunicipio) || 0;
+  return `a:${idArea}|m:${idMunicipio}`;
+}
+
+function buildLoDeHoyHref(filters = {}) {
+  const idArea = normalizeFilterId(filters.idArea);
+  const idMunicipio = normalizeFilterId(filters.idMunicipio);
+  const params = new URLSearchParams();
+  if (idMunicipio) {
+    params.set('idMunicipio', String(idMunicipio));
+  } else if (idArea) {
+    params.set('idArea', String(idArea));
+  }
+  const query = params.toString();
+  return `${APP_PREFIX}/lodehoy.html${query ? `?${query}` : ''}`;
 }
 
 function encodeStoragePath(path) {
@@ -234,8 +284,11 @@ async function loadComerciosMap(comercioIds = []) {
   if (!comercioIds.length) return map;
 
   const attempts = [
+    'id,nombre,logo,municipio,idArea,idMunicipio',
     'id,nombre,logo,municipio',
+    'id,nombre,logo,idArea,idMunicipio',
     'id,nombre,logo',
+    'id,nombre,idArea,idMunicipio',
     'id,nombre',
   ];
 
@@ -249,7 +302,11 @@ async function loadComerciosMap(comercioIds = []) {
     (response.data || []).forEach((row) => {
       const id = toNumber(row?.id);
       if (!id) return;
-      map.set(id, row);
+      map.set(id, {
+        ...row,
+        _idArea: toNumber(row?.idArea ?? row?.idarea ?? row?.id_area),
+        _idMunicipio: toNumber(row?.idMunicipio ?? row?.idmunicipio ?? row?.id_municipio),
+      });
     });
     return map;
   }
@@ -379,53 +436,78 @@ function renderTeaser(posts = []) {
 }
 
 async function loadTeaser() {
-  if (loaded || !section || !listEl) return;
+  if (!section || !listEl) return;
+
+  const filters = readAreaFilters();
+  const filtersKey = buildFiltersKey(filters);
+  if (loaded && filtersKey === lastFiltersKey) return;
+  if (loadingPromise) return;
+
   loaded = true;
+  lastFiltersKey = filtersKey;
   setStatus('Cargando Lo de Hoy...');
+  if (teaserBtnEl) {
+    teaserBtnEl.href = buildLoDeHoyHref(filters);
+  }
 
-  try {
-    const postsRaw = await loadPostsActivas();
-    if (!postsRaw.length) {
-      renderTeaser([]);
-      return;
-    }
+  loadingPromise = (async () => {
+    try {
+      const postsRaw = await loadPostsActivas();
+      if (!postsRaw.length) {
+        renderTeaser([]);
+        return;
+      }
 
-    const comercioIds = [...new Set(postsRaw.map((row) => toNumber(row.idcomercio)).filter(Boolean))];
-    const [comercioMap, likesMap] = await Promise.all([
-      loadComerciosMap(comercioIds),
-      loadLikesCountMap(comercioIds),
-    ]);
+      const comercioIds = [...new Set(postsRaw.map((row) => toNumber(row.idcomercio)).filter(Boolean))];
+      const [comercioMap, likesMap] = await Promise.all([
+        loadComerciosMap(comercioIds),
+        loadLikesCountMap(comercioIds),
+      ]);
 
-    const enriched = postsRaw
-      .filter((row) => row?.media_path && row?.media_tipo)
-      .map((row) => {
-        const comercioId = toNumber(row.idcomercio);
-        const comercio = comercioMap.get(comercioId) || {};
-        const logoRaw = String(comercio.logo || '').trim();
-        const logoUrl = logoRaw ? (logoRaw.startsWith('http') ? logoRaw : buildStoragePublicUrl(logoRaw)) : DEFAULT_LOGO;
-        return {
-          ...row,
-          likeCount: Number(likesMap.get(comercioId) || 0),
-          comercioNombre: comercio.nombre || 'Comercio',
-          comercioLogo: logoUrl || DEFAULT_LOGO,
-        };
+      const enriched = postsRaw
+        .filter((row) => row?.media_path && row?.media_tipo)
+        .map((row) => {
+          const comercioId = toNumber(row.idcomercio);
+          const comercio = comercioMap.get(comercioId) || {};
+          const logoRaw = String(comercio.logo || '').trim();
+          const logoUrl = logoRaw ? (logoRaw.startsWith('http') ? logoRaw : buildStoragePublicUrl(logoRaw)) : DEFAULT_LOGO;
+          return {
+            ...row,
+            likeCount: Number(likesMap.get(comercioId) || 0),
+            comercioNombre: comercio.nombre || 'Comercio',
+            comercioLogo: logoUrl || DEFAULT_LOGO,
+            comercioIdArea: toNumber(comercio._idArea),
+            comercioIdMunicipio: toNumber(comercio._idMunicipio),
+          };
+        });
+
+      const filtered = enriched.filter((row) => {
+        const postMunicipio = toNumber(row.comercioIdMunicipio);
+        const postArea = toNumber(row.comercioIdArea);
+        if (filters.idMunicipio) return postMunicipio === filters.idMunicipio;
+        if (filters.idArea) return postArea === filters.idArea;
+        return true;
       });
 
-    const selected = pickRandomTopPosts(enriched);
-    renderTeaser(selected);
-  } catch (error) {
-    console.warn('No se pudo cargar teaser de Lo de Hoy:', error?.message || error);
-    section.classList.add('hidden');
-  } finally {
-    setStatus('');
-  }
+      const selected = pickRandomTopPosts(filtered);
+      renderTeaser(selected);
+    } catch (error) {
+      console.warn('No se pudo cargar teaser de Lo de Hoy:', error?.message || error);
+      section.classList.add('hidden');
+    } finally {
+      setStatus('');
+      loadingPromise = null;
+    }
+  })();
+
+  await loadingPromise;
 }
 
 function initTeaser() {
   if (!section || !listEl) return;
 
   if (teaserBtnEl) {
-    teaserBtnEl.href = `${APP_PREFIX}/lodehoy.html`;
+    teaserBtnEl.href = buildLoDeHoyHref(readAreaFilters());
   }
 
   if (!('IntersectionObserver' in window)) {
@@ -447,6 +529,12 @@ function initTeaser() {
   });
 
   observer.observe(triggerEl);
+
+  if (IS_LISTADO_AREA_PAGE) {
+    window.addEventListener('areaCargada', () => {
+      void loadTeaser();
+    });
+  }
 }
 
 if (document.readyState === 'loading') {

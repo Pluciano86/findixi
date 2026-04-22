@@ -72,14 +72,14 @@ async function cargarDropdownMunicipios(idArea, idMunicipioSeleccionado) {
     const idMunicipio = e.target.value ? parseInt(e.target.value) : null;
 
     // 🔸 Actualizar filtros globales
-    window.filtrosArea = { idArea, idMunicipio };
+    window.filtrosArea = { idArea, idMunicipio, layout: "index" };
 
     // 🔸 Actualizar el nombre del header
     await mostrarNombreArea(idArea, idMunicipio);
 
     // 🔸 Recargar carruseles
     await renderJangueoCarouselArea("jangueoCarousel");
-    await renderEventosCarousel("eventosCarousel", { idArea, idMunicipio });
+    await renderEventosCarousel("eventosCarousel", { idArea, idMunicipio, layout: "index" });
 
     // 🔸 🔥 Notificar al módulo de lugares para que actualice las tarjetas
     window.dispatchEvent(new CustomEvent("areaCargada", {
@@ -101,11 +101,11 @@ async function cargarTodo() {
   idAreaGlobal = idArea;
   municipioSeleccionado = isNaN(idMunicipio) ? null : idMunicipio;
 
-  window.filtrosArea = { idArea, idMunicipio };
+  window.filtrosArea = { idArea, idMunicipio, layout: "index" };
 
   await mostrarNombreArea(idArea, municipioSeleccionado);
   await cargarDropdownMunicipios(idArea, municipioSeleccionado);
-  await renderEventosCarousel("eventosCarousel", { idArea, idMunicipio });
+  await renderEventosCarousel("eventosCarousel", { idArea, idMunicipio, layout: "index" });
   await renderJangueoCarouselArea("jangueoCarousel");
 
   // 🔹 Disparar evento inicial al cargar la página
@@ -120,7 +120,7 @@ cargarTodo();
 window.addEventListener('lang:changed', () => {
   cargarDropdownMunicipios(idAreaGlobal, municipioSeleccionado);
   mostrarNombreArea(idAreaGlobal, municipioSeleccionado);
-  renderEventosCarousel("eventosCarousel", window.filtrosArea || {});
+  renderEventosCarousel("eventosCarousel", { ...(window.filtrosArea || {}), layout: "index" });
   renderJangueoCarouselArea("jangueoCarousel");
   window.dispatchEvent(new CustomEvent('areaCargada', {
     detail: { ...(window.filtrosArea || {}), ocultarDistancia: true },

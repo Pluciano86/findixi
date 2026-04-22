@@ -90,8 +90,9 @@
     };
 
     async function validarRolAdmin(user) {
-      const rolMeta = user?.user_metadata?.rol_app;
-      if (rolMeta === 'app_admin') return true;
+      const ALLOWED = new Set(['admin', 'superadmin', 'app_admin', 'app_superadmin', 'owner', 'app_owner']);
+      const rolMeta = String(user?.user_metadata?.rol_app || user?.app_metadata?.rol_app || '').trim().toLowerCase();
+      if (ALLOWED.has(rolMeta)) return true;
 
       // Consulta usuarios.id (PK vincula con auth.users.id)
       const { data, error } = await supabase
@@ -104,7 +105,8 @@
         console.warn('Error consultando rol_app:', error);
         return false;
       }
-      return data?.rol_app === 'app_admin';
+      const rolApp = String(data?.rol_app || '').trim().toLowerCase();
+      return ALLOWED.has(rolApp);
     }
 
     async function handleLogin() {

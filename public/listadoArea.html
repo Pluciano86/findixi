@@ -11,6 +11,22 @@
   <script type="module" src="./js/i18n.js"></script>
   <style>
     body { font-family: 'Kanit', sans-serif; }
+    video::-webkit-media-controls {
+      display: none !important;
+    }
+    video::-webkit-media-controls-enclosure {
+      display: none !important;
+    }
+    video::-webkit-media-controls-overlay-play-button {
+      display: none !important;
+    }
+    .teaser-scrollbar-hidden {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .teaser-scrollbar-hidden::-webkit-scrollbar {
+      display: none;
+    }
     #modalComida {
     backdrop-filter: blur(4px);
     transition: opacity 0.2s ease;
@@ -50,6 +66,22 @@
 
   <main class="text-center mb-36">
 
+<section id="lodehoyTeaserSection" class="mt-5 px-4 hidden">
+  <div class="text-center mb-2">
+    <h2 class="text-2xl font-medium mb-4">Chequea Lo de Hoy en Findixi</h2>
+  </div>
+  <p id="lodehoyTeaserStatus" class="text-xs text-gray-500 mb-2 text-left">Cargando...</p>
+  <div id="lodehoyTeaserList" class="teaser-scrollbar-hidden flex gap-3 overflow-x-auto snap-x snap-mandatory pb-1"></div>
+  <div class="flex justify-center mt-3">
+    <a
+      id="lodehoyTeaserBtn"
+      href="lodehoy.html"
+      class="inline-flex items-center justify-center bg-[#023047] hover:bg-[#012737] text-white text-sm font-light py-1.5 px-6 rounded-lg shadow transition"
+    >
+      Ver mas publicaciones
+    </a>
+  </div>
+</section>
 
     <!-- Lugares Turísticos -->
 <section class="text-center my-8 px-4 w-full">
@@ -70,15 +102,6 @@
 
 <!-- SwiperJS JS -->
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-
-<!-- Render del Carrusel -->
-<script type="module">
-  import { renderEventosCarousel } from "./js/eventosCarousel.js";
-
-  document.addEventListener("DOMContentLoaded", () => {
-    renderEventosCarousel("eventosCarousel");
-  });
-</script>
 
 <!-- Carrusel de JANGUEO -->
 <section class="text-center my-8 px-4">
@@ -161,6 +184,7 @@
   <script type="module" src="./js/cardLugarSlide.js"></script>
   <script type="module" src="./js/cardPlayaSlide.js"></script>
   <script type="module" src="./js/cardEventoSlide.js"></script>
+  <script type="module" src="./js/lodehoyTeaserIndex.js"></script>
 
   <script src="js/bloquearPantalla.js"></script>
   <script>

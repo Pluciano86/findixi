@@ -219,6 +219,17 @@
   </a>
 </div>
 
+<section id="seccionStaffServicios" class="px-6 md:px-10 mt-2 hidden">
+  <div class="bg-white rounded-lg shadow-sm p-5">
+    <div class="text-center mb-4">
+      <h2 class="text-xl font-semibold text-[#424242]">Nuestro equipo profesional</h2>
+      <p class="text-sm text-gray-500 mt-1">Selecciona un profesional para ver su perfil y reservar cita.</p>
+    </div>
+    <div id="staffServiciosGrid" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
+    <p id="staffServiciosEmpty" class="hidden text-sm text-center text-gray-500">Este comercio aún no ha publicado su equipo.</p>
+  </div>
+</section>
+
 <section id="seccionCupones" class="px-6 md:px-10 mt-6 hidden">
   <div class="bg-white rounded-lg shadow-sm p-5">
     <div class="flex flex-col items-center gap-1 md:flex-row md:gap-3 md:justify-center text-center mb-3">
@@ -299,6 +310,94 @@
     ></div>
   </div>
 </section>
+
+<div id="modalStaffServicios" class="fixed inset-0 z-[100002] hidden">
+  <div id="modalBackdropStaffServicios" class="absolute inset-0 bg-black/70"></div>
+  <div class="relative h-full w-full flex items-end sm:items-center justify-center px-3 py-4">
+    <div class="w-full max-w-md max-h-[92vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
+      <div class="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
+        <p class="text-lg font-normal text-[#424242]">Perfil profesional</p>
+        <button id="cerrarModalStaffServicios" class="text-2xl leading-none text-gray-500 hover:text-gray-700" aria-label="Cerrar modal de staff">&times;</button>
+      </div>
+
+      <div class="px-4 py-4 space-y-4">
+        <div class="text-center">
+          <img id="staffModalFoto" src="https://placehold.co/120x120?text=Staff" alt="Foto del profesional" class="w-32 h-32 rounded-3xl object-cover border border-gray-200 mx-auto">
+          <div class="min-w-0 mt-3">
+            <h3 id="staffModalNombre" class="text-2xl font-normal text-[#424242] leading-tight"></h3>
+            <p id="staffModalProfesion" class="text-base font-normal text-gray-500 mt-1"></p>
+            <p id="staffModalBio" class="text-sm text-gray-600 mt-3"></p>
+          </div>
+        </div>
+
+        <div id="staffModalContacto" class="flex flex-wrap gap-2 justify-center"></div>
+
+        <div>
+          <h4 class="text-base font-normal text-gray-700 mb-2">Galería de trabajos</h4>
+          <div id="staffModalGaleria" class="flex gap-2 overflow-x-auto pb-1"></div>
+          <p id="staffModalGaleriaVacia" class="hidden text-xs text-gray-500">Este profesional aún no tiene trabajos publicados.</p>
+        </div>
+
+        <div>
+          <h4 class="text-base font-normal text-gray-700 mb-2">Redes sociales</h4>
+          <div id="staffModalRedes" class="flex flex-wrap gap-2 justify-center"></div>
+        </div>
+
+        <div class="border border-gray-200 rounded-xl p-3">
+          <h4 class="text-base font-normal text-gray-700">Reservar cita</h4>
+          <p class="text-xs text-gray-500 mt-1">Selecciona fecha, hora y completa tus datos.</p>
+
+          <div class="mt-3">
+            <div class="flex items-center justify-between mb-2">
+              <button id="btnCitasPrevMes" type="button" class="w-8 h-8 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-sm font-normal" aria-label="Mes anterior">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <p id="calendarioCitasMesLabel" class="text-sm font-normal text-gray-700">—</p>
+              <button id="btnCitasNextMes" type="button" class="w-8 h-8 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-sm font-normal" aria-label="Mes siguiente">
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-7 gap-1 text-[10px] text-center text-gray-500 mb-1">
+              <span>Dom</span>
+              <span>Lun</span>
+              <span>Mar</span>
+              <span>Mié</span>
+              <span>Jue</span>
+              <span>Vie</span>
+              <span>Sáb</span>
+            </div>
+            <div id="calendarioCitasDias" class="grid grid-cols-7 gap-1.5"></div>
+            <p id="calendarioCitasDiasVacio" class="hidden text-xs text-gray-500 mt-2">Este profesional no tiene disponibilidad en este mes.</p>
+          </div>
+
+          <div class="mt-3">
+            <p id="citasSlotsTitulo" class="text-sm font-normal text-gray-600 mb-2">Horarios disponibles</p>
+            <div id="citasSlotsContainer" class="flex flex-wrap gap-2 justify-center"></div>
+            <p id="citasSlotsVacio" class="hidden text-xs text-gray-500 mt-1">No hay horarios disponibles para ese día.</p>
+          </div>
+
+          <form id="formCitaStaff" class="mt-4 space-y-2">
+            <input id="citaFecha" type="hidden" />
+            <input id="citaHora" type="hidden" />
+            <div class="text-sm text-gray-500">
+              <span>Fecha:</span> <span id="citaFechaLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
+              <span class="ml-2">Hora:</span> <span id="citaHoraLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
+            </div>
+            <input id="inputCitaNombre" type="text" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Tu nombre completo" required />
+            <input id="inputCitaTelefono" type="tel" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Teléfono" required />
+            <input id="inputCitaEmail" type="email" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Email (opcional)" />
+            <input id="inputCitaServicio" type="text" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Servicio (ej. Corte + Barba)" />
+            <textarea id="inputCitaNotas" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Notas adicionales (opcional)"></textarea>
+            <button id="btnReservarCita" type="submit" class="w-full rounded-lg bg-[#fb8500] text-white font-normal text-base py-2 hover:bg-[#ea7c00] transition">Confirmar cita</button>
+          </form>
+
+          <p id="citaFeedback" class="hidden text-xs mt-2"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 
 <section id="seccionHorario" class="px-4 py-6 flex justify-center">

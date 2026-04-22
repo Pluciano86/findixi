@@ -9,6 +9,7 @@ import { resolverPlanComercio } from '../shared/planes.js';
 import { mostrarLugaresCercanos } from './lugaresCercanos.js';
 import { QR_REDIMIR_URL } from '../shared/runtimeConfig.js';
 import { bindTrackedAnchor, trackAnalyticsEvent } from '../shared/analyticsTracker.js';
+import { initPerfilServicios } from './perfilServicios.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 let latUsuario = null;
@@ -1258,6 +1259,10 @@ export async function obtenerComercioPorID(idComercio) {
     nombre: data.nombre,
     municipio: data.municipio,
     logo: logoPerfilUrl || DEFAULT_LOGO,
+  });
+  await initPerfilServicios({
+    idComercio,
+    comercio: data,
   });
 
   comercioActual = data;

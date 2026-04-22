@@ -73,7 +73,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  const { idArea, idMunicipio } = filtros;
+  const { idArea, idMunicipio, layout } = filtros;
   let municipiosIds = [];
   let nombreMunicipio = "";
   let nombreArea = "";
@@ -253,9 +253,11 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
     `;
 
     // 🔹 Inicializar Swiper
-    const pathname = window.location.pathname || "";
-    const esListadoArea = pathname.includes("listadoArea.html");
-    const esIndex = pathname.endsWith("/") || pathname.includes("index.html");
+    const pathname = (window.location.pathname || "").toLowerCase();
+    const forcedLayout = String(layout || "").toLowerCase();
+    const esListadoArea = pathname.includes("listadoarea");
+    const esIndex = pathname.endsWith("/") || pathname.includes("index");
+    const usarLayoutIndex = forcedLayout === "index" || esIndex || esListadoArea;
     const totalSlides = eventos.length;
     const canLoop = totalSlides > 1;
     new Swiper(container.querySelector(".eventosSwiper"), {
@@ -266,9 +268,9 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
         ? { delay: 2500, disableOnInteraction: false, waitForTransition: false }
         : false,
       speed: 900,
-      slidesPerView: (esIndex || esListadoArea) ? 2 : 1.2,
+      slidesPerView: usarLayoutIndex ? 2 : 1.2,
       slidesPerGroup: 1,
-      spaceBetween: (esIndex || esListadoArea) ? 10 : 8, // pequeño espacio entre tarjetas
+      spaceBetween: usarLayoutIndex ? 10 : 8, // pequeño espacio entre tarjetas
       centeredSlides: false,
       watchSlidesProgress: true,
     });
