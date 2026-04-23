@@ -439,6 +439,7 @@ function getShopifySyncEndpointCandidates() {
 async function callShopifySyncEndpoint({ token, payload }) {
   const candidates = getShopifySyncEndpointCandidates();
   let lastError = null;
+  const diagnostics = [];
 
   for (const endpoint of candidates) {
     try {
@@ -461,16 +462,37 @@ async function callShopifySyncEndpoint({ token, payload }) {
 
       if (response.ok) return data || {};
 
-      const detail = data?.error || data?.detalle || `Error ${response.status}`;
+      const detail = data?.detalle || data?.error || `Error ${response.status}`;
       const canTryNext = response.status === 404 || response.status === 405;
+      diagnostics.push({ endpoint, status: response.status, detail: String(detail || '') });
       if (!canTryNext) {
         throw new Error(String(detail || 'No se pudo sincronizar productos.'));
       }
 
       lastError = new Error(`Endpoint ${endpoint} respondió ${response.status}.`);
     } catch (error) {
+      diagnostics.push({
+        endpoint,
+        status: 'network',
+        detail: String(error?.message || error),
+      });
       lastError = error;
     }
+  }
+
+  const host = String(window.location.hostname || '').toLowerCase();
+  const port = String(window.location.port || '');
+  const isLocal = ['localhost', '127.0.0.1', '::1'].includes(host);
+  const hasRefused8888 = diagnostics.some((entry) =>
+    String(entry?.endpoint || '').includes('localhost:8888')
+    && /refused|failed to fetch|networkerror|load failed|connection/i.test(String(entry?.detail || ''))
+  );
+  const has405Static = diagnostics.some((entry) => Number(entry?.status) === 405);
+
+  if (isLocal && port !== '8888' && hasRefused8888 && has405Static) {
+    throw new Error(
+      'No hay runtime de funciones activo. Abre esta app con Netlify Dev (http://localhost:8888), no desde Live Server :5500.'
+    );
   }
 
   throw lastError || new Error('No se encontró un endpoint disponible para sincronizar productos.');

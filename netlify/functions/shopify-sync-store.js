@@ -8,6 +8,7 @@ import {
 
 const SHOPIFY_LIMIT = 250;
 const SHOPIFY_MAX_PAGES = 30;
+const ALLOWED_APP_ADMIN_ROLES = new Set(['admin', 'superadmin', 'app_admin', 'app_superadmin', 'owner', 'app_owner']);
 
 function normalizeText(value) {
   return String(value || '')
@@ -55,11 +56,20 @@ function parseMissingColumn(error) {
   return '';
 }
 
+function toRoleText(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
 function isMissingColumnError(error) {
   const code = String(error?.code || '').toLowerCase();
   const detail = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
   if (code === '42703' || code.startsWith('pgrst')) return true;
   return detail.includes('does not exist') || detail.includes('column');
+}
+
+function isMissingRelationError(error) {
+  const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  return message.includes('relation') && (message.includes('does not exist') || message.includes('not found'));
 }
 
 function normalizeShopBaseUrl(value) {
@@ -295,7 +305,48 @@ async function fetchCommerceProductsByMenus(supabaseAdmin, menuIds = []) {
   return { rows: [], menuColumn: 'idMenu' };
 }
 
-async function canManageCommerce(supabaseAdmin, { idComercio, userId }) {
+async function resolveUserAppRole(supabaseAdmin, user) {
+  const metaRole = toRoleText(user?.user_metadata?.rol_app || user?.app_metadata?.rol_app || user?.role);
+  if (metaRole && ALLOWED_APP_ADMIN_ROLES.has(metaRole)) return metaRole;
+
+  const roleColumns = ['rol_app', 'rol', 'role'];
+  for (const column of roleColumns) {
+    const { data, error } = await supabaseAdmin
+      .from('usuarios')
+      .select(column)
+      .eq('id', user?.id)
+      .maybeSingle();
+
+    if (error) {
+      if (isMissingRelationError(error)) return metaRole;
+      if (isMissingColumnError(error)) continue;
+      throw error;
+    }
+
+    const resolvedRole = toRoleText(data?.[column]);
+    if (resolvedRole) return resolvedRole;
+    return metaRole;
+  }
+
+  return metaRole;
+}
+
+async function canManageCommerce(supabaseAdmin, { idComercio, user }) {
+  const userId = String(user?.id || '').trim();
+  if (!userId) return { ok: false, reason: 'forbidden' };
+
+  const appRole = await resolveUserAppRole(supabaseAdmin, user);
+  if (ALLOWED_APP_ADMIN_ROLES.has(appRole)) {
+    const { data: comercio, error: comercioError } = await supabaseAdmin
+      .from('Comercios')
+      .select('id,nombre,webpage,owner_user_id')
+      .eq('id', idComercio)
+      .maybeSingle();
+    if (comercioError) throw comercioError;
+    if (!comercio) return { ok: false, reason: 'not_found' };
+    return { ok: true, comercio };
+  }
+
   const { data: comercio, error: comercioError } = await supabaseAdmin
     .from('Comercios')
     .select('id,nombre,webpage,owner_user_id')
@@ -318,7 +369,7 @@ async function canManageCommerce(supabaseAdmin, { idComercio, userId }) {
     .maybeSingle();
 
   if (relationError) throw relationError;
-  const role = String(relation?.rol || '').trim().toLowerCase();
+  const role = toRoleText(relation?.rol);
   if (!role.includes('admin')) return { ok: false, reason: 'forbidden' };
 
   return { ok: true, comercio };
@@ -518,7 +569,7 @@ export const handler = async (event) => {
     const user = await requireAuthUser(event, supabaseAdmin);
     if (!user) return jsonResponse(401, { error: 'No autorizado.' });
 
-    const permission = await canManageCommerce(supabaseAdmin, { idComercio, userId: user.id });
+    const permission = await canManageCommerce(supabaseAdmin, { idComercio, user });
     if (!permission.ok) {
       if (permission.reason === 'not_found') return jsonResponse(404, { error: 'Comercio no encontrado.' });
       return jsonResponse(403, { error: 'No tienes permisos para sincronizar esta tienda.' });
