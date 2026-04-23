@@ -39,6 +39,7 @@ const state = {
   staffById: new Map(),
   trabajosByStaff: new Map(),
   activeStaffId: null,
+  activeStaffName: '',
   selectedDate: '',
   selectedTime: '',
   calendarMonthAnchor: null,
@@ -458,36 +459,65 @@ function updateSelectedLabels() {
 function renderStaffCards() {
   const grid = document.getElementById('staffServiciosGrid');
   const empty = document.getElementById('staffServiciosEmpty');
+  const swipeHint = document.getElementById('staffSwipeHint');
   if (!grid || !empty) return;
 
   if (!state.staffList.length) {
     grid.innerHTML = '';
     empty.classList.remove('hidden');
+    swipeHint?.classList.add('hidden');
     return;
   }
 
   empty.classList.add('hidden');
+  swipeHint?.classList.toggle('hidden', state.staffList.length <= 3);
+
   grid.innerHTML = state.staffList.map((staff) => {
     const foto = sanitizeText(staff.foto_url) || STAFF_PHOTO_PLACEHOLDER;
-    const nombre = escapeHtml(staff.nombre || 'Profesional');
+    const nombreRaw = sanitizeText(staff.nombre || 'Profesional');
+    const nombreTokens = nombreRaw.split(/\s+/).filter(Boolean);
+    const nombreLinea1 = escapeHtml(nombreTokens[0] || 'Profesional');
+    const nombreLinea2 = escapeHtml(nombreTokens[1] || '');
     const profesion = escapeHtml(staff.profesion || 'Staff');
 
     return `
-      <article class="rounded-xl border border-gray-200 p-2 flex flex-col gap-2 items-center text-center bg-white shadow-sm">
-        <img src="${escapeHtml(foto)}" alt="${nombre}" class="w-20 h-20 rounded-xl object-cover border border-gray-200">
-        <div>
-          <p class="text-base font-normal text-gray-800 leading-tight">${nombre}</p>
-          <p class="text-xs text-gray-500">${profesion}</p>
+      <article
+        class="snap-start shrink-0 rounded-xl border border-gray-200 px-2 pt-1.5 pb-2 flex flex-col justify-between items-center text-center bg-white shadow-sm cursor-pointer select-none h-[182px]"
+        style="flex: 0 0 calc((100% - 1rem) / 3);"
+        data-action="abrir-staff-card"
+        data-staff-id="${Number(staff.id)}"
+        tabindex="0"
+        role="button"
+        aria-label="Abrir perfil de ${escapeHtml(nombreRaw)}"
+      >
+        <div class="w-full flex flex-col items-center gap-1.5">
+          <img src="${escapeHtml(foto)}" alt="${escapeHtml(nombreRaw)}" class="w-20 h-20 rounded-xl object-cover border border-gray-200">
+          <div class="w-full min-h-[50px] flex flex-col items-center justify-center text-center">
+            <p class="w-full text-center text-sm font-normal text-gray-800 leading-tight h-[16px] overflow-hidden">${nombreLinea1}</p>
+            <p class="w-full text-center text-sm font-normal text-gray-800 leading-tight h-[16px] overflow-hidden">${nombreLinea2 || '&nbsp;'}</p>
+            <p class="text-[11px] text-gray-500 leading-tight h-[14px] overflow-hidden">${profesion}</p>
+          </div>
         </div>
-        <button
-          type="button"
-          class="w-full rounded-lg bg-[#121212] text-white text-sm font-normal py-1.5 hover:bg-[#2a2a2a] transition"
-          data-action="abrir-staff"
-          data-staff-id="${Number(staff.id)}"
-        >Ver perfil y citas</button>
+        <div class="w-full rounded-lg bg-[#121212] text-white text-[11px] font-normal py-1">Ver perfil y citas</div>
       </article>
     `;
   }).join('');
+
+  grid.scrollLeft = 0;
+}
+
+function updateModalStickyName() {
+  const panel = document.getElementById('modalStaffPanel');
+  const stickyName = document.getElementById('modalStaffStickyName');
+  if (!panel || !stickyName) return;
+
+  const name = sanitizeText(state.activeStaffName);
+  if (!name) {
+    stickyName.textContent = '';
+    return;
+  }
+
+  stickyName.textContent = panel.scrollTop > 84 ? name : '';
 }
 
 function renderStaffContacts(staff) {
@@ -783,9 +813,11 @@ function openModal() {
 
 function closeModal() {
   const modal = document.getElementById('modalStaffServicios');
+  const stickyName = document.getElementById('modalStaffStickyName');
   if (!modal) return;
   modal.classList.add('hidden');
   document.body.classList.remove('overflow-hidden');
+  if (stickyName) stickyName.textContent = '';
   setFeedback('', '');
 }
 
@@ -827,6 +859,7 @@ async function openStaffProfile(staffId) {
   if (!staff) return;
 
   state.activeStaffId = Number(staff.id);
+  state.activeStaffName = sanitizeText(staff.nombre) || 'Profesional';
   state.selectedDate = '';
   state.selectedTime = '';
   state.calendarMonthAnchor = firstDayOfMonth(new Date());
@@ -851,6 +884,10 @@ async function openStaffProfile(staffId) {
   setFeedback('', '');
   await prefillUserContact();
   openModal();
+
+  const panel = document.getElementById('modalStaffPanel');
+  if (panel) panel.scrollTop = 0;
+  updateModalStickyName();
 }
 
 function buildTrabajosMap(trabajos = []) {
@@ -869,6 +906,7 @@ function bindEvents() {
   state.modalBound = true;
 
   const grid = document.getElementById('staffServiciosGrid');
+  const modalPanel = document.getElementById('modalStaffPanel');
   const daysContainer = document.getElementById('calendarioCitasDias');
   const slotsContainer = document.getElementById('citasSlotsContainer');
   const btnPrevMes = document.getElementById('btnCitasPrevMes');
@@ -878,9 +916,19 @@ function bindEvents() {
   const backdrop = document.getElementById('modalBackdropStaffServicios');
 
   grid?.addEventListener('click', (event) => {
-    const button = event.target.closest('button[data-action="abrir-staff"]');
-    if (!button) return;
-    const staffId = Number(button.getAttribute('data-staff-id'));
+    const card = event.target.closest('[data-action="abrir-staff-card"]');
+    if (!card) return;
+    const staffId = Number(card.getAttribute('data-staff-id'));
+    if (!Number.isFinite(staffId) || staffId <= 0) return;
+    void openStaffProfile(staffId);
+  });
+
+  grid?.addEventListener('keydown', (event) => {
+    const card = event.target.closest('[data-action="abrir-staff-card"]');
+    if (!card) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    const staffId = Number(card.getAttribute('data-staff-id'));
     if (!Number.isFinite(staffId) || staffId <= 0) return;
     void openStaffProfile(staffId);
   });
@@ -929,6 +977,7 @@ function bindEvents() {
 
   closeBtn?.addEventListener('click', closeModal);
   backdrop?.addEventListener('click', closeModal);
+  modalPanel?.addEventListener('scroll', updateModalStickyName);
 
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -1063,6 +1112,7 @@ export async function initPerfilServicios({ idComercio, comercio = null } = {}) 
   state.staffById = new Map();
   state.trabajosByStaff = new Map();
   state.activeStaffId = null;
+  state.activeStaffName = '';
   state.selectedDate = '';
   state.selectedTime = '';
   state.calendarMonthAnchor = firstDayOfMonth(new Date());

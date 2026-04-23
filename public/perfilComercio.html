@@ -220,14 +220,13 @@
 </div>
 
 <section id="seccionStaffServicios" class="px-6 md:px-10 mt-2 hidden">
-  <div class="bg-white rounded-lg shadow-sm p-5">
-    <div class="text-center mb-4">
-      <h2 class="text-xl font-semibold text-[#424242]">Nuestro equipo profesional</h2>
-      <p class="text-sm text-gray-500 mt-1">Selecciona un profesional para ver su perfil y reservar cita.</p>
-    </div>
-    <div id="staffServiciosGrid" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
-    <p id="staffServiciosEmpty" class="hidden text-sm text-center text-gray-500">Este comercio aún no ha publicado su equipo.</p>
+  <div class="text-center mb-4">
+    <h2 class="text-xl font-semibold text-[#424242]">Nuestro equipo profesional</h2>
+    <p class="text-sm text-gray-500 mt-1">Selecciona un profesional para ver su perfil y reservar cita.</p>
   </div>
+  <div id="staffServiciosGrid" class="flex gap-2 overflow-x-auto snap-x snap-mandatory pb-2 scroll-smooth"></div>
+  <p id="staffSwipeHint" class="hidden text-[11px] text-center text-gray-400 mt-2">&lt;- Desliza para ver más profesionales -&gt;</p>
+  <p id="staffServiciosEmpty" class="hidden text-sm text-center text-gray-500">Este comercio aún no ha publicado su equipo.</p>
 </section>
 
 <section id="seccionCupones" class="px-6 md:px-10 mt-6 hidden">
@@ -313,10 +312,10 @@
 
 <div id="modalStaffServicios" class="fixed inset-0 z-[100002] hidden">
   <div id="modalBackdropStaffServicios" class="absolute inset-0 bg-black/70"></div>
-  <div class="relative h-full w-full flex items-end sm:items-center justify-center px-3 py-4">
-    <div class="w-full max-w-md max-h-[92vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
+  <div class="relative h-full w-full flex items-center justify-center px-4 py-8">
+    <div id="modalStaffPanel" class="w-full max-w-sm max-h-[78vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
       <div class="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
-        <p class="text-lg font-normal text-[#424242]">Perfil profesional</p>
+        <p id="modalStaffStickyName" class="text-base font-normal text-[#424242] truncate"></p>
         <button id="cerrarModalStaffServicios" class="text-2xl leading-none text-gray-500 hover:text-gray-700" aria-label="Cerrar modal de staff">&times;</button>
       </div>
 
@@ -380,9 +379,15 @@
           <form id="formCitaStaff" class="mt-4 space-y-2">
             <input id="citaFecha" type="hidden" />
             <input id="citaHora" type="hidden" />
-            <div class="text-sm text-gray-500">
-              <span>Fecha:</span> <span id="citaFechaLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
-              <span class="ml-2">Hora:</span> <span id="citaHoraLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
+            <div class="text-sm text-gray-500 space-y-0.5">
+              <div>
+                <span>Fecha:</span>
+                <span id="citaFechaLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
+              </div>
+              <div>
+                <span>Hora:</span>
+                <span id="citaHoraLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
+              </div>
             </div>
             <input id="inputCitaNombre" type="text" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Tu nombre completo" required />
             <input id="inputCitaTelefono" type="tel" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Teléfono" required />
