@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tienda del Comercio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    :root {
+      --tienda-color-btn: #fb8500;
+      --tienda-color-btn-text: #ffffff;
+      --tienda-color-price: #111827;
+      --tienda-color-title: #111827;
+      --tienda-color-text: #374151;
+      --tienda-background: #f8fafc;
+      --tienda-item-bg: #ffffff;
+    }
+
+    html,
+    body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      font-family: 'Kanit', sans-serif;
+      background: var(--tienda-background);
+      color: var(--tienda-color-text);
+    }
+
+    .tienda-fixed-background,
+    .tienda-fixed-background-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .tienda-fixed-background {
+      z-index: 0;
+      background-position: center center;
+      background-size: contain;
+      background-repeat: no-repeat;
+      transform: translateZ(0);
+    }
+
+    .tienda-fixed-background-overlay {
+      z-index: 0;
+      background: rgba(255, 255, 255, 0.86);
+    }
+
+    .tienda-content-layer {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tienda-card {
+      background: var(--tienda-item-bg);
+      border: 1px solid #e5e7eb;
+    }
+
+    .tienda-categoria-btn {
+      border: 1px solid var(--tienda-color-btn);
+      color: var(--tienda-color-btn);
+      background: #ffffff;
+      opacity: 0.9;
+    }
+
+    .tienda-categoria-btn.is-active {
+      background: var(--tienda-color-btn);
+      color: var(--tienda-color-btn-text);
+      border-color: var(--tienda-color-btn);
+    }
+
+    .tienda-modal-backdrop {
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(1px);
+    }
+
+    .tienda-modal-panel {
+      max-height: min(90vh, 780px);
+    }
+
+    .tienda-galeria-track {
+      scroll-snap-type: x mandatory;
+    }
+
+    .tienda-galeria-track > img {
+      scroll-snap-align: center;
+    }
+  </style>
+</head>
+<body class="pb-10">
+  <div id="tiendaFixedBackground" class="tienda-fixed-background hidden"></div>
+  <div id="tiendaFixedBackgroundOverlay" class="tienda-fixed-background-overlay hidden"></div>
+
+  <header class="tienda-content-layer relative w-full">
+    <a id="btnVolverPerfil" href="#" class="absolute top-3 left-3 z-20 inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/55 text-white">
+      <i class="fas fa-chevron-left text-sm"></i>
+    </a>
+
+    <section id="heroBanner" class="relative w-full aspect-[16/9] max-h-64 overflow-hidden bg-gray-100">
+      <img id="heroBannerImg" src="" alt="Banner tienda" class="absolute inset-0 w-full h-full object-cover" />
+      <div id="heroOverlay" class="absolute inset-0 hidden"></div>
+    </section>
+  </header>
+
+  <main class="tienda-content-layer max-w-md mx-auto px-3 pt-4">
+    <p id="estadoTienda" class="text-sm text-gray-500 px-1">Cargando productos...</p>
+
+    <section id="categoriaSection" class="hidden mt-3">
+      <div id="categoriaButtons" class="flex gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
+    </section>
+
+    <section id="productosSection" class="hidden mt-4">
+      <div id="productosGrid" class="grid grid-cols-2 gap-3"></div>
+    </section>
+  </main>
+
+  <div id="modalProducto" class="fixed inset-0 z-[100000] hidden">
+    <div id="modalProductoBackdrop" class="absolute inset-0 tienda-modal-backdrop"></div>
+
+    <div class="relative h-full w-full flex items-center justify-center p-3">
+      <article class="tienda-modal-panel relative w-full max-w-md overflow-y-auto bg-white rounded-2xl shadow-2xl">
+        <button id="modalCerrar" class="absolute top-2 right-3 z-10 text-2xl text-gray-600" aria-label="Cerrar">&times;</button>
+
+        <section class="p-4">
+          <div class="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+            <img id="modalImagenPrincipal" src="" alt="Producto" class="w-full h-64 object-cover" />
+
+            <button id="modalPrevImagen" class="absolute top-1/2 -translate-y-1/2 left-2 hidden w-9 h-9 rounded-full bg-black/50 text-white" aria-label="Anterior">
+              <i class="fas fa-chevron-left text-xs"></i>
+            </button>
+            <button id="modalNextImagen" class="absolute top-1/2 -translate-y-1/2 right-2 hidden w-9 h-9 rounded-full bg-black/50 text-white" aria-label="Siguiente">
+              <i class="fas fa-chevron-right text-xs"></i>
+            </button>
+          </div>
+
+          <div id="modalThumbs" class="hidden mt-2 gap-2 overflow-x-auto hide-scrollbar"></div>
+
+          <h2 id="modalNombre" class="mt-4 text-xl font-semibold text-[var(--tienda-color-title)]"></h2>
+          <p id="modalPrecio" class="mt-1 text-lg font-semibold text-[var(--tienda-color-price)]"></p>
+          <p id="modalDescripcion" class="mt-3 text-sm text-gray-700 leading-relaxed whitespace-pre-line"></p>
+
+          <section id="modalOpcionesSection" class="hidden mt-4">
+            <h3 class="text-base font-semibold text-gray-800">Opciones</h3>
+            <div id="modalOpciones" class="mt-2 space-y-2"></div>
+          </section>
+
+          <section id="modalVariantesSection" class="hidden mt-4">
+            <h3 class="text-base font-semibold text-gray-800">Variantes</h3>
+            <div id="modalVariantes" class="mt-2 space-y-2"></div>
+          </section>
+
+          <a id="modalComprarBtn" href="#" target="_blank" rel="noopener noreferrer"
+             class="hidden mt-5 w-full inline-flex items-center justify-center rounded-xl bg-[#fb8500] text-white font-semibold py-3 px-4">
+            Comprar
+          </a>
+        </section>
+      </article>
+    </div>
+  </div>
+
+  <script type="module" src="../shared/supabaseClient.js"></script>
+  <script type="module" src="./tiendaComercio.js"></script>
+  <script type="module" src="../js/footerViewportFix.js"></script>
+  <script src="../js/bloquearPantalla.js"></script>
+</body>
+</html>

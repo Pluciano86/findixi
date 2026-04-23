@@ -5,6 +5,12 @@ const idComercio = new URLSearchParams(window.location.search).get('id');
 
 const telefono = document.getElementById('telefono');
 const direccion = document.getElementById('direccion');
+const tiendaFisicaInput = document.getElementById('tiendaFisica');
+const tiendaOnlineInput = document.getElementById('tiendaOnline');
+const storeModeFeedback = document.getElementById('storeModeFeedback');
+const direccionFieldWrapper = document.getElementById('direccionFieldWrapper');
+const horariosSection = document.getElementById('horariosSection');
+const feriadosSection = document.getElementById('feriadosSection');
 const whatsapp = document.getElementById('whatsapp');
 const facebook = document.getElementById('facebook');
 const instagram = document.getElementById('instagram');
@@ -61,6 +67,7 @@ let comercioActual = null;
 let firstLogoOffer = null;
 let firstLogoEditorState = null;
 let horariosActuales = [];
+let currentStoreMode = { tiendaFisica: true, tiendaOnline: false };
 const urlParams = new URLSearchParams(window.location.search);
 const onboardingFlow = ['1', 'true', 'yes'].includes(String(urlParams.get('onboarding') || '').toLowerCase()) ||
   ['1', 'true', 'yes'].includes(String(urlParams.get('nuevo') || '').toLowerCase());
@@ -126,6 +133,14 @@ async function callImageProcessEndpoint(payload, token) {
   throw lastError || new Error('No se pudo validar imagen.');
 }
 
+function isMissingStoreColumnsError(error) {
+  if (!error) return false;
+  const hayCodigo = String(error.code || '').toLowerCase();
+  const detalle = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`.toLowerCase();
+  if (!/tiendafisica|tiendaonline/.test(detalle)) return false;
+  return hayCodigo === '42703' || hayCodigo.startsWith('pgrst') || hayCodigo === '' || hayCodigo === '400';
+}
+
 function toFiniteNumber(value) {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
@@ -189,6 +204,61 @@ function getPaymentStatusLabel(comercio = {}, planInfo = resolverPlanComercio(co
 
 function getHorariosConfiguradosCount(horarios = []) {
   return new Set((horarios || []).map((row) => Number(row?.diaSemana)).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)).size;
+}
+
+function readStoreModeFromComercio(comercio = {}) {
+  const hasFisica = typeof comercio?.tiendaFisica === 'boolean';
+  const hasOnline = typeof comercio?.tiendaOnline === 'boolean';
+
+  const tiendaFisica = hasFisica ? comercio.tiendaFisica : true;
+  const tiendaOnline = hasOnline ? comercio.tiendaOnline : false;
+
+  return {
+    tiendaFisica: tiendaFisica !== false,
+    tiendaOnline: tiendaOnline === true,
+  };
+}
+
+function readStoreModeFromForm() {
+  return {
+    tiendaFisica: tiendaFisicaInput?.checked !== false,
+    tiendaOnline: tiendaOnlineInput?.checked === true,
+  };
+}
+
+function setStoreModeFeedback(type = 'info', message = '') {
+  if (!storeModeFeedback) return;
+  if (!message) {
+    storeModeFeedback.classList.add('hidden');
+    storeModeFeedback.textContent = '';
+    return;
+  }
+  const tone = {
+    info: 'bg-sky-50 border border-sky-200 text-sky-800',
+    warning: 'bg-amber-50 border border-amber-200 text-amber-800',
+    error: 'bg-red-50 border border-red-200 text-red-700',
+  };
+  storeModeFeedback.className = `text-xs rounded-lg px-3 py-2 ${tone[type] || tone.info}`;
+  storeModeFeedback.textContent = message;
+  storeModeFeedback.classList.remove('hidden');
+}
+
+function applyStoreModeUI(mode = readStoreModeFromForm()) {
+  const isFisica = mode?.tiendaFisica !== false;
+  currentStoreMode = {
+    tiendaFisica: isFisica,
+    tiendaOnline: mode?.tiendaOnline === true,
+  };
+
+  direccionFieldWrapper?.classList.toggle('hidden', !isFisica);
+  horariosSection?.classList.toggle('hidden', !isFisica);
+  feriadosSection?.classList.toggle('hidden', !isFisica);
+
+  if (!isFisica) {
+    setStoreModeFeedback('info', 'Tienda configurada sin presencia física: dirección y horarios se ocultarán en el perfil público.');
+  } else if (storeModeFeedback?.classList.contains('border-sky-200')) {
+    setStoreModeFeedback('', '');
+  }
 }
 
 function isBrandingGateReady(comercio = {}, planInfo = resolverPlanComercio(comercio)) {
@@ -670,11 +740,17 @@ function renderOnboardingGate(comercio = {}, planInfo = resolverPlanComercio(com
   const horariosCount = getHorariosConfiguradosCount(horarios);
   const direccionCompleta = Boolean(String(direccion?.value || comercio?.direccion || '').trim());
   const direccionRequerida = Number(planInfo.nivel || 0) > 0;
+  const storeMode = readStoreModeFromForm();
+  const requiereFisica = storeMode.tiendaFisica === true;
   const requisitosActivos = [
-    `Horario configurado: ${horariosCount}/7 días`,
-    direccionRequerida
-      ? `Dirección escrita: ${direccionCompleta ? 'completa' : 'pendiente'}`
-      : 'Dirección escrita: opcional para Basic',
+    requiereFisica
+      ? `Horario configurado: ${horariosCount}/7 días`
+      : 'Horario: no requerido (tienda sin presencia física)',
+    requiereFisica
+      ? (direccionRequerida
+        ? `Dirección escrita: ${direccionCompleta ? 'completa' : 'pendiente'}`
+        : 'Dirección escrita: opcional para Basic')
+      : 'Dirección: no requerida (tienda sin presencia física)',
   ];
 
   if (gateReady) {
@@ -733,9 +809,13 @@ async function aplicarEstadoActivacionAutomatica(comercio = {}, planInfo = resol
   if (!isBrandingGateReady(comercio, planInfo)) return;
 
   const horariosCount = getHorariosConfiguradosCount(horarios);
-  const horarioOk = horariosCount >= 7;
+  const storeMode = readStoreModeFromForm();
+  const requiereFisica = storeMode.tiendaFisica === true;
+  const horarioOk = requiereFisica ? horariosCount >= 7 : true;
   const direccionValor = String(direccion?.value || comercio?.direccion || '').trim();
-  const direccionOk = Number(planInfo.nivel || 0) <= 0 ? true : Boolean(direccionValor);
+  const direccionOk = !requiereFisica
+    ? true
+    : (Number(planInfo.nivel || 0) <= 0 ? true : Boolean(direccionValor));
   const readyToActivate = horarioOk && direccionOk;
 
   const nextListing = readyToActivate ? 'publicado' : 'borrador';
@@ -824,13 +904,26 @@ function renderFeriados(list = []) {
 async function cargarDatos() {
   if (!idComercio) return;
   fullFormUnlocked = onboardingFlow ? loadOnboardingUnlockState() : true;
-  const { data, error } = await supabase
+  const baseSelect =
+    'nombre,logo,portada,latitud,longitud,telefono,direccion,whatsapp,facebook,instagram,tiktok,webpage,descripcion,plan_id,plan_nivel,plan_nombre,plan_status,pago_estado_demo,permite_menu,permite_especiales,permite_ordenes,permite_perfil,aparece_en_cercanos,estado_propiedad,estado_verificacion,propietario_verificado,logo_estado,logo_aprobado,portada_estado,portada_aprobada,estado_listing,activo';
+  let { data, error } = await supabase
     .from('Comercios')
-    .select(
-      'nombre,logo,portada,latitud,longitud,telefono,direccion,whatsapp,facebook,instagram,tiktok,webpage,descripcion,plan_id,plan_nivel,plan_nombre,plan_status,pago_estado_demo,permite_menu,permite_especiales,permite_ordenes,permite_perfil,aparece_en_cercanos,estado_propiedad,estado_verificacion,propietario_verificado,logo_estado,logo_aprobado,portada_estado,portada_aprobada,estado_listing,activo'
-    )
+    .select(`${baseSelect},tiendaFisica,tiendaOnline`)
     .eq('id', idComercio)
     .maybeSingle();
+
+  if (isMissingStoreColumnsError(error)) {
+    const fallback = await supabase
+      .from('Comercios')
+      .select(baseSelect)
+      .eq('id', idComercio)
+      .maybeSingle();
+    data = fallback.data;
+    error = fallback.error;
+    if (!error) {
+      setStoreModeFeedback('warning', 'Aún no están creadas las columnas tiendaFisica/tiendaOnline en la base de datos. La modalidad de tienda no se guardará hasta aplicar el SQL.');
+    }
+  }
   if (!error && data) {
     comercioActual = data;
     renderProtectedFields(data);
@@ -859,6 +952,10 @@ async function cargarDatos() {
     tiktok.value = data.tiktok || '';
     webpage.value = data.webpage || '';
     descripcion.value = data.descripcion || '';
+    const storeMode = readStoreModeFromComercio(data);
+    if (tiendaFisicaInput) tiendaFisicaInput.checked = storeMode.tiendaFisica;
+    if (tiendaOnlineInput) tiendaOnlineInput.checked = storeMode.tiendaOnline;
+    applyStoreModeUI(storeMode);
 
     const planInfo = resolverPlanComercio(data);
     if (planBadge) planBadge.textContent = planInfo.nombre;
@@ -928,6 +1025,12 @@ async function guardarPerfil() {
     alert('Primero completa logo, portada y pago del plan. Luego pulsa "Continuar al formulario completo".');
     return;
   }
+  const storeMode = readStoreModeFromForm();
+  if (!storeMode.tiendaFisica && !storeMode.tiendaOnline) {
+    setStoreModeFeedback('error', 'Debes seleccionar al menos una modalidad: tienda física o tienda online.');
+    return;
+  }
+
   const payload = {
     telefono: telefono.value.trim() || null,
     direccion: direccion.value.trim() || null,
@@ -937,9 +1040,19 @@ async function guardarPerfil() {
     tiktok: tiktok.value.trim() || null,
     webpage: webpage.value.trim() || null,
     descripcion: descripcion.value.trim() || null,
+    tiendaFisica: storeMode.tiendaFisica,
+    tiendaOnline: storeMode.tiendaOnline,
   };
   let perfilError = null;
-  const { error } = await supabase.from('Comercios').update(payload).eq('id', idComercio);
+  let { error } = await supabase.from('Comercios').update(payload).eq('id', idComercio);
+  if (isMissingStoreColumnsError(error)) {
+    const { tiendaFisica: _storeFisica, tiendaOnline: _storeOnline, ...fallbackPayload } = payload;
+    const fallbackUpdate = await supabase.from('Comercios').update(fallbackPayload).eq('id', idComercio);
+    error = fallbackUpdate.error;
+    if (!error) {
+      setStoreModeFeedback('warning', 'Perfil guardado, pero la modalidad de tienda no se guardó porque faltan columnas en DB. Ejecuta el SQL de tiendaFisica/tiendaOnline.');
+    }
+  }
   if (error) {
     perfilError = error;
     const errorText = String(error?.message || '').toLowerCase();
@@ -1206,6 +1319,23 @@ btnAgregarFeriado?.addEventListener('click', (e) => {
   agregarFeriado();
 });
 
+function handleStoreModeToggle(changedInput) {
+  const mode = readStoreModeFromForm();
+  if (!mode.tiendaFisica && !mode.tiendaOnline && changedInput) {
+    changedInput.checked = true;
+  }
+  const nextMode = readStoreModeFromForm();
+  applyStoreModeUI(nextMode);
+  renderOnboardingGate(comercioActual || {}, resolverPlanComercio(comercioActual || {}), horariosActuales);
+}
+
+tiendaFisicaInput?.addEventListener('change', () => {
+  handleStoreModeToggle(tiendaFisicaInput);
+});
+tiendaOnlineInput?.addEventListener('change', () => {
+  handleStoreModeToggle(tiendaOnlineInput);
+});
+
 btnContinuarFormulario?.addEventListener('click', async (e) => {
   e.preventDefault();
   if (!comercioActual) return;
@@ -1304,5 +1434,6 @@ firstPortadaInput?.addEventListener('change', () => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+  applyStoreModeUI(readStoreModeFromForm());
   await cargarDatos();
 });

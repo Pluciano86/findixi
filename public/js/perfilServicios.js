@@ -41,6 +41,8 @@ const state = {
   serviciosByStaff: new Map(),
   activeStaffId: null,
   activeStaffName: '',
+  activeStaffProfesion: '',
+  activeStaffPhoto: '',
   selectedServiceIds: new Set(),
   selectedDate: '',
   selectedTime: '',
@@ -48,6 +50,7 @@ const state = {
   calendarMonthCache: new Map(),
   staffGallerySwiper: null,
   staffWorkViewerSwiper: null,
+  popupCloseBound: false,
   modalBound: false,
 };
 
@@ -83,6 +86,18 @@ function normalizePhoneHref(value) {
   const digits = String(value || '').replace(/\D+/g, '');
   if (!digits) return '';
   return `tel:${digits}`;
+}
+
+function formatPhoneWithHyphens(value) {
+  let digits = String(value || '').replace(/\D+/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) {
+    digits = digits.slice(1);
+  }
+  digits = digits.slice(0, 10);
+  if (!digits) return '';
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
 function escapeHtml(value) {
@@ -586,6 +601,31 @@ function updateCitaServicioResumen() {
   costLabel.textContent = getSelectedCostLabel(selected);
 }
 
+function updateBookingProgressFlow() {
+  const resumen = document.getElementById('citaResumenProgreso');
+  const rowServicios = document.getElementById('citaResumenServiciosRow');
+  const rowFecha = document.getElementById('citaResumenFechaRow');
+  const rowHora = document.getElementById('citaResumenHoraRow');
+  const rowTiempo = document.getElementById('citaResumenTiempoRow');
+  const rowCosto = document.getElementById('citaResumenCostoRow');
+  const formContacto = document.getElementById('citaFormularioContacto');
+  if (!resumen || !rowServicios || !rowFecha || !rowHora || !rowTiempo || !rowCosto || !formContacto) return;
+
+  const selectedServices = getSelectedServices();
+  const hasService = selectedServices.length > 0;
+  const hasDate = !!state.selectedDate;
+  const hasTime = !!state.selectedTime;
+  const hasAll = hasService && hasDate && hasTime;
+
+  resumen.classList.toggle('hidden', !hasService);
+  rowServicios.classList.toggle('hidden', !hasService);
+  rowFecha.classList.toggle('hidden', !hasService);
+  rowHora.classList.toggle('hidden', !(hasService && hasDate));
+  rowTiempo.classList.toggle('hidden', !hasAll);
+  rowCosto.classList.toggle('hidden', !hasAll);
+  formContacto.classList.toggle('hidden', !hasAll);
+}
+
 function setFeedback(type, message) {
   const feedback = document.getElementById('citaFeedback');
   if (!feedback) return;
@@ -625,6 +665,7 @@ function updateSelectedLabels() {
   if (inputFecha) inputFecha.value = state.selectedDate;
   if (inputHora) inputHora.value = state.selectedTime;
   updateCitaServicioResumen();
+  updateBookingProgressFlow();
 }
 
 function renderStaffCards() {
@@ -653,7 +694,7 @@ function renderStaffCards() {
 
     return `
       <article
-        class="snap-start shrink-0 rounded-xl border border-gray-200 px-2 pt-2 pb-2 flex flex-col justify-between items-center text-center bg-white shadow-sm cursor-pointer select-none h-[204px]"
+        class="snap-start shrink-0 rounded-xl border border-gray-200 px-2 py-2 flex flex-col items-center text-center bg-white shadow-sm cursor-pointer select-none h-[212px]"
         style="flex: 0 0 calc((100% - 1rem) / 3);"
         data-action="abrir-staff-card"
         data-staff-id="${Number(staff.id)}"
@@ -661,15 +702,17 @@ function renderStaffCards() {
         role="button"
         aria-label="Abrir perfil de ${escapeHtml(nombreRaw)}"
       >
-        <div class="w-full flex flex-col items-center gap-1.5">
+        <div class="w-full h-[98px] flex items-center justify-center">
           <img src="${escapeHtml(foto)}" alt="${escapeHtml(nombreRaw)}" class="w-24 h-24 rounded-2xl object-cover border border-gray-200">
-          <div class="w-full min-h-[50px] flex flex-col items-center justify-center text-center">
-            <p class="w-full text-center text-sm font-normal text-gray-800 leading-tight h-[16px] overflow-hidden">${nombreLinea1}</p>
-            <p class="w-full text-center text-sm font-normal text-gray-800 leading-tight h-[16px] overflow-hidden">${nombreLinea2 || '&nbsp;'}</p>
-            <p class="text-[11px] text-gray-500 leading-tight h-[14px] overflow-hidden">${profesion}</p>
-          </div>
         </div>
-        <div class="w-full flex justify-center">
+        <div class="w-full h-[42px] flex flex-col items-center justify-center text-center">
+          <p class="w-full text-center text-sm font-normal text-gray-800 leading-tight h-[16px] overflow-hidden">${nombreLinea1}</p>
+          <p class="w-full text-center text-sm font-normal text-gray-800 leading-tight h-[16px] overflow-hidden">${nombreLinea2 || '&nbsp;'}</p>
+        </div>
+        <div class="w-full h-[26px] flex items-center justify-center">
+          <p class="w-full text-[11px] text-gray-500 leading-tight text-center h-[14px] overflow-hidden">${profesion}</p>
+        </div>
+        <div class="w-full h-[28px] flex items-center justify-center">
           <div class="inline-flex items-center justify-center rounded-md bg-[#121212] text-white text-[10px] font-light px-2.5 py-0.5 leading-tight">Ver perfil y citas</div>
         </div>
       </article>
@@ -682,15 +725,24 @@ function renderStaffCards() {
 function updateModalStickyName() {
   const panel = document.getElementById('modalStaffPanel');
   const stickyName = document.getElementById('modalStaffStickyName');
+  const stickyPhoto = document.getElementById('modalStaffStickyFoto');
   if (!panel || !stickyName) return;
 
   const name = sanitizeText(state.activeStaffName);
-  if (!name) {
+  const profesion = sanitizeText(state.activeStaffProfesion);
+  const photo = sanitizeText(state.activeStaffPhoto) || STAFF_PHOTO_PLACEHOLDER;
+
+  if (!name || panel.scrollTop <= 84) {
     stickyName.textContent = '';
+    if (stickyPhoto) stickyPhoto.classList.add('hidden');
     return;
   }
 
-  stickyName.textContent = panel.scrollTop > 84 ? name : '';
+  stickyName.textContent = profesion ? `${name} - ${profesion}` : name;
+  if (stickyPhoto) {
+    stickyPhoto.src = photo;
+    stickyPhoto.classList.remove('hidden');
+  }
 }
 
 function renderStaffContacts(staff) {
@@ -852,6 +904,44 @@ function closeStaffWorkViewer() {
   state.staffWorkViewerSwiper = destroySwiper(state.staffWorkViewerSwiper);
 }
 
+function closePopupRoot(root) {
+  if (!root || root.classList.contains('hidden')) return;
+  if (root.id === 'modalStaffServicios') {
+    closeModal();
+    return;
+  }
+  if (root.id === 'modalStaffTrabajoViewer') {
+    closeStaffWorkViewer();
+    return;
+  }
+  root.classList.add('hidden');
+  if (!document.querySelector('[data-popup-root]:not(.hidden)')) {
+    document.body.classList.remove('overflow-hidden');
+  }
+}
+
+function bindPopupCloseBehavior() {
+  if (state.popupCloseBound) return;
+  state.popupCloseBound = true;
+
+  document.addEventListener('click', (event) => {
+    const closeTrigger = event.target.closest('[data-popup-close]');
+    if (closeTrigger) {
+      const targetSelector = sanitizeText(closeTrigger.getAttribute('data-popup-target'));
+      const root = targetSelector
+        ? document.querySelector(targetSelector)
+        : closeTrigger.closest('[data-popup-root]');
+      closePopupRoot(root);
+      return;
+    }
+
+    const root = event.target.closest('[data-popup-root]');
+    if (!root || root.classList.contains('hidden')) return;
+    if (event.target.closest('[data-popup-panel]')) return;
+    closePopupRoot(root);
+  });
+}
+
 function renderStaffGallery(staffId) {
   const wrapper = document.getElementById('staffModalGaleriaWrapper');
   const pagination = document.getElementById('staffModalGaleriaPagination');
@@ -925,7 +1015,7 @@ function renderServiceSelector() {
     const nombre = escapeHtml(sanitizeText(service.nombre) || 'Servicio');
     const descripcion = sanitizeText(service.descripcion);
     const descripcionHtml = descripcion
-      ? `<p class="text-[12px] text-gray-500 leading-tight mt-1">${escapeHtml(descripcion)}</p>`
+      ? `<p class="text-sm text-gray-500 leading-tight mt-1">${escapeHtml(descripcion)}</p>`
       : '';
 
     return `
@@ -940,11 +1030,11 @@ function renderServiceSelector() {
             <i class="fa-solid fa-check text-[10px]"></i>
           </span>
           <span class="min-w-0 flex-1">
-            <span class="block text-[14px] leading-tight text-gray-800">${nombre}</span>
+            <span class="block text-base leading-tight text-gray-800">${nombre}</span>
             ${descripcionHtml}
             <span class="mt-1 flex flex-wrap gap-1.5">
-              <span class="text-[11px] px-2 py-0.5 rounded-full border border-gray-200 bg-white text-gray-600">${Math.max(15, Math.floor(Number(service.duracion_min) || 60))} min</span>
-              <span class="text-[11px] px-2 py-0.5 rounded-full border border-gray-200 bg-white text-gray-600">${escapeHtml(formatPriceText(service.precio))}</span>
+              <span class="text-sm px-2 py-0.5 rounded-full border border-gray-200 bg-white text-gray-600">Duración: ${Math.max(15, Math.floor(Number(service.duracion_min) || 60))} min</span>
+              <span class="text-sm px-2 py-0.5 rounded-full border border-gray-200 bg-white text-gray-600">Costo aprox.: ${escapeHtml(formatPriceText(service.precio))}</span>
             </span>
           </span>
         </div>
@@ -1052,54 +1142,55 @@ async function renderCalendarDays() {
   }
 
   const selectedDuration = getSelectedDurationMinutes(staff);
-  if (selectedDuration <= 0) {
-    if (label) label.textContent = formatMonthLabel(state.calendarMonthAnchor);
-    container.innerHTML = '';
-    if (empty) {
-      empty.textContent = 'Selecciona al menos un servicio para ver días disponibles.';
-      empty.classList.remove('hidden');
-    }
-    state.selectedDate = '';
-    state.selectedTime = '';
-    updateSelectedLabels();
-    return;
-  }
+  const agenda = normalizeAgendaConfig(staff?.agenda_config);
+  const baseDuration = Math.max(15, Math.floor(Number(agenda?.slot_minutes) || DEFAULT_AGENDA.slot_minutes));
+  const durationForCalendar = selectedDuration > 0 ? selectedDuration : baseDuration;
 
-  const monthData = await getMonthAvailability(staff, state.calendarMonthAnchor, selectedDuration);
+  const monthData = await getMonthAvailability(staff, state.calendarMonthAnchor, durationForCalendar);
   const { monthStart, monthEnd, dayInfo, firstAvailableDate } = monthData;
   const monthStartISO = formatDateISO(monthStart);
   const monthEndISO = formatDateISO(monthEnd);
   const selectedInfo = dayInfo.get(state.selectedDate);
   const selectedInMonth = state.selectedDate >= monthStartISO && state.selectedDate <= monthEndISO;
+  const hasServiceSelected = selectedDuration > 0;
 
-  if (!selectedInMonth || !selectedInfo?.available) {
-    state.selectedDate = firstAvailableDate || '';
+  if (!selectedInMonth || !selectedInfo?.available || !hasServiceSelected) {
+    state.selectedDate = '';
     state.selectedTime = '';
   }
 
   if (label) label.textContent = formatMonthLabel(monthStart);
   if (empty) {
-    empty.textContent = 'Este profesional no tiene disponibilidad en este mes.';
-    empty.classList.toggle('hidden', !!firstAvailableDate);
+    if (!firstAvailableDate) {
+      empty.textContent = 'Este profesional no tiene disponibilidad en este mes.';
+      empty.classList.remove('hidden');
+    } else if (!hasServiceSelected) {
+      empty.textContent = 'Selecciona un servicio para habilitar la fecha.';
+      empty.classList.remove('hidden');
+    } else {
+      empty.classList.add('hidden');
+    }
   }
 
   const firstWeekday = monthStart.getDay();
   const cells = [];
 
   for (let i = 0; i < firstWeekday; i += 1) {
-    cells.push('<div class="h-11 rounded-md"></div>');
+    cells.push('<div class="h-12 rounded-md"></div>');
   }
 
   for (let day = 1; day <= monthEnd.getDate(); day += 1) {
     const dayISO = formatDateISO(new Date(monthStart.getFullYear(), monthStart.getMonth(), day));
     const info = dayInfo.get(dayISO) || { available: false };
-    const selected = state.selectedDate === dayISO;
-    const disabled = !info.available;
+    const selected = hasServiceSelected && state.selectedDate === dayISO;
+    const disabled = !info.available || !hasServiceSelected;
 
     const classes = selected
       ? 'bg-[#fb8500] text-white border-[#fb8500]'
       : disabled
-        ? 'bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed'
+        ? (!info.available
+          ? 'bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed'
+          : 'bg-white text-gray-500 border-gray-200 cursor-not-allowed opacity-80')
         : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50';
 
     cells.push(`
@@ -1107,7 +1198,7 @@ async function renderCalendarDays() {
         type="button"
         data-action="select-day"
         data-day="${dayISO}"
-        class="h-11 rounded-md border flex items-center justify-center text-base font-normal leading-none ${classes}"
+        class="h-12 rounded-md border flex items-center justify-center text-lg font-normal leading-none ${classes}"
         ${disabled ? 'disabled' : ''}
       >
         <span>${day}</span>
@@ -1117,7 +1208,7 @@ async function renderCalendarDays() {
 
   const fillerCells = (7 - (cells.length % 7)) % 7;
   for (let i = 0; i < fillerCells; i += 1) {
-    cells.push('<div class="h-11 rounded-md"></div>');
+    cells.push('<div class="h-12 rounded-md"></div>');
   }
 
   container.innerHTML = cells.join('');
@@ -1132,12 +1223,27 @@ async function renderSlotsForSelectedDay() {
 
   const staff = getActiveStaff();
   const selectedDuration = getSelectedDurationMinutes(staff);
-  if (!staff || selectedDuration <= 0 || !state.selectedDate) {
+  if (!staff) {
     slotsContainer.innerHTML = '';
-    empty.classList.toggle('hidden', selectedDuration > 0 || !staff);
-    if (empty && selectedDuration <= 0 && staff) {
-      empty.textContent = 'Selecciona uno o más servicios para habilitar los horarios.';
-    }
+    empty.classList.add('hidden');
+    if (title) title.textContent = 'Horarios disponibles';
+    updateSelectedLabels();
+    return;
+  }
+
+  if (selectedDuration <= 0) {
+    slotsContainer.innerHTML = '';
+    empty.classList.remove('hidden');
+    empty.textContent = 'Selecciona un servicio para habilitar los horarios.';
+    if (title) title.textContent = 'Horarios disponibles';
+    updateSelectedLabels();
+    return;
+  }
+
+  if (!state.selectedDate) {
+    slotsContainer.innerHTML = '';
+    empty.classList.remove('hidden');
+    empty.textContent = 'Selecciona una fecha para ver horarios disponibles.';
     if (title) title.textContent = 'Horarios disponibles';
     updateSelectedLabels();
     return;
@@ -1184,7 +1290,7 @@ async function renderSlotsForSelectedDay() {
         type="button"
         data-action="select-slot"
         data-slot="${slot.hora}"
-        class="px-3 py-1.5 rounded-full text-sm font-normal border ${selected ? 'bg-[#fb8500] text-white border-[#fb8500]' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}"
+        class="px-3 py-1.5 rounded-full text-base font-normal border ${selected ? 'bg-[#fb8500] text-white border-[#fb8500]' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}"
       >${formatTime12h(slot.hora)}</button>
     `;
   }).join('');
@@ -1202,17 +1308,20 @@ function openModal() {
 function closeModal() {
   const modal = document.getElementById('modalStaffServicios');
   const stickyName = document.getElementById('modalStaffStickyName');
+  const stickyPhoto = document.getElementById('modalStaffStickyFoto');
   if (!modal) return;
   closeStaffWorkViewer();
   modal.classList.add('hidden');
   document.body.classList.remove('overflow-hidden');
   if (stickyName) stickyName.textContent = '';
+  if (stickyPhoto) stickyPhoto.classList.add('hidden');
   setFeedback('', '');
 }
 
 async function prefillUserContact() {
   const inputNombre = document.getElementById('inputCitaNombre');
   const inputEmail = document.getElementById('inputCitaEmail');
+  const inputTelefono = document.getElementById('inputCitaTelefono');
 
   try {
     const { data: authData } = await supabase.auth.getUser();
@@ -1223,19 +1332,38 @@ async function prefillUserContact() {
       inputEmail.value = sanitizeText(user.email);
     }
 
-    if (inputNombre && !sanitizeText(inputNombre.value)) {
-      const fullName = sanitizeText(user.user_metadata?.full_name || user.user_metadata?.name || '');
-      if (fullName) {
-        inputNombre.value = fullName;
-      } else {
-        const { data: perfil } = await supabase
-          .from('usuarios')
-          .select('nombre,apellido')
-          .eq('id', user.id)
-          .maybeSingle();
+    const fullName = sanitizeText(user.user_metadata?.full_name || user.user_metadata?.name || '');
+    if (inputNombre && !sanitizeText(inputNombre.value) && fullName) {
+      inputNombre.value = fullName;
+    }
 
+    const phoneFromAuth = sanitizeText(
+      user.phone
+      || user.user_metadata?.telefono
+      || user.user_metadata?.phone
+      || ''
+    );
+    if (inputTelefono && !sanitizeText(inputTelefono.value) && phoneFromAuth) {
+      inputTelefono.value = formatPhoneWithHyphens(phoneFromAuth);
+    }
+
+    const needNombreFromPerfil = !!(inputNombre && !sanitizeText(inputNombre.value));
+    const needTelefonoFromPerfil = !!(inputTelefono && !sanitizeText(inputTelefono.value));
+    if (needNombreFromPerfil || needTelefonoFromPerfil) {
+      const { data: perfil } = await supabase
+        .from('usuarios')
+        .select('nombre,apellido,telefono')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (needNombreFromPerfil) {
         const nombrePerfil = `${sanitizeText(perfil?.nombre)} ${sanitizeText(perfil?.apellido)}`.trim();
         if (nombrePerfil) inputNombre.value = nombrePerfil;
+      }
+
+      if (needTelefonoFromPerfil) {
+        const telefonoPerfil = sanitizeText(perfil?.telefono);
+        if (telefonoPerfil) inputTelefono.value = formatPhoneWithHyphens(telefonoPerfil);
       }
     }
   } catch (error) {
@@ -1249,6 +1377,8 @@ async function openStaffProfile(staffId) {
 
   state.activeStaffId = Number(staff.id);
   state.activeStaffName = sanitizeText(staff.nombre) || 'Profesional';
+  state.activeStaffProfesion = sanitizeText(staff.profesion) || 'Staff';
+  state.activeStaffPhoto = sanitizeText(staff.foto_url) || STAFF_PHOTO_PLACEHOLDER;
   state.selectedServiceIds = new Set();
   state.selectedDate = '';
   state.selectedTime = '';
@@ -1307,6 +1437,7 @@ function buildServiciosMap(servicios = []) {
 function bindEvents() {
   if (state.modalBound) return;
   state.modalBound = true;
+  bindPopupCloseBehavior();
 
   const grid = document.getElementById('staffServiciosGrid');
   const serviceSelector = document.getElementById('staffServiciosSelector');
@@ -1318,10 +1449,7 @@ function bindEvents() {
   const btnPrevMes = document.getElementById('btnCitasPrevMes');
   const btnNextMes = document.getElementById('btnCitasNextMes');
   const form = document.getElementById('formCitaStaff');
-  const closeBtn = document.getElementById('cerrarModalStaffServicios');
-  const backdrop = document.getElementById('modalBackdropStaffServicios');
-  const closeViewerBtn = document.getElementById('cerrarModalStaffTrabajoViewer');
-  const viewerBackdrop = document.getElementById('modalBackdropStaffTrabajoViewer');
+  const inputTelefono = document.getElementById('inputCitaTelefono');
 
   grid?.addEventListener('click', (event) => {
     const card = event.target.closest('[data-action="abrir-staff-card"]');
@@ -1430,11 +1558,17 @@ function bindEvents() {
     void renderSlotsForSelectedDay();
   });
 
-  closeBtn?.addEventListener('click', closeModal);
-  backdrop?.addEventListener('click', closeModal);
-  closeViewerBtn?.addEventListener('click', closeStaffWorkViewer);
-  viewerBackdrop?.addEventListener('click', closeStaffWorkViewer);
   modalPanel?.addEventListener('scroll', updateModalStickyName);
+
+  const applyPhoneMask = () => {
+    if (!inputTelefono) return;
+    const formatted = formatPhoneWithHyphens(inputTelefono.value);
+    if (inputTelefono.value !== formatted) {
+      inputTelefono.value = formatted;
+    }
+  };
+  inputTelefono?.addEventListener('input', applyPhoneMask);
+  inputTelefono?.addEventListener('blur', applyPhoneMask);
 
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -1470,7 +1604,7 @@ function bindEvents() {
     const submitBtn = document.getElementById('btnReservarCita');
 
     const clienteNombre = sanitizeText(inputNombre?.value);
-    const clienteTelefono = sanitizeText(inputTelefono?.value);
+    const clienteTelefono = formatPhoneWithHyphens(inputTelefono?.value);
     const clienteEmail = sanitizeText(inputEmail?.value);
     const notas = sanitizeText(inputNotas?.value);
 
@@ -1595,6 +1729,8 @@ export async function initPerfilServicios({ idComercio, comercio = null } = {}) 
   state.serviciosByStaff = new Map();
   state.activeStaffId = null;
   state.activeStaffName = '';
+  state.activeStaffProfesion = '';
+  state.activeStaffPhoto = '';
   state.selectedServiceIds = new Set();
   state.selectedDate = '';
   state.selectedTime = '';

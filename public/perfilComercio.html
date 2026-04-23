@@ -189,33 +189,49 @@
     <h2 id="nombreComercio" class="text-2xl text-[#424242] text-3xl mt-2 font-semibold mb-2">Nombre del Comercio</h2>
     <p id="nombreSucursal" class="text-xl text-gray-500 font-medium mt-[-10px] mt-4 mb-2"></p>
 
-
     <a href="tel:7870000000" id="telefonoComercio" class="inline-flex items-center justify-center gap-2 text-white text-3xl font-semibold
                bg-red-600 rounded-full px-12 py-[6px] mb-2 shadow hover:bg-red-700 transition 
                mx-auto mt-2 max-w-[100%]">
       <i class="fas fa-phone text-2x1"></i> 787-000-0000
     </a>
-    
-<div id="direccionComercio" class="flex items-center gap-2 text-[#3ea6c4] font-medium text-xl mt-3 leading-none mx-auto w-fit mb-2">
-  <i class="fas fa-map-pin"></i>
-  <span id="textoDireccion"></span>
-</div>
 
+    <div id="tiendaOnlineInfo" class="hidden mt-1 mb-3">
+      <p class="text-lg text-[#424242] font-semibold leading-none">Tienda Online</p>
+      <a
+        id="tiendaOnlineWeb"
+        href="#"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center justify-center gap-2 text-[#3ea6c4] font-medium text-xl mt-2 leading-tight mx-auto max-w-[95%] break-all px-3"
+      >
+        <i class="fas fa-shopping-bag"></i>
+        <span id="tiendaOnlineWebText"></span>
+      </a>
+    </div>
 
-    <p id="tiempoVehiculo" class="text-[#9c9c9c] text-xl font-medium  mb-4">
-  <i class="fas fa-car"></i> <span data-i18n="perfilComercio.cargandoDistancia">Cargando distancia...</span>
-</p>
+    <div id="tiendaFisicaInfo" class="hidden">
+      <p class="text-lg text-[#424242] font-semibold mt-2 leading-none">Tienda Física</p>
 
-    <div id="mapasContainer" class="flex justify-center gap-4 mb-6">
-<a id="btnGoogleMaps" href="#" target="_blank">
-    <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg"
-         alt="Google Maps" class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-10">
-  </a>
- <a id="btnWaze" href="#" target="_blank">
-    <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//waze.jpg"
-         alt="Waze" class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-10">
-  </a>
-</div>
+      <div id="direccionComercio" class="flex items-center gap-2 text-[#3ea6c4] font-medium text-xl mt-3 leading-none mx-auto w-fit mb-2">
+        <i class="fas fa-map-pin"></i>
+        <span id="textoDireccion"></span>
+      </div>
+
+      <p id="tiempoVehiculo" class="text-[#9c9c9c] text-xl font-medium mb-4">
+        <i class="fas fa-car"></i> <span data-i18n="perfilComercio.cargandoDistancia">Cargando distancia...</span>
+      </p>
+
+      <div id="mapasContainer" class="flex justify-center gap-4 mb-6">
+        <a id="btnGoogleMaps" href="#" target="_blank">
+          <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg"
+               alt="Google Maps" class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-10">
+        </a>
+        <a id="btnWaze" href="#" target="_blank">
+          <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//waze.jpg"
+               alt="Waze" class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-10">
+        </a>
+      </div>
+    </div>
 
 <div id="redesSocialesContainer" class="flex justify-center gap-3 mb-6">
   <a href="#" id="linkFacebook" class="w-10 h-10">
@@ -237,6 +253,22 @@
     <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//logoWeb.png" alt="webpage">
   </a>
 </div>
+
+<section id="seccionProductosTienda" class="hidden px-4 mt-1 mb-6">
+  <div class="bg-white rounded-xl border border-gray-100 px-3 py-4">
+    <h3 class="text-lg text-[#424242] font-semibold text-center mb-3">Productos</h3>
+    <div id="gridProductosTienda" class="grid grid-cols-3 gap-2"></div>
+    <div class="mt-4 flex justify-center">
+      <a
+        id="btnVerMasProductosTienda"
+        href="#"
+        class="inline-flex items-center justify-center rounded-full bg-[#fb8500] text-white text-sm font-normal px-5 py-2"
+      >
+        Ver más productos
+      </a>
+    </div>
+  </div>
+</section>
 
 <section id="seccionStaffServicios" class="px-6 md:px-10 mt-2 hidden">
   <div class="text-center mb-4">
@@ -329,13 +361,16 @@
   </div>
 </section>
 
-<div id="modalStaffServicios" class="fixed inset-0 z-[100002] hidden">
-  <div id="modalBackdropStaffServicios" class="absolute inset-0 bg-black/70"></div>
+<div id="modalStaffServicios" data-popup-root class="fixed inset-0 z-[100002] hidden">
+  <div id="modalBackdropStaffServicios" data-popup-close class="absolute inset-0 bg-black/70"></div>
   <div class="relative h-full w-full flex items-center justify-center px-4 py-8">
-    <div id="modalStaffPanel" class="w-full max-w-sm max-h-[78vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
+    <div id="modalStaffPanel" data-popup-panel class="w-full max-w-sm max-h-[78vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
       <div class="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
-        <p id="modalStaffStickyName" class="text-base font-normal text-[#424242] truncate"></p>
-        <button id="cerrarModalStaffServicios" class="text-2xl leading-none text-gray-500 hover:text-gray-700" aria-label="Cerrar modal de staff">&times;</button>
+        <div class="min-w-0 flex items-center gap-2">
+          <img id="modalStaffStickyFoto" src="https://placehold.co/48x48?text=Staff" alt="Foto profesional" class="hidden w-8 h-8 rounded-full object-cover border border-gray-200 shrink-0">
+          <p id="modalStaffStickyName" class="text-base font-normal text-[#424242] truncate"></p>
+        </div>
+        <button id="cerrarModalStaffServicios" data-popup-close class="text-2xl leading-none text-gray-500 hover:text-gray-700" aria-label="Cerrar modal de staff">&times;</button>
       </div>
 
       <div class="px-4 py-4 space-y-4">
@@ -344,7 +379,7 @@
           <div class="min-w-0 mt-3">
             <h3 id="staffModalNombre" class="text-2xl font-normal text-[#424242] leading-tight"></h3>
             <p id="staffModalProfesion" class="text-base font-normal text-gray-500 mt-1"></p>
-            <p id="staffModalBio" class="text-sm text-gray-600 mt-3"></p>
+            <p id="staffModalBio" class="text-base text-gray-600 mt-3"></p>
           </div>
         </div>
 
@@ -370,8 +405,8 @@
 
           <div class="mt-3">
             <div class="flex items-center justify-between gap-2 mb-2">
-              <p class="text-sm font-normal text-gray-700">Servicios</p>
-              <button id="btnServiciosLimpiar" type="button" class="hidden text-[11px] text-[#fb8500] underline underline-offset-2">Limpiar selección</button>
+              <p class="text-base font-normal text-gray-700">Servicios</p>
+              <button id="btnServiciosLimpiar" type="button" class="hidden text-sm text-[#fb8500] underline underline-offset-2">Limpiar selección</button>
             </div>
             <div id="staffServiciosSelector" class="space-y-2"></div>
             <p id="staffServiciosSelectorEmpty" class="hidden text-xs text-gray-500 mt-1">Este profesional aún no tiene servicios publicados.</p>
@@ -379,16 +414,16 @@
 
           <div class="mt-3">
             <div class="flex items-center justify-between mb-2">
-              <button id="btnCitasPrevMes" type="button" class="w-8 h-8 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-sm font-normal" aria-label="Mes anterior">
+              <button id="btnCitasPrevMes" type="button" class="w-8 h-8 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-base font-normal" aria-label="Mes anterior">
                 <i class="fa-solid fa-chevron-left"></i>
               </button>
-              <p id="calendarioCitasMesLabel" class="text-sm font-normal text-gray-700">—</p>
-              <button id="btnCitasNextMes" type="button" class="w-8 h-8 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-sm font-normal" aria-label="Mes siguiente">
+              <p id="calendarioCitasMesLabel" class="text-base font-normal text-gray-700">—</p>
+              <button id="btnCitasNextMes" type="button" class="w-8 h-8 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-base font-normal" aria-label="Mes siguiente">
                 <i class="fa-solid fa-chevron-right"></i>
               </button>
             </div>
 
-            <div class="grid grid-cols-7 gap-1 text-[10px] text-center text-gray-500 mb-1">
+            <div class="grid grid-cols-7 gap-1 text-xs text-center text-gray-500 mb-1">
               <span>Dom</span>
               <span>Lun</span>
               <span>Mar</span>
@@ -402,7 +437,7 @@
           </div>
 
           <div class="mt-3">
-            <p id="citasSlotsTitulo" class="text-sm font-normal text-gray-600 mb-2">Horarios disponibles</p>
+            <p id="citasSlotsTitulo" class="text-base font-normal text-gray-600 mb-2">Horarios disponibles</p>
             <div id="citasSlotsContainer" class="flex flex-wrap gap-2 justify-center"></div>
             <p id="citasSlotsVacio" class="hidden text-xs text-gray-500 mt-1">No hay horarios disponibles para ese día.</p>
           </div>
@@ -410,33 +445,35 @@
           <form id="formCitaStaff" class="mt-4 space-y-2">
             <input id="citaFecha" type="hidden" />
             <input id="citaHora" type="hidden" />
-            <div class="text-sm text-gray-500 space-y-1">
-              <div>
-                <span>Fecha:</span>
-                <span id="citaFechaLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
-              </div>
-              <div>
-                <span>Hora:</span>
-                <span id="citaHoraLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
-              </div>
-              <div>
+            <div id="citaResumenProgreso" class="hidden text-base text-gray-500 space-y-1">
+              <div id="citaResumenServiciosRow" class="hidden">
                 <span>Servicios:</span>
                 <span id="citaServiciosLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
               </div>
-              <div>
+              <div id="citaResumenFechaRow" class="hidden">
+                <span>Fecha:</span>
+                <span id="citaFechaLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
+              </div>
+              <div id="citaResumenHoraRow" class="hidden">
+                <span>Hora:</span>
+                <span id="citaHoraLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
+              </div>
+              <div id="citaResumenTiempoRow" class="hidden">
                 <span>Tiempo Aproximado:</span>
                 <span id="citaTiempoAproxLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
               </div>
-              <div>
+              <div id="citaResumenCostoRow" class="hidden">
                 <span>Costo Aproximado:</span>
                 <span id="citaCostoAproxLabel" class="text-base text-[#424242] font-normal">Por confirmar</span>
               </div>
             </div>
-            <input id="inputCitaNombre" type="text" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Tu nombre completo" required />
-            <input id="inputCitaTelefono" type="tel" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Teléfono" required />
-            <input id="inputCitaEmail" type="email" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Email (opcional)" />
-            <textarea id="inputCitaNotas" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Notas adicionales (opcional)"></textarea>
-            <button id="btnReservarCita" type="submit" class="w-full rounded-lg bg-[#fb8500] text-white font-normal text-base py-2 hover:bg-[#ea7c00] transition">Confirmar cita</button>
+            <div id="citaFormularioContacto" class="hidden space-y-2">
+              <input id="inputCitaNombre" type="text" class="w-full border rounded-lg px-3 py-2 text-base" placeholder="Tu nombre completo" required />
+              <input id="inputCitaTelefono" type="tel" class="w-full border rounded-lg px-3 py-2 text-base" placeholder="Teléfono" required />
+              <input id="inputCitaEmail" type="email" class="w-full border rounded-lg px-3 py-2 text-base" placeholder="Email (opcional)" />
+              <textarea id="inputCitaNotas" rows="2" class="w-full border rounded-lg px-3 py-2 text-base" placeholder="Notas adicionales (opcional)"></textarea>
+              <button id="btnReservarCita" type="submit" class="w-full rounded-lg bg-[#fb8500] text-white font-normal text-base py-2 hover:bg-[#ea7c00] transition">Confirmar cita</button>
+            </div>
           </form>
 
           <p id="citaFeedback" class="hidden text-xs mt-2"></p>
@@ -446,11 +483,11 @@
   </div>
 </div>
 
-<div id="modalStaffTrabajoViewer" class="fixed inset-0 z-[100003] hidden">
-  <div id="modalBackdropStaffTrabajoViewer" class="absolute inset-0 bg-black/85"></div>
+<div id="modalStaffTrabajoViewer" data-popup-root class="fixed inset-0 z-[100003] hidden">
+  <div id="modalBackdropStaffTrabajoViewer" data-popup-close class="absolute inset-0 bg-black/85"></div>
   <div class="relative h-full w-full flex items-center justify-center px-4 py-6">
-    <button id="cerrarModalStaffTrabajoViewer" class="absolute top-3 right-4 text-white text-3xl leading-none" aria-label="Cerrar galería de trabajos">&times;</button>
-    <div class="w-full max-w-2xl">
+    <button id="cerrarModalStaffTrabajoViewer" data-popup-close class="absolute top-3 right-4 text-white text-3xl leading-none" aria-label="Cerrar galería de trabajos">&times;</button>
+    <div data-popup-panel class="w-full max-w-2xl">
       <div id="staffTrabajoViewerSlider" class="swiper staff-lightbox-swiper">
         <div id="staffTrabajoViewerWrapper" class="swiper-wrapper"></div>
         <button id="staffTrabajoViewerPrev" type="button" class="absolute top-1/2 -translate-y-1/2 left-0 z-10 w-10 h-10 rounded-full bg-black/45 text-white border border-white/30 hover:bg-black/65">

@@ -188,6 +188,32 @@ async function mostrarBotonMenu() {
     return;
   }
 
+  if (tipoPerfil === 'tienda') {
+    let idDestinoTienda = idComercio;
+    const tieneMenuPropio = await tieneMenuActivo(idComercio);
+    if (!tieneMenuPropio) {
+      const relacionadoConMenu = await obtenerRelacionadoConMenus(idComercio);
+      if (relacionadoConMenu) idDestinoTienda = relacionadoConMenu;
+    }
+
+    btnVerMenu.href = `tienda/tiendaComercio.html?idComercio=${idDestinoTienda}&source=app`;
+    btnVerMenu.style.display = 'inline-block';
+    btnVerMenu.classList.remove('hidden');
+    btnVerMenu.classList.add(
+      'inline-block',
+      'mt-4',
+      'bg-orange-400',
+      'hover:bg-orange-600',
+      'text-white',
+      'font-normal',
+      'py-2',
+      'px-10',
+      'rounded-full',
+      'shadow-lg'
+    );
+    return;
+  }
+
   let idParaMenu = idComercio;
   const tieneMenuPropio = await tieneMenuActivo(idComercio);
   if (!tieneMenuPropio) {

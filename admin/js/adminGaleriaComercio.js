@@ -41,15 +41,19 @@ export async function cargarGaleriaComercio() {
 
   contenedor.innerHTML = '';
   for (const img of imagenes) {
-    const url = obtenerUrlPublica(img.imagen);
-    const div = document.createElement('div');
-    div.className = 'relative inline-block m-2';
-    div.innerHTML = `
-      <img src="${url}" class="w-32 h-32 object-cover rounded shadow" />
-      <button class="absolute top-1 right-1 text-red-500 bg-white rounded-full p-1 shadow" data-id="${img.id}" title="Eliminar">✖</button>
-      <button class="absolute bottom-1 left-1 text-xs bg-white px-2 rounded shadow ${img.portada ? 'bg-green-200 font-bold' : ''}" data-id="${img.id}" title="Portada">Portada</button>
-    `;
-    contenedor.appendChild(div);
+    try {
+      const url = obtenerUrlPublica(img.imagen);
+      const div = document.createElement('div');
+      div.className = 'relative inline-block m-2';
+      div.innerHTML = `
+        <img src="${url}" class="w-32 h-32 object-cover rounded shadow" />
+        <button class="absolute top-1 right-1 text-red-500 bg-white rounded-full p-1 shadow" data-id="${img.id}" title="Eliminar">✖</button>
+        <button class="absolute bottom-1 left-1 text-xs bg-white px-2 rounded shadow ${img.portada ? 'bg-green-200 font-bold' : ''}" data-id="${img.id}" title="Portada">Portada</button>
+      `;
+      contenedor.appendChild(div);
+    } catch (renderError) {
+      console.warn('No se pudo renderizar imagen de galería:', img?.id, renderError);
+    }
   }
 
   activarBotonesGaleria();
@@ -107,7 +111,7 @@ function activarBotonesGaleria() {
 export async function subirImagenGaleria(file) {
   if (!Number.isFinite(idComercioDB)) {
     alert('No se pudo identificar el comercio para subir la imagen.');
-    return;
+    return false;
   }
 
   const extension = obtenerExtension(file.name);
@@ -123,7 +127,8 @@ export async function subirImagenGaleria(file) {
 
   if (uploadError) {
     console.error('Error subiendo imagen a storage:', uploadError);
-    return;
+    alert(`No se pudo subir "${file.name}".`);
+    return false;
   }
 
   const { data: insertData, error: dbError } = await supabase
@@ -139,7 +144,9 @@ export async function subirImagenGaleria(file) {
 
   if (dbError || !insertData) {
     console.error('Error guardando en la base de datos:', dbError);
-    return;
+    await supabase.storage.from(BUCKET).remove([fileName]);
+    alert(`No se pudo registrar "${file.name}" en la base de datos.`);
+    return false;
   }
 
   const portadaUrl = obtenerUrlPublica(insertData.imagen);
@@ -160,6 +167,7 @@ export async function subirImagenGaleria(file) {
 
   await cargarGaleriaComercio();
   await mostrarPortadaEnPreview();
+  return true;
 }
 
 export function activarInteraccionesGaleria() {
@@ -186,25 +194,51 @@ export async function mostrarPortadaEnPreview() {
   else preview.removeAttribute('src');
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  await cargarGaleriaComercio();
+let uploadListenerBound = false;
+
+function inicializarSubidaGaleria() {
+  if (uploadListenerBound) return;
+  uploadListenerBound = true;
 
   document.getElementById('btn-subir-imagen')?.addEventListener('click', async () => {
     const input = document.getElementById('nueva-imagen-galeria');
     const files = input?.files;
-    if (!files?.length) return alert('Selecciona una o más imágenes');
-
-    for (const file of files) {
-      await subirImagenGaleria(file);
+    if (!files?.length) {
+      alert('Selecciona una o más imágenes');
+      return;
     }
 
-    alert(`${files.length} imagen${files.length > 1 ? 'es' : ''} subida${files.length > 1 ? 's' : ''} correctamente`);
+    let exitos = 0;
+    for (const file of files) {
+      try {
+        const ok = await subirImagenGaleria(file);
+        if (ok) exitos += 1;
+      } catch (error) {
+        console.error('Error subiendo imagen de galería:', error);
+      }
+    }
+
+    if (input) input.value = '';
+    if (exitos > 0) {
+      alert(`${exitos} imagen${exitos > 1 ? 'es' : ''} subida${exitos > 1 ? 's' : ''} correctamente`);
+    }
   });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  inicializarSubidaGaleria();
+  try {
+    await cargarGaleriaComercio();
+  } catch (error) {
+    console.error('Error inicial cargando galería:', error);
+  }
 });
+
+inicializarSubidaGaleria();
 
 function obtenerUrlPublica(valor) {
   if (!valor) return '';
-  const decoded = decodeURIComponent(valor);
+  const decoded = safeDecodeURIComponent(valor);
   if (/^https?:\/\//i.test(decoded)) return decoded;
   const pathNormalizado = normalizarPathStorage(decoded);
   return supabase.storage.from(BUCKET).getPublicUrl(pathNormalizado).data.publicUrl;
@@ -212,7 +246,7 @@ function obtenerUrlPublica(valor) {
 
 function obtenerRutaStorage(valor) {
   if (!valor) return null;
-  const decoded = decodeURIComponent(valor);
+  const decoded = safeDecodeURIComponent(valor);
   if (/^https?:\/\//i.test(decoded)) {
     const indice = decoded.indexOf(PUBLIC_PREFIX);
     if (indice === -1) return null;
@@ -254,6 +288,14 @@ async function sincronizarPortadaPrincipal() {
 
 function normalizarPathStorage(path) {
   return path.replace(/^public\//i, '').replace(/^galeriacomercios\//i, '');
+}
+
+function safeDecodeURIComponent(value) {
+  try {
+    return decodeURIComponent(String(value));
+  } catch (_error) {
+    return String(value || '');
+  }
 }
 
 async function actualizarPortadaComercio(url) {

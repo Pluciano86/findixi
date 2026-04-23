@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Editar Tienda | Findixi Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Kanit', sans-serif;
+    }
+
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <section class="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-semibold">Editar Tienda</h1>
+          <p id="storeSubtitle" class="text-sm text-slate-500 mt-1">Gestiona categorias y productos para la vista publica de tienda.</p>
+        </div>
+        <a id="btnBackEditComercio" href="./editarComercio.html" class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-sm font-medium">
+          Volver a Editar Comercio
+        </a>
+      </div>
+
+      <div id="storeModeBanner" class="hidden mt-4 p-3 rounded-lg border text-sm"></div>
+
+      <div class="mt-5 flex flex-wrap gap-2">
+        <a id="btnPreviewStore" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium">
+          Ver Tienda Publica
+        </a>
+        <a id="btnOpenLegacyEditor" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium">
+          Abrir Editor Visual (banner/tema)
+        </a>
+      </div>
+    </section>
+
+    <section class="mt-4 bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 class="text-lg font-semibold">Visual de Tienda</h2>
+          <p class="text-xs text-slate-500 mt-1">Edita banner y fondo que usa `tiendaComercio`.</p>
+        </div>
+        <button id="btnSaveStoreVisual" type="button" class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium">
+          Guardar visual
+        </button>
+      </div>
+
+      <p id="storeVisualStatus" class="text-xs text-slate-500 mt-2"></p>
+
+      <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <article class="border border-slate-200 rounded-xl p-3">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <h3 class="text-sm font-semibold text-slate-700">Banner (portada)</h3>
+            <button id="btnClearStoreBanner" type="button" class="px-2 py-1 text-xs rounded-md border border-red-200 text-red-600 hover:bg-red-50">
+              Quitar
+            </button>
+          </div>
+
+          <div class="w-full aspect-[16/7] rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+            <img id="storeBannerPreview" src="" alt="Preview banner tienda" class="w-full h-full object-cover hidden" />
+            <div id="storeBannerPreviewEmpty" class="w-full h-full flex items-center justify-center text-xs text-slate-400">
+              Sin banner
+            </div>
+          </div>
+
+          <p id="storeBannerPath" class="text-[11px] text-slate-500 mt-2 break-all"></p>
+
+          <label class="block text-xs font-medium text-slate-600 mt-2">Subir imagen</label>
+          <input id="storeBannerFile" type="file" accept="image/png,image/jpeg,image/webp" class="mt-1 w-full text-sm" />
+        </article>
+
+        <article class="border border-slate-200 rounded-xl p-3">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <h3 class="text-sm font-semibold text-slate-700">Fondo</h3>
+            <button id="btnClearStoreBackground" type="button" class="px-2 py-1 text-xs rounded-md border border-red-200 text-red-600 hover:bg-red-50">
+              Quitar
+            </button>
+          </div>
+
+          <div class="w-full aspect-[16/7] rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+            <img id="storeBackgroundPreview" src="" alt="Preview fondo tienda" class="w-full h-full object-cover hidden" />
+            <div id="storeBackgroundPreviewEmpty" class="w-full h-full flex items-center justify-center text-xs text-slate-400">
+              Sin fondo
+            </div>
+          </div>
+
+          <p id="storeBackgroundPath" class="text-[11px] text-slate-500 mt-2 break-all"></p>
+
+          <label class="block text-xs font-medium text-slate-600 mt-2">Subir imagen</label>
+          <input id="storeBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp" class="mt-1 w-full text-sm" />
+        </article>
+      </div>
+    </section>
+
+    <section class="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <article class="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 lg:col-span-1">
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-lg font-semibold">Categorias</h2>
+          <button id="btnNewCategory" class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium">
+            + Nueva
+          </button>
+        </div>
+        <p class="text-xs text-slate-500 mt-1">Estas categorias se muestran como botones en tienda.</p>
+
+        <div id="categoriesList" class="mt-3 space-y-2 max-h-[62vh] overflow-y-auto pr-1 hide-scrollbar"></div>
+      </article>
+
+      <article class="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 lg:col-span-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-lg font-semibold">Productos</h2>
+          <div class="flex items-center gap-2">
+            <button id="btnNewProduct" class="inline-flex items-center justify-center whitespace-nowrap px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">
+              + Nuevo Producto
+            </button>
+            <button id="btnSyncProducts" type="button" class="inline-flex items-center justify-center whitespace-nowrap px-3 py-1.5 rounded-lg bg-[#fb8500] hover:bg-[#e67700] text-white text-sm font-medium">
+              Sincronizar Productos
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <input id="productFilterSearch" type="text" placeholder="Buscar producto..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+          <p class="text-xs text-slate-500 mt-1">Vista acordeón por categoría. Muestra 9 productos y permite expandir +3.</p>
+        </div>
+
+        <div id="productsAccordion" class="mt-4 space-y-3"></div>
+      </article>
+    </section>
+  </main>
+
+  <div id="categoryModal" class="hidden fixed inset-0 z-[100001]">
+    <div data-modal-close="category" class="absolute inset-0 bg-black/50"></div>
+    <div class="relative h-full w-full flex items-center justify-center p-3">
+      <div class="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl p-4">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <h3 id="categoryModalTitle" class="text-lg font-semibold">Categoria</h3>
+          <button data-modal-close="category" class="text-2xl leading-none text-slate-500 hover:text-slate-700">&times;</button>
+        </div>
+
+        <input id="categoryId" type="hidden" />
+
+        <label class="block text-sm font-medium">Titulo</label>
+        <input id="categoryTitle" type="text" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2" />
+
+        <label class="block text-sm font-medium mt-3">Descripcion (opcional)</label>
+        <textarea id="categoryDescription" rows="2" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2"></textarea>
+
+        <div class="grid grid-cols-2 gap-2 mt-3">
+          <div>
+            <label class="block text-sm font-medium">Orden</label>
+            <input id="categoryOrder" type="number" min="1" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+          <div class="flex items-end">
+            <label class="inline-flex items-center gap-2 text-sm font-medium">
+              <input id="categoryActive" type="checkbox" class="h-4 w-4" checked />
+              Activa
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-4 flex justify-end gap-2">
+          <button data-modal-close="category" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700">Cancelar</button>
+          <button id="btnSaveCategory" class="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="productModal" class="hidden fixed inset-0 z-[100002]">
+    <div data-modal-close="product" class="absolute inset-0 bg-black/55"></div>
+    <div class="relative h-full w-full flex items-center justify-center p-3">
+      <div class="w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-white rounded-2xl border border-slate-200 shadow-xl p-4">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <h3 id="productModalTitle" class="text-lg font-semibold">Producto</h3>
+          <button data-modal-close="product" class="text-2xl leading-none text-slate-500 hover:text-slate-700">&times;</button>
+        </div>
+
+        <input id="productId" type="hidden" />
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium">Categoria</label>
+            <select id="productCategory" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2"></select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Origen catalogo</label>
+            <select id="productOrigin" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2">
+              <option value="findixi">findixi</option>
+              <option value="shopify">shopify</option>
+              <option value="externo">externo</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+          <div>
+            <label class="block text-sm font-medium">Nombre</label>
+            <input id="productName" type="text" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Enlace de compra</label>
+            <input id="productBuyUrl" type="text" placeholder="https://..." class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+        </div>
+
+        <label class="block text-sm font-medium mt-3">Descripcion</label>
+        <textarea id="productDescription" rows="3" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2"></textarea>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+          <div>
+            <label class="block text-sm font-medium">Precio numerico</label>
+            <input id="productPrice" type="number" min="0" step="0.01" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Precio texto (rango)</label>
+            <input id="productPriceText" type="text" placeholder="$25 - $45" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Orden</label>
+            <input id="productOrder" type="number" min="1" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+          <div>
+            <label class="block text-sm font-medium">Shopify product id</label>
+            <input id="productShopifyId" type="text" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Shopify handle</label>
+            <input id="productShopifyHandle" type="text" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Shopify updated at</label>
+            <input id="productShopifyUpdatedAt" type="datetime-local" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+        </div>
+
+        <label class="block text-sm font-medium mt-3">Imagenes (una ruta o URL por linea)</label>
+        <textarea id="productImagesText" rows="3" placeholder="productos/7491/item-1.jpg" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2"></textarea>
+
+        <div class="mt-2">
+          <label class="block text-sm font-medium">Subir imagen(es)</label>
+          <input id="productImagesFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple class="mt-1 w-full text-sm" />
+          <p class="text-xs text-slate-500 mt-1">Las imagenes nuevas se agregan al listado anterior.</p>
+        </div>
+
+        <label class="block text-sm font-medium mt-3">Variantes JSON (estilo Shopify)</label>
+        <textarea id="productVariantsJson" rows="7" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2" placeholder='{"options":[{"name":"Size","values":["S","M","L"]}],"variants":[{"title":"M / Negro","price":"39.99","options":["M","Negro"],"available":true}]}'></textarea>
+
+        <div class="mt-3">
+          <label class="inline-flex items-center gap-2 text-sm font-medium">
+            <input id="productActive" type="checkbox" class="h-4 w-4" checked />
+            Producto activo
+          </label>
+        </div>
+
+        <div class="mt-4 flex justify-end gap-2">
+          <button data-modal-close="product" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700">Cancelar</button>
+          <button id="btnSaveProduct" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">Guardar Producto</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/adminEditarTienda.js"></script>
+</body>
+</html>

@@ -23,8 +23,58 @@ const estadoHorario = document.getElementById('estadoHorario');
 const tablaHorarios = document.getElementById('tablaHorarios');
 const seccionHorario = document.getElementById('seccionHorario');
 
+function resolveStoreMode(comercio = {}) {
+  const hasFisica = typeof comercio?.tiendaFisica === 'boolean';
+  const hasOnline = typeof comercio?.tiendaOnline === 'boolean';
+  const tiendaFisica = hasFisica ? comercio.tiendaFisica : true;
+  const tiendaOnline = hasOnline ? comercio.tiendaOnline : false;
+  return {
+    tiendaFisica: tiendaFisica !== false,
+    tiendaOnline: tiendaOnline === true,
+  };
+}
+
+function isMissingStoreColumnsError(error) {
+  if (!error) return false;
+  const hayCodigo = String(error.code || '').toLowerCase();
+  const detalle = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`.toLowerCase();
+  if (!/tiendafisica|tiendaonline/.test(detalle)) return false;
+  return hayCodigo === '42703' || hayCodigo.startsWith('pgrst') || hayCodigo === '' || hayCodigo === '400';
+}
+
 async function cargarHorarios() {
-  const { data: comercio } = await supabase.from('Comercios').select('nombre').eq('id', idComercio).maybeSingle();
+  let comercio = null;
+  let storeMode = window.__PERFIL_COMERCIO_STORE_MODE__ || null;
+
+  if (storeMode) {
+    const { data } = await supabase.from('Comercios').select('nombre').eq('id', idComercio).maybeSingle();
+    comercio = data || null;
+  } else {
+    let lookup = await supabase
+      .from('Comercios')
+      .select('nombre,tiendaFisica,tiendaOnline')
+      .eq('id', idComercio)
+      .maybeSingle();
+
+    if (isMissingStoreColumnsError(lookup.error)) {
+      lookup = await supabase
+        .from('Comercios')
+        .select('nombre')
+        .eq('id', idComercio)
+        .maybeSingle();
+    }
+
+    comercio = lookup.data || null;
+    storeMode = resolveStoreMode(comercio || {});
+    window.__PERFIL_COMERCIO_STORE_MODE__ = storeMode;
+  }
+
+  if (storeMode?.tiendaFisica === false) {
+    seccionHorario?.classList.add('hidden');
+    tablaHorarios.innerHTML = '';
+    return;
+  }
+
   const { data: horarios, error } = await supabase
     .from('Horarios')
     .select('diaSemana, apertura, cierre, cerrado')

@@ -28,6 +28,19 @@ loadAdminHeader();
     <form id="formComercio" class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div><label for="nombre">Nombre</label><input id="nombre" class="w-full border rounded px-3 py-2 text-sm" /></div>
       <div><label for="telefono">Teléfono</label><input id="telefono" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div class="md:col-span-2 rounded-lg border border-gray-200 bg-white px-3 py-3">
+        <label class="mb-2">Modalidad de tienda</label>
+        <div class="flex flex-wrap gap-4">
+          <label class="inline-flex items-center gap-2 font-normal text-sm text-gray-700">
+            <input id="tiendaFisica" type="checkbox" class="h-4 w-4" />
+            Tienda física
+          </label>
+          <label class="inline-flex items-center gap-2 font-normal text-sm text-gray-700">
+            <input id="tiendaOnline" type="checkbox" class="h-4 w-4" />
+            Tienda online
+          </label>
+        </div>
+      </div>
       <div><label for="direccion">Dirección</label><input id="direccion" class="w-full border rounded px-3 py-2 text-sm" /></div>
       <select id="municipio" class="w-full p-2 border rounded">
         <option value="">Selecciona un municipio</option>
@@ -188,7 +201,7 @@ loadAdminHeader();
     </div>
 
     <!-- Amenidades -->
-    <div class="mt-8">
+    <div id="amenidadesSection" class="mt-8">
       <h3 class="text-lg font-semibold">Amenidades</h3>
       <div id="amenidadesContainer" class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2"></div>
       <button id="nuevaAmenidadBtn" class="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Añadir nueva amenidad</button>
@@ -214,12 +227,15 @@ loadAdminHeader();
     <br>
 
     <!-- Botones extra -->
-    <div class="flex flex-col sm:flex-row sm:flex-wrap gap-3 mt-6 mb-2">
+    <div id="adminAccionesComercio" class="flex flex-col sm:flex-row sm:flex-wrap gap-3 mt-6 mb-2">
       <a id="btnAdminMenu" href="#" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium shadow block text-center sm:inline-flex sm:items-center sm:justify-center">
         Administrar Menú
       </a>
       <a id="btnAdministrarEspeciales" href="#" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition shadow">
         🥘 Administrar Almuerzos y Happy Hours
+      </a>
+      <a id="btnAdministrarProductos" href="#" class="hidden inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition shadow">
+        🛍️ Administrar Productos
       </a>
     </div>
     <button id="btn-guardar" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded">Guardar Cambios</button>

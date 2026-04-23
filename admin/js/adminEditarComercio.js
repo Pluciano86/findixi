@@ -20,6 +20,119 @@ import {
 } from '../shared/planes.js';
 
 console.log('adminEditarComercio loaded', { supabase });
+const tiendaFisicaEl = document.getElementById('tiendaFisica');
+const tiendaOnlineEl = document.getElementById('tiendaOnline');
+const amenidadesSectionEl = document.getElementById('amenidadesSection');
+const btnAdminMenuEl = document.getElementById('btnAdminMenu');
+const btnAdministrarEspecialesEl = document.getElementById('btnAdministrarEspeciales');
+const btnAdministrarProductosEl = document.getElementById('btnAdministrarProductos');
+const categoriasMetaCache = new Map();
+let perfilTiendaActivo = false;
+
+if (btnAdministrarProductosEl && idComercio) {
+  btnAdministrarProductosEl.href = `./editarTienda.html?id=${encodeURIComponent(idComercio)}`;
+}
+
+function resolveStoreMode(comercio = {}) {
+  const hasFisica = typeof comercio?.tiendaFisica === 'boolean';
+  const hasOnline = typeof comercio?.tiendaOnline === 'boolean';
+  const tiendaFisica = hasFisica ? comercio.tiendaFisica : true;
+  const tiendaOnline = hasOnline ? comercio.tiendaOnline : false;
+  return {
+    tiendaFisica: tiendaFisica !== false,
+    tiendaOnline: tiendaOnline === true,
+  };
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function isStoreCategoryByName(name) {
+  const normalized = normalizeText(name);
+  if (!normalized) return false;
+  if (normalized.includes('ropa y accesorios')) return true;
+  if (normalized.includes('ropa') && normalized.includes('accesor')) return true;
+  return false;
+}
+
+function isStoreCategoryMeta(meta = {}) {
+  const tipoPerfil = normalizeText(meta?.tipo_perfil);
+  if (tipoPerfil === 'tienda') return true;
+  return isStoreCategoryByName(meta?.nombre);
+}
+
+function aplicarVistaCategoriaTienda(esTienda) {
+  perfilTiendaActivo = esTienda === true;
+  window.__ADMIN_COMERCIO_IS_TIENDA__ = perfilTiendaActivo;
+
+  if (amenidadesSectionEl) {
+    amenidadesSectionEl.classList.toggle('hidden', perfilTiendaActivo);
+  }
+  if (btnAdminMenuEl) {
+    btnAdminMenuEl.classList.toggle('hidden', perfilTiendaActivo);
+  }
+  if (btnAdministrarEspecialesEl) {
+    btnAdministrarEspecialesEl.classList.toggle('hidden', perfilTiendaActivo);
+  }
+  if (btnAdministrarProductosEl) {
+    btnAdministrarProductosEl.classList.toggle('hidden', !perfilTiendaActivo);
+  }
+}
+
+async function cargarMetaCategorias(ids = []) {
+  const numericIds = Array.from(
+    new Set((Array.isArray(ids) ? ids : []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))
+  );
+  const faltantes = numericIds.filter((id) => !categoriasMetaCache.has(id));
+  if (!faltantes.length) return;
+
+  let lookup = await supabase
+    .from('Categorias')
+    .select('id,nombre,tipo_perfil')
+    .in('id', faltantes);
+
+  if (lookup.error && /tipo_perfil/i.test(String(lookup.error.message || lookup.error.details || ''))) {
+    lookup = await supabase
+      .from('Categorias')
+      .select('id,nombre')
+      .in('id', faltantes);
+  }
+
+  if (lookup.error) {
+    console.warn('No se pudo cargar metadata de categorías:', lookup.error);
+    return;
+  }
+
+  (lookup.data || []).forEach((row) => {
+    categoriasMetaCache.set(Number(row.id), row || {});
+  });
+}
+
+async function evaluarVistaCategoriaTienda(categoriasIds = null, fallbackCategoriaNombre = '') {
+  const ids = Array.isArray(categoriasIds) ? categoriasIds : (window.categoriasSeleccionadas || []);
+  await cargarMetaCategorias(ids);
+  const esTiendaPorMeta = ids.some((id) => isStoreCategoryMeta(categoriasMetaCache.get(Number(id))));
+  const esTienda = esTiendaPorMeta || isStoreCategoryByName(fallbackCategoriaNombre);
+  aplicarVistaCategoriaTienda(esTienda);
+}
+
+function isMissingStoreColumnsError(error) {
+  if (!error) return false;
+  const hayCodigo = String(error.code || '').toLowerCase();
+  const detalle = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`.toLowerCase();
+  if (!/tiendafisica|tiendaonline/.test(detalle)) return false;
+  return hayCodigo === '42703' || hayCodigo.startsWith('pgrst') || hayCodigo === '' || hayCodigo === '400';
+}
+
+window.addEventListener('admin:categorias-changed', (event) => {
+  const ids = event?.detail?.categoriasSeleccionadas || [];
+  void evaluarVistaCategoriaTienda(ids);
+});
 
 async function cargarMunicipiosSelect(idSeleccionado = null) {
   const selectMunicipio = document.getElementById('municipio');
@@ -313,6 +426,7 @@ async function iniciarPlanAdmin(comercio) {
     await cargarAmenidadesComercio();
     await cargarCategoriasYSubcategorias();
     await cargarDatosGenerales();
+    await evaluarVistaCategoriaTienda();
     await cargarSucursalesRelacionadas();
     await verificarSiEsSucursal();
   } catch (err) {
@@ -354,13 +468,26 @@ async function verificarSiEsSucursal() {
 // 🧾 Cargar datos generales con logs detallados
 async function cargarDatosGenerales() {
 
-  const { data: comercio, error: errorComercio } = await supabase
+  const baseSelect =
+    'id, nombre, telefono, direccion, latitud, longitud, idMunicipio, municipio, idArea, area, whatsapp, facebook, instagram, tiktok, webpage, descripcion, colorPrimario, colorSecundario, categoria, subCategorias, plan_id, plan_nivel, plan_nombre, plan_status, permite_perfil, aparece_en_cercanos, permite_menu, permite_especiales, permite_ordenes, estado_propiedad, estado_verificacion, propietario_verificado';
+  let { data: comercio, error: errorComercio } = await supabase
     .from('Comercios')
-    .select(
-      'id, nombre, telefono, direccion, latitud, longitud, idMunicipio, municipio, idArea, area, whatsapp, facebook, instagram, tiktok, webpage, descripcion, colorPrimario, colorSecundario, categoria, subCategorias, plan_id, plan_nivel, plan_nombre, plan_status, permite_perfil, aparece_en_cercanos, permite_menu, permite_especiales, permite_ordenes, estado_propiedad, estado_verificacion, propietario_verificado'
-    )
+    .select(`${baseSelect},tiendaFisica,tiendaOnline`)
     .eq('id', idComercio)
     .maybeSingle();
+
+  if (isMissingStoreColumnsError(errorComercio)) {
+    const fallback = await supabase
+      .from('Comercios')
+      .select(baseSelect)
+      .eq('id', idComercio)
+      .maybeSingle();
+    comercio = fallback.data;
+    errorComercio = fallback.error;
+    if (!errorComercio) {
+      console.warn('Faltan columnas tiendaFisica/tiendaOnline en DB. Ejecuta la migración para habilitar esta configuración.');
+    }
+  }
 
   if (errorComercio) console.error('❌ Error cargando comercio:', errorComercio);
 
@@ -393,6 +520,11 @@ async function cargarDatosGenerales() {
       el.value = comercio[id] || '';
     }
   });
+
+  const storeMode = resolveStoreMode(comercio || {});
+  if (tiendaFisicaEl) tiendaFisicaEl.checked = storeMode.tiendaFisica;
+  if (tiendaOnlineEl) tiendaOnlineEl.checked = storeMode.tiendaOnline;
+  await evaluarVistaCategoriaTienda(null, comercio.categoria || '');
 
   await cargarMunicipiosSelect(comercio.idMunicipio);
   await iniciarPlanAdmin(comercio);

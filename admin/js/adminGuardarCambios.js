@@ -13,6 +13,14 @@ function normalizarIds(lista) {
     .filter((id) => !Number.isNaN(id));
 }
 
+function isMissingStoreColumnsError(error) {
+  if (!error) return false;
+  const hayCodigo = String(error.code || '').toLowerCase();
+  const detalle = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`.toLowerCase();
+  if (!/tiendafisica|tiendaonline/.test(detalle)) return false;
+  return hayCodigo === '42703' || hayCodigo.startsWith('pgrst') || hayCodigo === '' || hayCodigo === '400';
+}
+
 async function sincronizarRelacionesComercio(id, categoriasIds, subcategoriasIds) {
   const categoriaIds = normalizarIds(categoriasIds);
   const subcategoriaIds = normalizarIds(subcategoriasIds);
@@ -61,7 +69,14 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
   const webpage = document.getElementById('webpage')?.value.trim();
   const colorPrimario = document.getElementById('colorPrimario')?.value.trim();
   const colorSecundario = document.getElementById('colorSecundario')?.value.trim();
+  const tiendaFisica = document.getElementById('tiendaFisica')?.checked !== false;
+  const tiendaOnline = document.getElementById('tiendaOnline')?.checked === true;
   const idMunicipio = parseInt(municipio || '', 10);
+
+  if (!tiendaFisica && !tiendaOnline) {
+    alert('Debes seleccionar al menos una modalidad: tienda física o tienda online.');
+    return;
+  }
 
   if (!idMunicipio || Number.isNaN(idMunicipio)) {
     alert('Selecciona un municipio válido antes de guardar.');
@@ -75,27 +90,43 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
   const subcategoriasSeleccionadas = normalizarIds(window.subcategoriasSeleccionadas);
 
   try {
-    const { error: errorUpdate } = await supabase
+    const payload = {
+      nombre,
+      direccion,
+      telefono,
+      whatsapp,
+      descripcion,
+      idMunicipio,
+      facebook,
+      instagram,
+      tiktok,
+      webpage,
+      colorPrimario,
+      colorSecundario,
+      latitud: document.getElementById('latitud')?.value,
+      longitud: document.getElementById('longitud')?.value,
+      categoria: categoriasSeleccionadas.length ? null : 'Sin categoría',
+      subCategorias: subcategoriasSeleccionadas.length ? null : 'Sin subcategoría',
+      tiendaFisica,
+      tiendaOnline,
+    };
+
+    let { error: errorUpdate } = await supabase
       .from('Comercios')
-      .update({
-        nombre,
-        direccion,
-        telefono,
-        whatsapp,
-        descripcion,
-        idMunicipio,
-        facebook,
-        instagram,
-        tiktok,
-        webpage,
-        colorPrimario,
-        colorSecundario,
-        latitud: document.getElementById('latitud')?.value,
-        longitud: document.getElementById('longitud')?.value,
-        categoria: categoriasSeleccionadas.length ? null : 'Sin categoría',
-        subCategorias: subcategoriasSeleccionadas.length ? null : 'Sin subcategoría',
-      })
+      .update(payload)
       .eq('id', idComercio);
+
+    if (isMissingStoreColumnsError(errorUpdate)) {
+      const { tiendaFisica: _storeFisica, tiendaOnline: _storeOnline, ...fallbackPayload } = payload;
+      const fallback = await supabase
+        .from('Comercios')
+        .update(fallbackPayload)
+        .eq('id', idComercio);
+      errorUpdate = fallback.error;
+      if (!errorUpdate) {
+        alert('Se guardó el comercio, pero la modalidad de tienda no se guardó porque faltan columnas en DB (tiendaFisica/tiendaOnline).');
+      }
+    }
 
     if (errorUpdate) {
       throw errorUpdate;
@@ -118,8 +149,12 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
   // 3. Guardar horarios regulares
   await guardarHorarios();
 
-  // 4. Guardar amenidades seleccionadas
-  await guardarAmenidadesSeleccionadas();
+  // 4. Guardar amenidades seleccionadas (excepto perfil tienda)
+  if (window.__ADMIN_COMERCIO_IS_TIENDA__ === true) {
+    console.log('Perfil tienda detectado: se omite guardado de amenidades.');
+  } else {
+    await guardarAmenidadesSeleccionadas();
+  }
 
   alert('✅ Comercio actualizado correctamente');
 });

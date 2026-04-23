@@ -10,6 +10,15 @@ let subcategorias = [];
 window.categoriasSeleccionadas = [];
 window.subcategoriasSeleccionadas = [];
 
+function emitirCategoriasActualizadas() {
+  window.dispatchEvent(new CustomEvent('admin:categorias-changed', {
+    detail: {
+      categoriasSeleccionadas: [...(window.categoriasSeleccionadas || [])],
+      subcategoriasSeleccionadas: [...(window.subcategoriasSeleccionadas || [])],
+    },
+  }));
+}
+
 // Cargar todas las categorías disponibles
 async function cargarCategorias() {
   if (!categorias.length) {
@@ -48,10 +57,12 @@ async function cargarCategorias() {
       }
       mostrarSeleccionadas('categoriasSeleccionadas', window.categoriasSeleccionadas, categorias, 'removerCategoria');
       cargarSubcategorias();
+      emitirCategoriasActualizadas();
     });
   });
 
   mostrarSeleccionadas('categoriasSeleccionadas', window.categoriasSeleccionadas, categorias, 'removerCategoria');
+  emitirCategoriasActualizadas();
 }
 
 // Cargar subcategorías relacionadas a las categorías seleccionadas
@@ -99,10 +110,12 @@ async function cargarSubcategorias() {
         window.subcategoriasSeleccionadas = window.subcategoriasSeleccionadas.filter((s) => s !== id);
       }
       mostrarSeleccionadas('subcategoriasSeleccionadas', window.subcategoriasSeleccionadas, subcategorias, 'removerSubcategoria');
+      emitirCategoriasActualizadas();
     });
   });
 
   mostrarSeleccionadas('subcategoriasSeleccionadas', window.subcategoriasSeleccionadas, subcategorias, 'removerSubcategoria');
+  emitirCategoriasActualizadas();
 }
 
 function mostrarSeleccionadas(wrapperId, array, listaReferencia, fnName) {
@@ -128,6 +141,7 @@ window.removerCategoria = function (id) {
   if (checkbox) checkbox.checked = false;
   mostrarSeleccionadas('categoriasSeleccionadas', window.categoriasSeleccionadas, categorias, 'removerCategoria');
   cargarSubcategorias();
+  emitirCategoriasActualizadas();
 };
 
 window.removerSubcategoria = function (id) {
@@ -135,6 +149,7 @@ window.removerSubcategoria = function (id) {
   const checkbox = document.getElementById(`sub_${id}`);
   if (checkbox) checkbox.checked = false;
   mostrarSeleccionadas('subcategoriasSeleccionadas', window.subcategoriasSeleccionadas, subcategorias, 'removerSubcategoria');
+  emitirCategoriasActualizadas();
 };
 
 // ✅ Cargar relaciones del comercio con categorías y subcategorías
@@ -188,6 +203,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         await cargarCategorias();
         await cargarSubcategorias();
+        emitirCategoriasActualizadas();
       },
     });
   });
@@ -208,6 +224,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           window.subcategoriasSeleccionadas.push(subcategoriaCreada.id);
         }
         await cargarSubcategorias();
+        emitirCategoriasActualizadas();
       },
     });
   });
@@ -215,6 +232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await cargarRelacionesComercio();
   await cargarCategorias();
   await cargarSubcategorias();
+  emitirCategoriasActualizadas();
 });
 
 // ✅ Exportar correctamente para otros módulos

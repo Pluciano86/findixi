@@ -21,6 +21,12 @@ const DEFAULT_LOGO = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object
 const SHARE_ICON_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/send.svg';
 const LIKE_OFF_ICON_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/nolikeit.svg';
 const LODEHOY_AUDIO_PREF_KEY = 'lodehoy_audio_enabled';
+const PRODUCT_PLACEHOLDER_URL = 'https://placehold.co/320x320?text=Producto';
+const ROPA_ACCESORIOS_NOMBRES = new Set([
+  'ropa y accesorios',
+  'ropa & accesorios',
+  'tienda de ropa y accesorios',
+]);
 const USER_AGENT = String(window.navigator?.userAgent || '').toLowerCase();
 const IS_IOS_DEVICE = /iphone|ipad|ipod/.test(USER_AGENT)
   || (String(window.navigator?.platform || '').toLowerCase() === 'macintel' && Number(window.navigator?.maxTouchPoints || 0) > 1);
@@ -184,6 +190,83 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function parseJsonMaybe(value, fallback = null) {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === 'object') return value;
+  if (typeof value !== 'string') return fallback;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function parseMoney(value) {
+  const number = Number.parseFloat(String(value ?? '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(number) ? number : null;
+}
+
+function formatMoney(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '';
+  try {
+    return new Intl.NumberFormat('es-PR', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(n);
+  } catch {
+    return `$${n.toFixed(2)}`;
+  }
+}
+
+function isMissingColumnError(error, expectedColumn = '') {
+  if (!error) return false;
+  const code = String(error.code || '').toLowerCase();
+  const detail = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`.toLowerCase();
+  if (expectedColumn && !detail.includes(expectedColumn.toLowerCase())) {
+    return false;
+  }
+  return code === '42703' || code.startsWith('pgrst') || detail.includes('does not exist');
+}
+
+function resolveStoreMode(comercio = {}) {
+  const hasFisica = typeof comercio?.tiendaFisica === 'boolean';
+  const hasOnline = typeof comercio?.tiendaOnline === 'boolean';
+
+  const tiendaFisica = hasFisica ? comercio.tiendaFisica : true;
+  const tiendaOnline = hasOnline ? comercio.tiendaOnline : false;
+
+  return {
+    tiendaFisica: tiendaFisica !== false,
+    tiendaOnline: tiendaOnline === true,
+  };
+}
+
+function normalizeExternalUrl(url) {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
+}
+
+function formatWebLabel(url) {
+  return String(url || '')
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/+$/, '');
+}
+
 function encodeStoragePath(path) {
   const clean = String(path || '')
     .trim()
@@ -204,6 +287,320 @@ function buildStoragePublicUrl(path) {
   if (/^https?:\/\//i.test(path)) return path;
   const encoded = encodeStoragePath(path);
   return encoded ? `${PUBLIC_BUCKET_BASE}/${encoded}` : '';
+}
+
+function isRopaAccesoriosName(name) {
+  const normalized = normalizeText(name);
+  if (!normalized) return false;
+  if (ROPA_ACCESORIOS_NOMBRES.has(normalized)) return true;
+  return normalized.includes('ropa') && normalized.includes('accesor');
+}
+
+function isStoreProfileCategory(categoria = {}) {
+  const tipoPerfil = normalizeText(categoria?.tipo_perfil);
+  if (tipoPerfil === 'tienda') return true;
+  return isRopaAccesoriosName(categoria?.nombre);
+}
+
+async function fetchCategoriasComercioMeta(comercio = {}) {
+  const ids = Array.from(
+    new Set(
+      (Array.isArray(comercio?.ComercioCategorias) ? comercio.ComercioCategorias : [])
+        .map((rel) => Number(rel?.idCategoria))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )
+  );
+
+  if (!ids.length) return [];
+
+  let query = await supabase
+    .from('Categorias')
+    .select('id,nombre,tipo_perfil')
+    .in('id', ids);
+
+  if (query.error && /tipo_perfil/i.test(String(query.error.message || query.error.details || ''))) {
+    query = await supabase
+      .from('Categorias')
+      .select('id,nombre')
+      .in('id', ids);
+  }
+
+  if (query.error) {
+    console.warn('No se pudieron cargar categorías del comercio para grid tienda:', query.error);
+    return [];
+  }
+
+  return Array.isArray(query.data) ? query.data : [];
+}
+
+async function shouldRenderStoreGrid(comercio = {}) {
+  const categorias = await fetchCategoriasComercioMeta(comercio);
+  if (categorias.length) {
+    return categorias.some(isStoreProfileCategory);
+  }
+  return isRopaAccesoriosName(comercio?.categoria);
+}
+
+async function fetchMenusComercioTienda(comercioId) {
+  const id = Number(comercioId);
+  if (!Number.isFinite(id) || id <= 0) return [];
+
+  const commerceColumns = ['idComercio', 'idcomercio'];
+  for (const commerceColumn of commerceColumns) {
+    const result = await supabase
+      .from('menus')
+      .select('id,titulo,orden,activo')
+      .eq(commerceColumn, id)
+      .order('orden', { ascending: true })
+      .order('id', { ascending: true });
+
+    if (!result.error) {
+      const list = Array.isArray(result.data) ? result.data : [];
+      return list.filter((menu) => menu?.activo !== false);
+    }
+
+    if (!isMissingColumnError(result.error, commerceColumn)) {
+      console.warn('Error cargando menús de tienda:', result.error);
+      return [];
+    }
+  }
+
+  return [];
+}
+
+async function fetchProductosTiendaByMenuIds(menuIds = []) {
+  const ids = (Array.isArray(menuIds) ? menuIds : [])
+    .map((id) => Number(id))
+    .filter((id) => Number.isFinite(id) && id > 0);
+
+  if (!ids.length) return [];
+
+  const menuColumns = ['idMenu', 'idmenu'];
+  for (const menuColumn of menuColumns) {
+    const result = await supabase
+      .from('productos')
+      .select('*')
+      .in(menuColumn, ids)
+      .order('id', { ascending: false })
+      .limit(120);
+
+    if (!result.error) {
+      const list = Array.isArray(result.data) ? result.data : [];
+      return list.filter((producto) => producto?.activo !== false);
+    }
+
+    if (!isMissingColumnError(result.error, menuColumn)) {
+      console.warn('Error cargando productos por menú para grid tienda:', result.error);
+      return [];
+    }
+  }
+
+  return [];
+}
+
+async function fetchProductosTiendaByComercioFallback(comercioId) {
+  const id = Number(comercioId);
+  if (!Number.isFinite(id) || id <= 0) return [];
+
+  const commerceColumns = ['idComercio', 'idcomercio'];
+  for (const commerceColumn of commerceColumns) {
+    const result = await supabase
+      .from('productos')
+      .select('*')
+      .eq(commerceColumn, id)
+      .order('id', { ascending: false })
+      .limit(120);
+
+    if (!result.error) {
+      const list = Array.isArray(result.data) ? result.data : [];
+      return list.filter((producto) => producto?.activo !== false);
+    }
+
+    if (!isMissingColumnError(result.error, commerceColumn)) {
+      console.warn('Error cargando productos fallback por comercio:', result.error);
+      return [];
+    }
+  }
+
+  return [];
+}
+
+function parseProductImageSource(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.flatMap(parseProductImageSource);
+  if (typeof value === 'object') {
+    const src = value.src || value.url || value.path || value.imagen;
+    return src ? [String(src).trim()] : [];
+  }
+  if (typeof value === 'string') {
+    const raw = value.trim();
+    if (!raw) return [];
+    const parsed = parseJsonMaybe(raw, null);
+    if (parsed) return parseProductImageSource(parsed);
+    if (raw.includes(',')) {
+      return raw.split(',').map((item) => item.trim()).filter(Boolean);
+    }
+    return [raw];
+  }
+  return [];
+}
+
+function resolveProductImages(product = {}) {
+  const candidates = [
+    product?.imagenes,
+    product?.images,
+    product?.galeria,
+    product?.shopify_images,
+    product?.featured_image,
+    product?.imagen,
+    product?.image,
+  ];
+
+  const images = candidates
+    .flatMap(parseProductImageSource)
+    .map((img) => buildStoragePublicUrl(img))
+    .filter(Boolean);
+
+  return Array.from(new Set(images));
+}
+
+function resolveProductPriceLabel(product = {}) {
+  const textPrice = String(product?.precio_texto || '').trim();
+  if (textPrice) return textPrice;
+
+  const numberPrice = parseMoney(product?.precio);
+  if (numberPrice !== null) return formatMoney(numberPrice);
+
+  const variantsRaw =
+    parseJsonMaybe(product?.variantes, null)
+    || parseJsonMaybe(product?.variants, null)
+    || parseJsonMaybe(product?.shopify_variantes, null)
+    || parseJsonMaybe(product?.shopify_variants, null)
+    || null;
+
+  const variants = Array.isArray(variantsRaw)
+    ? variantsRaw
+    : Array.isArray(variantsRaw?.variants)
+      ? variantsRaw.variants
+      : [];
+
+  const prices = variants
+    .map((variant) => parseMoney(variant?.price ?? variant?.precio))
+    .filter((value) => Number.isFinite(value));
+
+  if (prices.length) {
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    return min === max ? formatMoney(min) : `${formatMoney(min)} - ${formatMoney(max)}`;
+  }
+
+  return 'Por confirmar';
+}
+
+function resolveProductTimestamp(product = {}) {
+  const dateRaw = product?.shopify_updated_at || product?.created_at || product?.updated_at || null;
+  if (!dateRaw) return 0;
+  const date = new Date(dateRaw);
+  const time = date.getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function sortProductsForGrid(products = []) {
+  return [...products].sort((a, b) => {
+    const tDiff = resolveProductTimestamp(b) - resolveProductTimestamp(a);
+    if (tDiff !== 0) return tDiff;
+    const idA = Number(a?.id) || 0;
+    const idB = Number(b?.id) || 0;
+    if (idA !== idB) return idB - idA;
+    return String(a?.nombre || '').localeCompare(String(b?.nombre || ''), 'es', { sensitivity: 'base' });
+  });
+}
+
+function renderStoreProductsGrid(products = [], comercio = {}) {
+  const section = document.getElementById('seccionProductosTienda');
+  const grid = document.getElementById('gridProductosTienda');
+  const btn = document.getElementById('btnVerMasProductosTienda');
+  if (!section || !grid || !btn) return;
+
+  const list = sortProductsForGrid(products).slice(0, 9);
+  if (!list.length) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  const tiendaHref = `tienda/tiendaComercio.html?idComercio=${encodeURIComponent(idComercio)}&source=perfil`;
+  btn.setAttribute('href', tiendaHref);
+  bindTrackedAnchor(btn, {
+    idComercio,
+    eventName: 'click_store_view_more',
+    source: 'web',
+    municipio: comercio?.municipio || null,
+    dedupeKey: `perfil:store_more:${idComercio}`,
+    dedupeMs: 1200,
+  });
+
+  grid.innerHTML = list.map((product) => {
+    const image = resolveProductImages(product)[0] || PRODUCT_PLACEHOLDER_URL;
+    const name = String(product?.nombre || 'Producto').trim() || 'Producto';
+    const price = resolveProductPriceLabel(product);
+    const href = `${tiendaHref}&producto=${encodeURIComponent(product?.id || '')}`;
+
+    return `
+      <a
+        href="${href}"
+        class="block rounded-lg border border-gray-100 overflow-hidden bg-white shadow-sm"
+        data-tienda-product-id="${escapeHtml(product?.id)}"
+      >
+        <div class="w-full aspect-square bg-gray-100">
+          <img src="${escapeHtml(image)}" alt="${escapeHtml(name)}" class="w-full h-full object-cover" loading="lazy" />
+        </div>
+        <div class="px-1.5 py-1.5 text-center">
+          <p class="text-[11px] leading-tight text-[#424242] font-medium min-h-[1.8rem]" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(name)}</p>
+          <p class="text-[11px] leading-tight text-[#fb8500] font-semibold mt-0.5">${escapeHtml(price)}</p>
+        </div>
+      </a>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('[data-tienda-product-id]').forEach((item) => {
+    const productId = item.getAttribute('data-tienda-product-id');
+    bindTrackedAnchor(item, {
+      idComercio,
+      eventName: 'click_store_grid_product',
+      source: 'web',
+      municipio: comercio?.municipio || null,
+      dedupeKey: `perfil:store_grid:${idComercio}:${productId}`,
+      dedupeMs: 1200,
+    });
+  });
+
+  section.classList.remove('hidden');
+}
+
+async function cargarGridProductosTienda(comercio = {}) {
+  try {
+    const section = document.getElementById('seccionProductosTienda');
+    if (section) section.classList.add('hidden');
+
+    const shouldRender = await shouldRenderStoreGrid(comercio);
+    if (!shouldRender) return;
+
+    const menus = await fetchMenusComercioTienda(idComercio);
+    const menuIds = menus.map((menu) => Number(menu?.id)).filter((id) => Number.isFinite(id) && id > 0);
+
+    let products = [];
+    if (menuIds.length) {
+      products = await fetchProductosTiendaByMenuIds(menuIds);
+    }
+    if (!products.length) {
+      products = await fetchProductosTiendaByComercioFallback(idComercio);
+    }
+    if (!products.length) return;
+
+    renderStoreProductsGrid(products, comercio);
+  } catch (error) {
+    console.error('Error cargando grid de tienda en perfilComercio:', error);
+  }
 }
 
 function formatHoraPR(value) {
@@ -1087,17 +1484,55 @@ export async function obtenerComercioPorID(idComercio) {
     return null;
   }
 
+  const storeMode = resolveStoreMode(data);
+  window.__PERFIL_COMERCIO_STORE_MODE__ = storeMode;
+
   document.getElementById('nombreComercio').textContent = data.nombre;
   if (data.nombreSucursal) {
     document.getElementById('nombreSucursal').textContent = data.nombreSucursal;
   }
+  const tiendaOnlineInfoEl = document.getElementById('tiendaOnlineInfo');
+  const tiendaOnlineWebEl = document.getElementById('tiendaOnlineWeb');
+  const tiendaOnlineWebTextEl = document.getElementById('tiendaOnlineWebText');
+  const tiendaFisicaInfoEl = document.getElementById('tiendaFisicaInfo');
+
+  if (storeMode.tiendaOnline) {
+    const webpageRaw = String(data.webpage || '').trim();
+    const webpageHref = normalizeExternalUrl(webpageRaw);
+    const webpageLabel = formatWebLabel(webpageRaw);
+
+    if (tiendaOnlineWebEl) {
+      if (webpageHref) {
+        if (tiendaOnlineWebTextEl) tiendaOnlineWebTextEl.textContent = webpageLabel || webpageHref;
+        tiendaOnlineWebEl.setAttribute('href', webpageHref);
+        bindTrackedAnchor(tiendaOnlineWebEl, {
+          idComercio,
+          eventName: 'click_webpage',
+          source: 'web',
+          municipio: data.municipio || null,
+          dedupeKey: `perfil:webpage_text:${idComercio}`,
+          dedupeMs: 1500,
+        });
+      } else {
+        if (tiendaOnlineWebTextEl) tiendaOnlineWebTextEl.textContent = 'Web no disponible';
+        tiendaOnlineWebEl.removeAttribute('href');
+      }
+    }
+    tiendaOnlineInfoEl?.classList.remove('hidden');
+  } else {
+    tiendaOnlineInfoEl?.classList.add('hidden');
+  }
+
   const direccionTexto = String(data.direccion || '').trim();
   const direccionEl = document.getElementById('direccionComercio');
   const textoDireccionEl = document.getElementById('textoDireccion');
-  if (direccionTexto) {
-    if (textoDireccionEl) textoDireccionEl.textContent = direccionTexto;
+  if (storeMode.tiendaFisica) {
+    tiendaFisicaInfoEl?.classList.remove('hidden');
+    if (textoDireccionEl) textoDireccionEl.textContent = direccionTexto || 'Dirección no disponible';
+    direccionEl?.removeAttribute('href');
     direccionEl?.classList.remove('hidden');
   } else {
+    tiendaFisicaInfoEl?.classList.add('hidden');
     direccionEl?.classList.add('hidden');
   }
 
@@ -1180,7 +1615,10 @@ export async function obtenerComercioPorID(idComercio) {
   }
   if (data.webpage) {
     const el = document.getElementById('linkWeb');
-    el?.setAttribute('href', data.webpage);
+    const webpageHref = normalizeExternalUrl(data.webpage);
+    if (webpageHref) {
+      el?.setAttribute('href', webpageHref);
+    }
     bindTrackedAnchor(el, {
       idComercio,
       eventName: 'click_webpage',
@@ -1191,6 +1629,8 @@ export async function obtenerComercioPorID(idComercio) {
     });
   }
   if (data.email) document.getElementById('linkEmail')?.setAttribute('href', `mailto:${data.email}`);
+
+  void cargarGridProductosTienda(data);
 
   let logoPerfilUrl = data.logo || '';
   const { data: imagenLogo } = await supabase
@@ -1211,7 +1651,8 @@ export async function obtenerComercioPorID(idComercio) {
 
   const mapasContainer = document.getElementById('mapasContainer');
   const tiempoVehiculoEl = document.getElementById('tiempoVehiculo');
-  if (latUsuario && lonUsuario && data.latitud && data.longitud) {
+  if (storeMode.tiendaFisica && latUsuario && lonUsuario && data.latitud && data.longitud) {
+    tiendaFisicaInfoEl?.classList.remove('hidden');
     mapasContainer?.classList.remove('hidden');
     tiempoVehiculoEl?.classList.remove('hidden');
     const [conTiempo] = await calcularTiemposParaLista([data], {

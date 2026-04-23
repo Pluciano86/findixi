@@ -169,11 +169,27 @@
 
       <section id="fullProfileSections" class="space-y-6">
         <form id="formComercio" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
+            <p class="text-sm font-semibold text-gray-900">Modalidad de tienda</p>
+            <div class="flex flex-wrap items-center gap-4">
+              <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input id="tiendaFisica" type="checkbox" class="h-4 w-4" />
+                Tienda física
+              </label>
+              <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input id="tiendaOnline" type="checkbox" class="h-4 w-4" />
+                Tienda online
+              </label>
+            </div>
+            <p class="text-xs text-gray-500">Selecciona una o ambas opciones. Si es solo online, no se mostrará dirección ni horarios en el perfil público.</p>
+            <p id="storeModeFeedback" class="hidden text-xs rounded-lg px-3 py-2"></p>
+          </div>
+
           <div>
             <label for="telefono" class="block mb-1 font-semibold">Teléfono</label>
             <input id="telefono" class="w-full border rounded px-3 py-2 text-sm" />
           </div>
-          <div>
+          <div id="direccionFieldWrapper">
             <label for="direccion" class="block mb-1 font-semibold">Dirección <span class="text-red-600">*</span></label>
             <input id="direccion" class="w-full border rounded px-3 py-2 text-sm" />
           </div>
@@ -203,7 +219,7 @@
           </div>
         </form>
 
-        <div class="mt-4">
+        <div id="horariosSection" class="mt-4">
           <div class="flex items-center justify-between mb-2">
             <h3 class="text-lg font-semibold text-gray-900">Horarios <span class="text-red-600">*</span></h3>
           </div>
@@ -211,7 +227,7 @@
           <div id="horariosContainer" class="space-y-2"></div>
         </div>
 
-        <div class="mt-6">
+        <div id="feriadosSection" class="mt-6">
           <div class="flex items-center justify-between mb-2">
             <h3 class="text-lg font-semibold text-gray-900">Feriados</h3>
             <button id="agregarFeriado" class="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1.5 text-sm rounded">Añadir Feriado</button>
