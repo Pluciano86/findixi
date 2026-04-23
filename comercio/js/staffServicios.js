@@ -14,6 +14,16 @@ const staffEmptyEl = document.getElementById('staffEmpty');
 const staffForm = document.getElementById('staffForm');
 const btnStaffNuevo = document.getElementById('btnStaffNuevo');
 const btnStaffLimpiar = document.getElementById('btnStaffLimpiar');
+const staffModal = document.getElementById('staffModal');
+const staffModalTitle = document.getElementById('staffModalTitle');
+const btnStaffModalClose = document.getElementById('btnStaffModalClose');
+const btnStaffModalNuevoServicio = document.getElementById('btnStaffModalNuevoServicio');
+const staffModalServiciosListEl = document.getElementById('staffModalServiciosList');
+const staffModalServiciosEmptyEl = document.getElementById('staffModalServiciosEmpty');
+const btnStaffTrabajosSubir = document.getElementById('btnStaffTrabajosSubir');
+const staffTrabajoFilesInput = document.getElementById('staffTrabajoFiles');
+const staffTrabajosListEl = document.getElementById('staffTrabajosList');
+const staffTrabajosEmptyEl = document.getElementById('staffTrabajosEmpty');
 
 const staffIdInput = document.getElementById('staffId');
 const staffNombreInput = document.getElementById('staffNombre');
@@ -34,7 +44,11 @@ const staffActivoInput = document.getElementById('staffActivo');
 const trabajoForm = document.getElementById('trabajoForm');
 const trabajosListEl = document.getElementById('trabajosList');
 const trabajosEmptyEl = document.getElementById('trabajosEmpty');
+const btnTrabajoNuevo = document.getElementById('btnTrabajoNuevo');
 const btnTrabajoLimpiar = document.getElementById('btnTrabajoLimpiar');
+const trabajoModal = document.getElementById('trabajoModal');
+const trabajoModalTitle = document.getElementById('trabajoModalTitle');
+const btnTrabajoModalClose = document.getElementById('btnTrabajoModalClose');
 
 const trabajoIdInput = document.getElementById('trabajoId');
 const trabajoStaffSelect = document.getElementById('trabajoStaffId');
@@ -44,6 +58,24 @@ const trabajoMediaFileInput = document.getElementById('trabajoMediaFile');
 const trabajoTituloInput = document.getElementById('trabajoTitulo');
 const trabajoDescripcionInput = document.getElementById('trabajoDescripcion');
 const trabajoActivoInput = document.getElementById('trabajoActivo');
+
+const servicioForm = document.getElementById('servicioForm');
+const serviciosListEl = document.getElementById('serviciosList');
+const serviciosEmptyEl = document.getElementById('serviciosEmpty');
+const btnServicioNuevo = document.getElementById('btnServicioNuevo');
+const btnServicioLimpiar = document.getElementById('btnServicioLimpiar');
+const servicioModal = document.getElementById('servicioModal');
+const servicioModalTitle = document.getElementById('servicioModalTitle');
+const btnServicioModalClose = document.getElementById('btnServicioModalClose');
+
+const servicioIdInput = document.getElementById('servicioId');
+const servicioStaffSelect = document.getElementById('servicioStaffId');
+const servicioNombreInput = document.getElementById('servicioNombre');
+const servicioDescripcionInput = document.getElementById('servicioDescripcion');
+const servicioDuracionInput = document.getElementById('servicioDuracion');
+const servicioPrecioInput = document.getElementById('servicioPrecio');
+const servicioOrdenInput = document.getElementById('servicioOrden');
+const servicioActivoInput = document.getElementById('servicioActivo');
 
 const citaManualForm = document.getElementById('citaManualForm');
 const citaManualStaff = document.getElementById('citaManualStaff');
@@ -88,11 +120,13 @@ const DIAS = [
 
 const DEFAULT_SLOT_MINUTES = 60;
 const DEFAULT_BUFFER_MINUTES = 0;
+const SCHEMA_MIGRATION_MESSAGE = 'No se encontró el esquema de Staff/Citas/Servicios. Aplica las migraciones 20260422143000_servicios_staff_citas_notificaciones.sql, 20260422200000_staff_servicios_catalogo.sql, 20260422213000_staff_servicios_precio.sql y 20260422220000_staff_servicios_precio_texto.sql en Supabase.';
 
 let currentUser = null;
 let staffList = [];
 let staffById = new Map();
 let trabajosList = [];
+let serviciosList = [];
 let citasList = [];
 let citasSourceList = [];
 let notificacionesList = [];
@@ -111,6 +145,11 @@ function cleanText(value) {
 function asNullable(value) {
   const clean = cleanText(value);
   return clean ? clean : null;
+}
+
+function formatPriceText(value) {
+  const clean = cleanText(value);
+  return clean || 'No definido';
 }
 
 function toIsoDate(dateLike) {
@@ -342,12 +381,35 @@ function showSchemaWarning(message) {
   schemaWarning.textContent = message;
 }
 
+function openModal(modalEl) {
+  if (!modalEl) return;
+  modalEl.classList.remove('hidden');
+  document.body.classList.add('overflow-hidden');
+}
+
+function closeModal(modalEl) {
+  if (!modalEl) return;
+  modalEl.classList.add('hidden');
+  if (staffModal?.classList.contains('hidden') && trabajoModal?.classList.contains('hidden') && servicioModal?.classList.contains('hidden')) {
+    document.body.classList.remove('overflow-hidden');
+  }
+}
+
 function isSchemaMissingError(error) {
   const code = String(error?.code || '').toUpperCase();
   const message = String(error?.message || '').toLowerCase();
   const details = String(error?.details || '').toLowerCase();
   const combined = `${message} ${details}`;
-  return code === '42P01' || combined.includes('comerciostaff') || combined.includes('comerciocitas');
+  return (
+    code === '42P01'
+    || code === '42703'
+    || combined.includes('comerciostaff')
+    || combined.includes('comerciostafftrabajos')
+    || combined.includes('comerciostaffservicios')
+    || combined.includes('comerciocitas')
+    || combined.includes('comerciocitasnotificaciones')
+    || (combined.includes('precio') && combined.includes('column'))
+  );
 }
 
 function extFromFile(file) {
@@ -657,6 +719,7 @@ async function validateAccessOrRedirect() {
 
 function updateStaffSelectors() {
   const previousTrabajoStaff = cleanText(trabajoStaffSelect?.value);
+  const previousServicioStaff = cleanText(servicioStaffSelect?.value);
   const previousFiltroStaff = cleanText(filtroStaff?.value);
   const previousCitaStaff = cleanText(citaManualStaff?.value);
 
@@ -682,6 +745,14 @@ function updateStaffSelectors() {
       ...staffList.filter((item) => item.activo !== false).map((item) => `<option value="${Number(item.id)}">${escapeHtml(item.nombre)}</option>`),
     ].join('');
     if (previousCitaStaff) citaManualStaff.value = previousCitaStaff;
+  }
+
+  if (servicioStaffSelect) {
+    servicioStaffSelect.innerHTML = [
+      '<option value="">Selecciona un profesional</option>',
+      ...staffList.map((item) => `<option value="${Number(item.id)}">${escapeHtml(item.nombre)}${item.activo ? '' : ' (inactivo)'}</option>`),
+    ].join('');
+    if (previousServicioStaff) servicioStaffSelect.value = previousServicioStaff;
   }
 }
 
@@ -730,7 +801,7 @@ async function loadStaff() {
 
   if (error) {
     if (isSchemaMissingError(error)) {
-      showSchemaWarning('No se encontró el esquema de Staff/Citas. Aplica la migración 20260422143000_servicios_staff_citas_notificaciones.sql en Supabase.');
+      showSchemaWarning(SCHEMA_MIGRATION_MESSAGE);
       staffList = [];
       staffById = new Map();
       renderStaffList();
@@ -829,7 +900,9 @@ async function saveStaff(event) {
   clearStaffForm();
   await loadStaff();
   await loadTrabajos();
+  await loadServicios();
   await loadCitas();
+  closeModal(staffModal);
 }
 
 async function toggleStaffActive(staffId, nextActive) {
@@ -845,16 +918,20 @@ async function toggleStaffActive(staffId, nextActive) {
   showGlobalFeedback(nextActive ? 'Profesional activado.' : 'Profesional desactivado.', 'success');
   await loadStaff();
   await loadTrabajos();
+  await loadServicios();
   await loadCitas();
 }
 
-function clearTrabajoForm() {
+function clearTrabajoForm(keepStaffSelection = true) {
+  const selectedStaff = keepStaffSelection ? cleanText(trabajoStaffSelect?.value) : '';
   if (trabajoForm) trabajoForm.reset();
-  trabajoIdInput.value = '';
-  trabajoOrdenInput.value = '100';
-  trabajoActivoInput.checked = true;
-  if (!cleanText(trabajoStaffSelect.value) && staffList.length) {
-    trabajoStaffSelect.value = String(staffList[0].id);
+  if (trabajoIdInput) trabajoIdInput.value = '';
+  if (trabajoOrdenInput) trabajoOrdenInput.value = '100';
+  if (trabajoActivoInput) trabajoActivoInput.checked = true;
+  if (selectedStaff) {
+    if (trabajoStaffSelect) trabajoStaffSelect.value = selectedStaff;
+  } else if (!cleanText(trabajoStaffSelect?.value) && staffList.length) {
+    if (trabajoStaffSelect) trabajoStaffSelect.value = String(staffList[0].id);
   }
 }
 
@@ -908,10 +985,11 @@ function renderTrabajosList() {
 }
 
 async function loadTrabajos() {
-  const selectedStaffId = toNumber(trabajoStaffSelect.value);
+  const selectedStaffId = toNumber(trabajoStaffSelect?.value);
   if (!selectedStaffId) {
     trabajosList = [];
     renderTrabajosList();
+    renderStaffModalTrabajos();
     return;
   }
 
@@ -924,9 +1002,10 @@ async function loadTrabajos() {
 
   if (error) {
     if (isSchemaMissingError(error)) {
-      showSchemaWarning('No se encontró el esquema de Staff/Citas. Aplica la migración 20260422143000_servicios_staff_citas_notificaciones.sql en Supabase.');
+      showSchemaWarning(SCHEMA_MIGRATION_MESSAGE);
       trabajosList = [];
       renderTrabajosList();
+      renderStaffModalTrabajos();
       return;
     }
     throw error;
@@ -934,6 +1013,7 @@ async function loadTrabajos() {
 
   trabajosList = Array.isArray(data) ? data : [];
   renderTrabajosList();
+  renderStaffModalTrabajos();
 }
 
 async function saveTrabajo(event) {
@@ -986,11 +1066,12 @@ async function saveTrabajo(event) {
   clearTrabajoForm();
   if (trabajoStaffSelect) trabajoStaffSelect.value = String(staffId);
   await loadTrabajos();
+  closeModal(trabajoModal);
 }
 
 async function toggleTrabajoActive(trabajoId, nextActive) {
   const id = toNumber(trabajoId);
-  const staffId = toNumber(trabajoStaffSelect.value);
+  const staffId = toNumber(trabajoStaffSelect?.value) || currentEditingStaffId();
   if (!id || !staffId) return;
 
   const { error } = await supabase
@@ -1002,6 +1083,331 @@ async function toggleTrabajoActive(trabajoId, nextActive) {
   if (error) throw error;
   showGlobalFeedback(nextActive ? 'Trabajo activado.' : 'Trabajo desactivado.', 'success');
   await loadTrabajos();
+}
+
+function clearServicioForm(keepStaffSelection = true) {
+  const selectedStaff = keepStaffSelection ? cleanText(servicioStaffSelect?.value) : '';
+  if (servicioForm) servicioForm.reset();
+  servicioIdInput.value = '';
+  servicioDuracionInput.value = '60';
+  servicioPrecioInput.value = '';
+  servicioOrdenInput.value = '100';
+  servicioActivoInput.checked = true;
+  if (selectedStaff) {
+    servicioStaffSelect.value = selectedStaff;
+  } else if (!cleanText(servicioStaffSelect?.value) && staffList.length) {
+    servicioStaffSelect.value = String(staffList[0].id);
+  }
+}
+
+function fillServicioForm(item) {
+  if (!item) return;
+  servicioIdInput.value = String(item.id || '');
+  servicioStaffSelect.value = String(item.id_staff || '');
+  servicioNombreInput.value = cleanText(item.nombre);
+  servicioDescripcionInput.value = cleanText(item.descripcion);
+  servicioDuracionInput.value = String(Math.max(15, Math.floor(Number(item.duracion_min) || 60)));
+  servicioPrecioInput.value = cleanText(item.precio);
+  servicioOrdenInput.value = String(Number(item.orden || 100));
+  servicioActivoInput.checked = item.activo !== false;
+}
+
+function currentEditingStaffId() {
+  return toNumber(staffIdInput?.value);
+}
+
+function renderStaffModalServicios() {
+  if (!staffModalServiciosListEl || !staffModalServiciosEmptyEl) return;
+
+  const staffId = currentEditingStaffId();
+  if (!staffId) {
+    staffModalServiciosListEl.innerHTML = '';
+    staffModalServiciosEmptyEl.textContent = 'Guarda el profesional para gestionar sus servicios.';
+    staffModalServiciosEmptyEl.classList.remove('hidden');
+    return;
+  }
+
+  const rows = serviciosList.filter((row) => Number(row.id_staff) === Number(staffId));
+  if (!rows.length) {
+    staffModalServiciosListEl.innerHTML = '';
+    staffModalServiciosEmptyEl.textContent = 'Este profesional aún no tiene servicios guardados.';
+    staffModalServiciosEmptyEl.classList.remove('hidden');
+    return;
+  }
+
+  staffModalServiciosEmptyEl.classList.add('hidden');
+  staffModalServiciosListEl.innerHTML = rows.map((item) => {
+    const statusClass = item.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600';
+    return `
+      <article class="border border-gray-200 rounded-lg p-2.5 bg-gray-50">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-gray-900 truncate">${escapeHtml(item.nombre || 'Servicio')}</p>
+            <p class="text-xs text-gray-600 mt-0.5">${escapeHtml(item.descripcion || 'Sin descripción')}</p>
+            <p class="text-xs text-gray-500 mt-1">Duración ${Math.max(15, Number(item.duracion_min || 60))} min · Precio ${escapeHtml(formatPriceText(item.precio))}</p>
+          </div>
+          <span class="text-[10px] px-2 py-1 rounded-full ${statusClass}">${item.activo ? 'activo' : 'inactivo'}</span>
+        </div>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <button type="button" data-action="edit-staff-modal-servicio" data-id="${Number(item.id)}" class="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold">Editar</button>
+          <button type="button" data-action="toggle-staff-modal-servicio" data-id="${Number(item.id)}" data-next="${item.activo ? '0' : '1'}" class="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-[11px] font-semibold">${item.activo ? 'Desactivar' : 'Activar'}</button>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+async function refreshStaffModalServicios(staffId = currentEditingStaffId()) {
+  if (!Number.isFinite(staffId) || staffId <= 0) {
+    serviciosList = [];
+    renderStaffModalServicios();
+    return;
+  }
+  if (servicioStaffSelect) servicioStaffSelect.value = String(staffId);
+  await loadServicios();
+}
+
+function renderStaffModalTrabajos() {
+  if (!staffTrabajosListEl || !staffTrabajosEmptyEl) return;
+
+  const staffId = currentEditingStaffId();
+  if (!staffId) {
+    staffTrabajosListEl.innerHTML = '';
+    staffTrabajosEmptyEl.textContent = 'Guarda el profesional para gestionar su galería.';
+    staffTrabajosEmptyEl.classList.remove('hidden');
+    return;
+  }
+
+  const rows = trabajosList.filter((row) => Number(row.id_staff) === Number(staffId));
+  if (!rows.length) {
+    staffTrabajosListEl.innerHTML = '';
+    staffTrabajosEmptyEl.textContent = 'Este profesional aún no tiene imágenes en su galería.';
+    staffTrabajosEmptyEl.classList.remove('hidden');
+    return;
+  }
+
+  staffTrabajosEmptyEl.classList.add('hidden');
+  staffTrabajosListEl.innerHTML = rows.map((item) => {
+    const image = cleanText(item.media_url) || 'https://placehold.co/120x90?text=Trabajo';
+    const statusClass = item.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600';
+    return `
+      <article class="border border-gray-200 rounded-lg p-2 bg-gray-50">
+        <div class="flex gap-2">
+          <img src="${escapeHtml(image)}" alt="Trabajo" class="w-16 h-16 rounded-lg border border-gray-200 object-cover" />
+          <div class="min-w-0 flex-1">
+            <p class="text-xs text-gray-700 truncate">${escapeHtml(item.titulo || 'Imagen de trabajo')}</p>
+            <p class="text-[11px] text-gray-500 mt-0.5">Orden ${Number(item.orden || 100)}</p>
+            <span class="inline-flex mt-1 text-[10px] px-2 py-0.5 rounded-full ${statusClass}">${item.activo ? 'activo' : 'inactivo'}</span>
+            <div class="mt-1.5 flex flex-wrap gap-1.5">
+              <button type="button" data-action="toggle-staff-modal-trabajo" data-id="${Number(item.id)}" data-next="${item.activo ? '0' : '1'}" class="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-800 text-white text-[10px] font-semibold">${item.activo ? 'Desactivar' : 'Activar'}</button>
+              <button type="button" data-action="delete-staff-modal-trabajo" data-id="${Number(item.id)}" class="px-2 py-0.5 rounded bg-red-600 hover:bg-red-700 text-white text-[10px] font-semibold">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+async function refreshStaffModalTrabajos(staffId = currentEditingStaffId()) {
+  if (!Number.isFinite(staffId) || staffId <= 0) {
+    trabajosList = [];
+    renderStaffModalTrabajos();
+    return;
+  }
+  if (trabajoStaffSelect) trabajoStaffSelect.value = String(staffId);
+  await loadTrabajos();
+}
+
+async function uploadStaffTrabajosFiles(staffId, files = []) {
+  const normalizedStaffId = toNumber(staffId);
+  if (!normalizedStaffId) return;
+
+  const validFiles = Array.from(files || []).filter(Boolean);
+  if (!validFiles.length) {
+    showGlobalFeedback('Selecciona una o más imágenes para subir.', 'warning');
+    return;
+  }
+
+  const existing = trabajosList.filter((row) => Number(row.id_staff) === normalizedStaffId);
+  let nextOrder = existing.reduce((max, row) => Math.max(max, Number(row.orden || 100)), 0) + 1;
+
+  for (let index = 0; index < validFiles.length; index += 1) {
+    const file = validFiles[index];
+    showGlobalFeedback(`Subiendo imagen ${index + 1} de ${validFiles.length}...`, 'info');
+    const mediaUrl = await uploadImageToPublic(file, 'servicios/trabajos');
+
+    const payload = {
+      id_staff: normalizedStaffId,
+      media_url: mediaUrl,
+      titulo: null,
+      descripcion: null,
+      orden: nextOrder,
+      activo: true,
+    };
+
+    const { error } = await supabase
+      .from('ComercioStaffTrabajos')
+      .insert(payload);
+    if (error) throw error;
+    nextOrder += 1;
+  }
+
+  if (staffTrabajoFilesInput) staffTrabajoFilesInput.value = '';
+  showGlobalFeedback(`${validFiles.length} imagen${validFiles.length === 1 ? '' : 'es'} subida${validFiles.length === 1 ? '' : 's'} correctamente.`, 'success');
+  await refreshStaffModalTrabajos(normalizedStaffId);
+}
+
+async function deleteTrabajo(trabajoId, staffId) {
+  const id = toNumber(trabajoId);
+  const ownerStaffId = toNumber(staffId);
+  if (!id || !ownerStaffId) return;
+
+  const { error } = await supabase
+    .from('ComercioStaffTrabajos')
+    .delete()
+    .eq('id', id)
+    .eq('id_staff', ownerStaffId);
+
+  if (error) throw error;
+  showGlobalFeedback('Imagen eliminada de la galería.', 'success');
+  await refreshStaffModalTrabajos(ownerStaffId);
+}
+
+function renderServiciosList() {
+  if (!serviciosListEl || !serviciosEmptyEl) return;
+
+  const selectedStaffId = toNumber(servicioStaffSelect?.value);
+  const filtered = selectedStaffId
+    ? serviciosList.filter((row) => Number(row.id_staff) === selectedStaffId)
+    : [];
+
+  if (!filtered.length) {
+    serviciosListEl.innerHTML = '';
+    serviciosEmptyEl.classList.remove('hidden');
+    return;
+  }
+
+  serviciosEmptyEl.classList.add('hidden');
+  serviciosListEl.innerHTML = filtered.map((item) => {
+    const statusClass = item.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600';
+    return `
+      <article class="border border-gray-200 rounded-xl p-3 bg-white">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <p class="text-sm font-semibold text-gray-900">${escapeHtml(item.nombre || 'Servicio')}</p>
+            <p class="text-xs text-gray-600 mt-1">${escapeHtml(item.descripcion || 'Sin descripción')}</p>
+            <p class="text-xs text-gray-500 mt-1">Duración ${Math.max(15, Number(item.duracion_min || 60))} min · Precio ${escapeHtml(formatPriceText(item.precio))} · Orden ${Number(item.orden || 100)}</p>
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full ${statusClass}">${item.activo ? 'activo' : 'inactivo'}</span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button type="button" data-action="edit-servicio" data-id="${Number(item.id)}" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold">Editar</button>
+          <button type="button" data-action="toggle-servicio" data-id="${Number(item.id)}" data-next="${item.activo ? '0' : '1'}" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold">${item.activo ? 'Desactivar' : 'Activar'}</button>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+async function loadServicios() {
+  const selectedStaffId = toNumber(servicioStaffSelect?.value);
+  if (!selectedStaffId) {
+    serviciosList = [];
+    renderServiciosList();
+    renderStaffModalServicios();
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('ComercioStaffServicios')
+    .select('id,id_staff,nombre,descripcion,duracion_min,precio,orden,activo,created_at')
+    .eq('id_staff', selectedStaffId)
+    .order('orden', { ascending: true })
+    .order('id', { ascending: true });
+
+  if (error) {
+    if (isSchemaMissingError(error)) {
+      showSchemaWarning(SCHEMA_MIGRATION_MESSAGE);
+      serviciosList = [];
+      renderServiciosList();
+      renderStaffModalServicios();
+      return;
+    }
+    throw error;
+  }
+
+  serviciosList = Array.isArray(data) ? data : [];
+  renderServiciosList();
+  renderStaffModalServicios();
+}
+
+async function saveServicio(event) {
+  event.preventDefault();
+
+  const id = toNumber(servicioIdInput.value);
+  const staffId = toNumber(servicioStaffSelect.value);
+  const nombre = cleanText(servicioNombreInput.value);
+  if (!staffId) {
+    showGlobalFeedback('Selecciona el profesional para este servicio.', 'warning');
+    return;
+  }
+  if (!nombre) {
+    showGlobalFeedback('El nombre del servicio es requerido.', 'warning');
+    return;
+  }
+
+  const payload = {
+    id_staff: staffId,
+    nombre,
+    descripcion: asNullable(servicioDescripcionInput.value),
+    duracion_min: Math.min(480, Math.max(15, Math.floor(Number(servicioDuracionInput.value) || 60))),
+    precio: cleanText(servicioPrecioInput.value),
+    orden: Math.max(1, Math.floor(Number(servicioOrdenInput.value) || 100)),
+    activo: !!servicioActivoInput.checked,
+  };
+
+  if (!payload.precio) {
+    showGlobalFeedback('El precio o rango es requerido. Ejemplo: $25 o $20 - $35.', 'warning');
+    return;
+  }
+
+  if (id) {
+    const { error } = await supabase
+      .from('ComercioStaffServicios')
+      .update(payload)
+      .eq('id', id)
+      .eq('id_staff', staffId);
+    if (error) throw error;
+    showGlobalFeedback('Servicio actualizado.', 'success');
+  } else {
+    const { error } = await supabase
+      .from('ComercioStaffServicios')
+      .insert(payload);
+    if (error) throw error;
+    showGlobalFeedback('Servicio agregado.', 'success');
+  }
+
+  clearServicioForm();
+  if (servicioStaffSelect) servicioStaffSelect.value = String(staffId);
+  await loadServicios();
+  closeModal(servicioModal);
+}
+
+async function toggleServicioActive(servicioId, nextActive) {
+  const id = toNumber(servicioId);
+  const staffId = toNumber(servicioStaffSelect?.value);
+  if (!id || !staffId) return;
+
+  const { error } = await supabase
+    .from('ComercioStaffServicios')
+    .update({ activo: nextActive })
+    .eq('id', id)
+    .eq('id_staff', staffId);
+
+  if (error) throw error;
+  showGlobalFeedback(nextActive ? 'Servicio activado.' : 'Servicio desactivado.', 'success');
+  await loadServicios();
 }
 
 function renderCitasList() {
@@ -1076,7 +1482,7 @@ async function loadCitas() {
 
   if (error) {
     if (isSchemaMissingError(error)) {
-      showSchemaWarning('No se encontró el esquema de Staff/Citas. Aplica la migración 20260422143000_servicios_staff_citas_notificaciones.sql en Supabase.');
+      showSchemaWarning(SCHEMA_MIGRATION_MESSAGE);
       citasSourceList = [];
       citasList = [];
       renderCitasList();
@@ -1216,7 +1622,7 @@ async function loadNotificaciones() {
 
   if (citasError) {
     if (isSchemaMissingError(citasError)) {
-      showSchemaWarning('No se encontró el esquema de Staff/Citas. Aplica la migración 20260422143000_servicios_staff_citas_notificaciones.sql en Supabase.');
+      showSchemaWarning(SCHEMA_MIGRATION_MESSAGE);
       notificacionesList = [];
       renderNotificacionesList();
       return;
@@ -1243,7 +1649,7 @@ async function loadNotificaciones() {
 
   if (error) {
     if (isSchemaMissingError(error)) {
-      showSchemaWarning('No se encontró el esquema de Staff/Citas. Aplica la migración 20260422143000_servicios_staff_citas_notificaciones.sql en Supabase.');
+      showSchemaWarning(SCHEMA_MIGRATION_MESSAGE);
       notificacionesList = [];
       renderNotificacionesList();
       return;
@@ -1260,13 +1666,39 @@ async function loadNotificaciones() {
 }
 
 function bindEvents() {
+  btnStaffModalClose?.addEventListener('click', () => closeModal(staffModal));
+  btnTrabajoModalClose?.addEventListener('click', () => closeModal(trabajoModal));
+  btnServicioModalClose?.addEventListener('click', () => closeModal(servicioModal));
+
+  document.addEventListener('click', (event) => {
+    const closer = event.target.closest('[data-close-modal]');
+    if (!closer) return;
+    const modalType = cleanText(closer.getAttribute('data-close-modal'));
+    if (modalType === 'staff') closeModal(staffModal);
+    if (modalType === 'trabajo') closeModal(trabajoModal);
+    if (modalType === 'servicio') closeModal(servicioModal);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    closeModal(staffModal);
+    closeModal(trabajoModal);
+    closeModal(servicioModal);
+  });
+
   btnStaffNuevo?.addEventListener('click', () => {
     clearStaffForm();
+    renderStaffModalServicios();
+    renderStaffModalTrabajos();
+    if (staffModalTitle) staffModalTitle.textContent = 'Nuevo profesional';
+    openModal(staffModal);
     showGlobalFeedback('Formulario de staff listo para crear nuevo profesional.', 'info');
   });
 
   btnStaffLimpiar?.addEventListener('click', () => {
     clearStaffForm();
+    renderStaffModalServicios();
+    renderStaffModalTrabajos();
     showGlobalFeedback('', 'info');
   });
 
@@ -1291,6 +1723,10 @@ function bindEvents() {
       if (action === 'edit-staff') {
         const item = staffById.get(id);
         fillStaffForm(item);
+        await refreshStaffModalServicios(id);
+        await refreshStaffModalTrabajos(id);
+        if (staffModalTitle) staffModalTitle.textContent = `Editar profesional · ${item?.nombre || `#${id}`}`;
+        openModal(staffModal);
         showGlobalFeedback(`Editando: ${item?.nombre || 'profesional'}.`, 'info');
       }
 
@@ -1302,6 +1738,99 @@ function bindEvents() {
       console.error('Error acción staff:', error);
       showGlobalFeedback(error.message || 'No se pudo completar la acción de staff.', 'error');
     }
+  });
+
+  btnStaffModalNuevoServicio?.addEventListener('click', async () => {
+    const staffId = currentEditingStaffId();
+    if (!staffId) {
+      showGlobalFeedback('Primero guarda el profesional para poder agregar servicios.', 'warning');
+      return;
+    }
+
+    if (servicioStaffSelect) servicioStaffSelect.value = String(staffId);
+    clearServicioForm();
+    if (servicioStaffSelect) servicioStaffSelect.value = String(staffId);
+    if (servicioModalTitle) servicioModalTitle.textContent = 'Nuevo servicio';
+    openModal(servicioModal);
+  });
+
+  btnStaffTrabajosSubir?.addEventListener('click', async () => {
+    const staffId = currentEditingStaffId();
+    if (!staffId) {
+      showGlobalFeedback('Primero guarda el profesional para poder subir galería.', 'warning');
+      return;
+    }
+
+    try {
+      await uploadStaffTrabajosFiles(staffId, staffTrabajoFilesInput?.files || []);
+    } catch (error) {
+      console.error('Error subiendo imágenes de galería:', error);
+      showGlobalFeedback(error.message || 'No se pudieron subir las imágenes.', 'error');
+    }
+  });
+
+  staffTrabajosListEl?.addEventListener('click', async (event) => {
+    const btn = event.target.closest('button[data-action]');
+    if (!btn) return;
+
+    const action = cleanText(btn.getAttribute('data-action'));
+    const trabajoId = toNumber(btn.getAttribute('data-id'));
+    const staffId = currentEditingStaffId();
+    if (!trabajoId || !staffId) return;
+
+    try {
+      if (trabajoStaffSelect) trabajoStaffSelect.value = String(staffId);
+
+      if (action === 'toggle-staff-modal-trabajo') {
+        const next = btn.getAttribute('data-next') === '1';
+        await toggleTrabajoActive(trabajoId, next);
+      }
+
+      if (action === 'delete-staff-modal-trabajo') {
+        const confirmed = window.confirm('¿Eliminar esta imagen de la galería?');
+        if (!confirmed) return;
+        await deleteTrabajo(trabajoId, staffId);
+      }
+    } catch (error) {
+      console.error('Error acción galería en modal staff:', error);
+      showGlobalFeedback(error.message || 'No se pudo completar la acción de galería.', 'error');
+    }
+  });
+
+  staffModalServiciosListEl?.addEventListener('click', async (event) => {
+    const btn = event.target.closest('button[data-action]');
+    if (!btn) return;
+
+    const action = cleanText(btn.getAttribute('data-action'));
+    const id = toNumber(btn.getAttribute('data-id'));
+    const staffId = currentEditingStaffId();
+    if (!id || !staffId) return;
+
+    try {
+      if (servicioStaffSelect) servicioStaffSelect.value = String(staffId);
+
+      if (action === 'edit-staff-modal-servicio') {
+        const item = serviciosList.find((row) => Number(row.id) === id);
+        fillServicioForm(item);
+        if (servicioModalTitle) servicioModalTitle.textContent = `Editar servicio #${id}`;
+        openModal(servicioModal);
+      }
+
+      if (action === 'toggle-staff-modal-servicio') {
+        const next = btn.getAttribute('data-next') === '1';
+        await toggleServicioActive(id, next);
+      }
+    } catch (error) {
+      console.error('Error acción servicio en modal staff:', error);
+      showGlobalFeedback(error.message || 'No se pudo completar la acción del servicio.', 'error');
+    }
+  });
+
+  btnTrabajoNuevo?.addEventListener('click', () => {
+    clearTrabajoForm();
+    if (trabajoModalTitle) trabajoModalTitle.textContent = 'Nuevo trabajo de galería';
+    openModal(trabajoModal);
+    showGlobalFeedback('Formulario de galería listo para crear un trabajo.', 'info');
   });
 
   trabajoStaffSelect?.addEventListener('change', async () => {
@@ -1340,6 +1869,8 @@ function bindEvents() {
       if (action === 'edit-trabajo') {
         const item = trabajosList.find((row) => Number(row.id) === id);
         fillTrabajoForm(item);
+        if (trabajoModalTitle) trabajoModalTitle.textContent = `Editar trabajo #${id}`;
+        openModal(trabajoModal);
         showGlobalFeedback(`Editando trabajo #${id}.`, 'info');
       }
 
@@ -1350,6 +1881,64 @@ function bindEvents() {
     } catch (error) {
       console.error('Error acción trabajo:', error);
       showGlobalFeedback(error.message || 'No se pudo completar la acción del trabajo.', 'error');
+    }
+  });
+
+  btnServicioNuevo?.addEventListener('click', () => {
+    clearServicioForm();
+    if (servicioModalTitle) servicioModalTitle.textContent = 'Nuevo servicio';
+    openModal(servicioModal);
+    showGlobalFeedback('Formulario de servicios listo para crear un nuevo servicio.', 'info');
+  });
+
+  servicioStaffSelect?.addEventListener('change', async () => {
+    try {
+      clearServicioForm();
+      await loadServicios();
+    } catch (error) {
+      console.error('Error cargando servicios por staff:', error);
+      showGlobalFeedback(error.message || 'No se pudieron cargar los servicios.', 'error');
+    }
+  });
+
+  btnServicioLimpiar?.addEventListener('click', () => {
+    clearServicioForm();
+    showGlobalFeedback('', 'info');
+  });
+
+  servicioForm?.addEventListener('submit', async (event) => {
+    try {
+      await saveServicio(event);
+    } catch (error) {
+      console.error('Error guardando servicio:', error);
+      showGlobalFeedback(error.message || 'No se pudo guardar el servicio.', 'error');
+    }
+  });
+
+  serviciosListEl?.addEventListener('click', async (event) => {
+    const btn = event.target.closest('button[data-action]');
+    if (!btn) return;
+
+    const action = btn.getAttribute('data-action');
+    const id = toNumber(btn.getAttribute('data-id'));
+    if (!id) return;
+
+    try {
+      if (action === 'edit-servicio') {
+        const item = serviciosList.find((row) => Number(row.id) === id);
+        fillServicioForm(item);
+        if (servicioModalTitle) servicioModalTitle.textContent = `Editar servicio #${id}`;
+        openModal(servicioModal);
+        showGlobalFeedback(`Editando servicio #${id}.`, 'info');
+      }
+
+      if (action === 'toggle-servicio') {
+        const next = btn.getAttribute('data-next') === '1';
+        await toggleServicioActive(id, next);
+      }
+    } catch (error) {
+      console.error('Error acción servicio:', error);
+      showGlobalFeedback(error.message || 'No se pudo completar la acción del servicio.', 'error');
     }
   });
 
@@ -1451,7 +2040,10 @@ async function init() {
   renderAgendaRows();
   resetAgendaInputs();
   clearStaffForm();
+  renderStaffModalServicios();
+  renderStaffModalTrabajos();
   clearTrabajoForm();
+  clearServicioForm();
   setDefaultDateFilters();
   bindEvents();
 
@@ -1461,8 +2053,8 @@ async function init() {
   try {
     await loadStaff();
 
-    if (!cleanText(trabajoStaffSelect.value) && staffList.length) {
-      trabajoStaffSelect.value = String(staffList[0].id);
+    if (!cleanText(trabajoStaffSelect?.value) && staffList.length) {
+      if (trabajoStaffSelect) trabajoStaffSelect.value = String(staffList[0].id);
     }
 
     if (!cleanText(citaManualStaff.value) && staffList.length) {
@@ -1470,7 +2062,12 @@ async function init() {
       if (firstActive) citaManualStaff.value = String(firstActive.id);
     }
 
+    if (!cleanText(servicioStaffSelect?.value) && staffList.length) {
+      servicioStaffSelect.value = String(staffList[0].id);
+    }
+
     await loadTrabajos();
+    await loadServicios();
     await loadCitas();
     await loadNotificaciones();
   } catch (error) {

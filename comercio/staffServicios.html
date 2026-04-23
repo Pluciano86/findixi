@@ -45,92 +45,7 @@
             + Nuevo
           </button>
         </div>
-
-        <form id="staffForm" class="space-y-3 border border-gray-200 rounded-xl p-3 bg-gray-50">
-          <input id="staffId" type="hidden" />
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label class="text-sm">
-              <span class="font-medium">Nombre *</span>
-              <input id="staffNombre" type="text" required class="mt-1 w-full border rounded-lg px-3 py-2" />
-            </label>
-            <label class="text-sm">
-              <span class="font-medium">Profesión *</span>
-              <input id="staffProfesion" type="text" required class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="Barbero, Estilista, Técnica de uñas..." />
-            </label>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <label class="text-sm sm:col-span-2">
-              <span class="font-medium">Foto URL</span>
-              <input id="staffFotoUrl" type="url" class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="https://..." />
-            </label>
-            <label class="text-sm">
-              <span class="font-medium">Subir foto</span>
-              <input id="staffFotoFile" type="file" accept="image/png,image/jpeg,image/webp" class="mt-1 w-full text-sm" />
-            </label>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label class="text-sm">
-              <span class="font-medium">Teléfono</span>
-              <input id="staffTelefono" type="text" class="mt-1 w-full border rounded-lg px-3 py-2" />
-            </label>
-            <label class="text-sm">
-              <span class="font-medium">Email</span>
-              <input id="staffEmail" type="email" class="mt-1 w-full border rounded-lg px-3 py-2" />
-            </label>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <label class="text-sm">
-              <span class="font-medium">WhatsApp</span>
-              <input id="staffWhatsapp" type="text" class="mt-1 w-full border rounded-lg px-3 py-2" />
-            </label>
-            <label class="text-sm">
-              <span class="font-medium">Facebook</span>
-              <input id="staffFacebook" type="text" class="mt-1 w-full border rounded-lg px-3 py-2" />
-            </label>
-            <label class="text-sm">
-              <span class="font-medium">Instagram</span>
-              <input id="staffInstagram" type="text" class="mt-1 w-full border rounded-lg px-3 py-2" />
-            </label>
-          </div>
-
-          <label class="text-sm block">
-            <span class="font-medium">Biografía</span>
-            <textarea id="staffBiografia" rows="2" class="mt-1 w-full border rounded-lg px-3 py-2"></textarea>
-          </label>
-
-          <div class="rounded-lg border border-gray-200 bg-white p-3 space-y-3">
-            <div class="flex flex-wrap gap-3 items-end">
-              <label class="text-sm">
-                <span class="font-medium">Duración cita (min)</span>
-                <input id="staffSlotMinutes" type="number" min="15" max="240" value="60" class="mt-1 w-28 border rounded px-2 py-1" />
-              </label>
-              <label class="text-sm">
-                <span class="font-medium">Buffer (min)</span>
-                <input id="staffBufferMinutes" type="number" min="0" max="180" value="0" class="mt-1 w-28 border rounded px-2 py-1" />
-              </label>
-              <label class="text-sm">
-                <span class="font-medium">Orden</span>
-                <input id="staffOrden" type="number" min="1" value="100" class="mt-1 w-24 border rounded px-2 py-1" />
-              </label>
-              <label class="text-sm inline-flex items-center gap-2 ml-auto">
-                <input id="staffActivo" type="checkbox" checked class="accent-blue-600" />
-                <span class="font-medium">Activo</span>
-              </label>
-            </div>
-
-            <p class="text-xs text-gray-500">Agenda semanal (un bloque por día):</p>
-            <div id="staffAgendaRows" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
-          </div>
-
-          <div class="flex flex-wrap gap-2">
-            <button id="btnStaffGuardar" type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">Guardar profesional</button>
-            <button id="btnStaffLimpiar" type="button" class="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-sm font-semibold">Limpiar</button>
-          </div>
-        </form>
+        <p class="text-xs text-gray-500">Usa “+ Nuevo” o “Editar” para abrir el modal del profesional.</p>
 
         <div id="staffList" class="space-y-2"></div>
         <p id="staffEmpty" class="hidden text-sm text-gray-500">No hay profesionales registrados.</p>
@@ -138,57 +53,15 @@
 
       <article class="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 space-y-4">
         <div class="flex items-center justify-between gap-3">
-          <h2 class="text-lg font-semibold">Galería de trabajos</h2>
+          <h2 class="text-lg font-semibold">Servicios por profesional</h2>
+          <button id="btnServicioNuevo" type="button" class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">
+            + Nuevo
+          </button>
         </div>
+        <p class="text-xs text-gray-500">Usa “+ Nuevo” o “Editar” para abrir el modal de servicio.</p>
 
-        <form id="trabajoForm" class="space-y-3 border border-gray-200 rounded-xl p-3 bg-gray-50">
-          <input id="trabajoId" type="hidden" />
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label class="text-sm">
-              <span class="font-medium">Profesional *</span>
-              <select id="trabajoStaffId" required class="mt-1 w-full border rounded-lg px-3 py-2"></select>
-            </label>
-            <label class="text-sm">
-              <span class="font-medium">Orden</span>
-              <input id="trabajoOrden" type="number" min="1" value="100" class="mt-1 w-full border rounded-lg px-3 py-2" />
-            </label>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <label class="text-sm sm:col-span-2">
-              <span class="font-medium">Imagen URL *</span>
-              <input id="trabajoMediaUrl" type="url" required class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="https://..." />
-            </label>
-            <label class="text-sm">
-              <span class="font-medium">Subir imagen</span>
-              <input id="trabajoMediaFile" type="file" accept="image/png,image/jpeg,image/webp" class="mt-1 w-full text-sm" />
-            </label>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label class="text-sm">
-              <span class="font-medium">Título</span>
-              <input id="trabajoTitulo" type="text" class="mt-1 w-full border rounded-lg px-3 py-2" />
-            </label>
-            <label class="text-sm inline-flex items-center gap-2 pt-6">
-              <input id="trabajoActivo" type="checkbox" checked class="accent-blue-600" />
-              <span class="font-medium">Activo</span>
-            </label>
-          </div>
-
-          <label class="text-sm block">
-            <span class="font-medium">Descripción</span>
-            <textarea id="trabajoDescripcion" rows="2" class="mt-1 w-full border rounded-lg px-3 py-2"></textarea>
-          </label>
-
-          <div class="flex flex-wrap gap-2">
-            <button id="btnTrabajoGuardar" type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">Guardar trabajo</button>
-            <button id="btnTrabajoLimpiar" type="button" class="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-sm font-semibold">Limpiar</button>
-          </div>
-        </form>
-
-        <div id="trabajosList" class="space-y-2"></div>
-        <p id="trabajosEmpty" class="hidden text-sm text-gray-500">No hay trabajos para mostrar.</p>
+        <div id="serviciosList" class="space-y-2"></div>
+        <p id="serviciosEmpty" class="hidden text-sm text-gray-500">No hay servicios para mostrar.</p>
       </article>
     </section>
 
@@ -332,6 +205,243 @@
       <p id="notificacionesEmpty" class="hidden text-sm text-gray-500">No hay notificaciones para mostrar.</p>
     </section>
   </main>
+
+  <div id="staffModal" class="hidden fixed inset-0 z-50">
+    <div data-close-modal="staff" class="absolute inset-0 bg-black/60"></div>
+    <div class="relative h-full w-full flex items-center justify-center p-4">
+      <div class="w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-white rounded-2xl border border-gray-200 shadow-2xl p-4">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h3 id="staffModalTitle" class="text-lg font-semibold text-gray-900">Profesional</h3>
+          <button id="btnStaffModalClose" type="button" class="w-9 h-9 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-600">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <form id="staffForm" class="space-y-3 border border-gray-200 rounded-xl p-3 bg-gray-50">
+          <input id="staffId" type="hidden" />
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="text-sm">
+              <span class="font-medium">Nombre *</span>
+              <input id="staffNombre" type="text" required class="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+            <label class="text-sm">
+              <span class="font-medium">Profesión *</span>
+              <input id="staffProfesion" type="text" required class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="Barbero, Estilista, Técnica de uñas..." />
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label class="text-sm sm:col-span-2">
+              <span class="font-medium">Foto URL</span>
+              <input id="staffFotoUrl" type="url" class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="https://..." />
+            </label>
+            <label class="text-sm">
+              <span class="font-medium">Subir foto</span>
+              <input id="staffFotoFile" type="file" accept="image/png,image/jpeg,image/webp" class="mt-1 w-full text-sm" />
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="text-sm">
+              <span class="font-medium">Teléfono</span>
+              <input id="staffTelefono" type="text" class="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+            <label class="text-sm">
+              <span class="font-medium">Email</span>
+              <input id="staffEmail" type="email" class="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label class="text-sm">
+              <span class="font-medium">WhatsApp</span>
+              <input id="staffWhatsapp" type="text" class="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+            <label class="text-sm">
+              <span class="font-medium">Facebook</span>
+              <input id="staffFacebook" type="text" class="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+            <label class="text-sm">
+              <span class="font-medium">Instagram</span>
+              <input id="staffInstagram" type="text" class="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+          </div>
+
+          <label class="text-sm block">
+            <span class="font-medium">Biografía</span>
+            <textarea id="staffBiografia" rows="2" class="mt-1 w-full border rounded-lg px-3 py-2"></textarea>
+          </label>
+
+          <div class="rounded-lg border border-gray-200 bg-white p-3 space-y-3">
+            <div class="flex flex-wrap gap-3 items-end">
+              <label class="text-sm">
+                <span class="font-medium">Duración cita (min)</span>
+                <input id="staffSlotMinutes" type="number" min="15" max="240" value="60" class="mt-1 w-28 border rounded px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="font-medium">Buffer (min)</span>
+                <input id="staffBufferMinutes" type="number" min="0" max="180" value="0" class="mt-1 w-28 border rounded px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="font-medium">Orden</span>
+                <input id="staffOrden" type="number" min="1" value="100" class="mt-1 w-24 border rounded px-2 py-1" />
+              </label>
+              <label class="text-sm inline-flex items-center gap-2 ml-auto">
+                <input id="staffActivo" type="checkbox" checked class="accent-blue-600" />
+                <span class="font-medium">Activo</span>
+              </label>
+            </div>
+
+            <p class="text-xs text-gray-500">Agenda semanal (un bloque por día):</p>
+            <div id="staffAgendaRows" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button id="btnStaffGuardar" type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">Guardar profesional</button>
+            <button id="btnStaffLimpiar" type="button" class="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-sm font-semibold">Limpiar</button>
+          </div>
+        </form>
+
+        <section class="mt-4 border border-gray-200 rounded-xl p-3 bg-white">
+          <div class="flex items-center justify-between gap-2">
+            <h4 class="text-sm font-semibold text-gray-800">Servicios de este profesional</h4>
+            <button id="btnStaffModalNuevoServicio" type="button" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold">
+              + Nuevo servicio
+            </button>
+          </div>
+          <div id="staffModalServiciosList" class="space-y-2 mt-3"></div>
+          <p id="staffModalServiciosEmpty" class="text-xs text-gray-500 mt-2">Guarda el profesional para gestionar sus servicios.</p>
+        </section>
+
+        <section class="mt-4 border border-gray-200 rounded-xl p-3 bg-white">
+          <div class="flex items-center justify-between gap-2">
+            <h4 class="text-sm font-semibold text-gray-800">Galería de trabajos</h4>
+            <button id="btnStaffTrabajosSubir" type="button" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold">
+              Subir imágenes
+            </button>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">Puedes subir una o más imágenes por vez.</p>
+          <input id="staffTrabajoFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple class="mt-2 w-full text-sm" />
+          <div id="staffTrabajosList" class="space-y-2 mt-3"></div>
+          <p id="staffTrabajosEmpty" class="text-xs text-gray-500 mt-2">Guarda el profesional para gestionar su galería.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="trabajoModal" class="hidden fixed inset-0 z-50">
+    <div data-close-modal="trabajo" class="absolute inset-0 bg-black/60"></div>
+    <div class="relative h-full w-full flex items-center justify-center p-4">
+      <div class="w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-2xl border border-gray-200 shadow-2xl p-4">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h3 id="trabajoModalTitle" class="text-lg font-semibold text-gray-900">Trabajo de galería</h3>
+          <button id="btnTrabajoModalClose" type="button" class="w-9 h-9 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-600">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <form id="trabajoForm" class="space-y-3 border border-gray-200 rounded-xl p-3 bg-gray-50">
+          <input id="trabajoId" type="hidden" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="text-sm">
+              <span class="font-medium">Profesional *</span>
+              <select id="trabajoStaffId" required class="mt-1 w-full border rounded-lg px-3 py-2"></select>
+            </label>
+            <label class="text-sm">
+              <span class="font-medium">Orden</span>
+              <input id="trabajoOrden" type="number" min="1" value="100" class="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label class="text-sm sm:col-span-2">
+              <span class="font-medium">Imagen URL *</span>
+              <input id="trabajoMediaUrl" type="url" required class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="https://..." />
+            </label>
+            <label class="text-sm">
+              <span class="font-medium">Subir imagen</span>
+              <input id="trabajoMediaFile" type="file" accept="image/png,image/jpeg,image/webp" class="mt-1 w-full text-sm" />
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="text-sm">
+              <span class="font-medium">Título</span>
+              <input id="trabajoTitulo" type="text" class="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+            <label class="text-sm inline-flex items-center gap-2 pt-6">
+              <input id="trabajoActivo" type="checkbox" checked class="accent-blue-600" />
+              <span class="font-medium">Activo</span>
+            </label>
+          </div>
+
+          <label class="text-sm block">
+            <span class="font-medium">Descripción</span>
+            <textarea id="trabajoDescripcion" rows="2" class="mt-1 w-full border rounded-lg px-3 py-2"></textarea>
+          </label>
+
+          <div class="flex flex-wrap gap-2">
+            <button id="btnTrabajoGuardar" type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">Guardar trabajo</button>
+            <button id="btnTrabajoLimpiar" type="button" class="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-sm font-semibold">Limpiar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="servicioModal" class="hidden fixed inset-0 z-50">
+    <div data-close-modal="servicio" class="absolute inset-0 bg-black/60"></div>
+    <div class="relative h-full w-full flex items-center justify-center p-4">
+      <div class="w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-2xl border border-gray-200 shadow-2xl p-4">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h3 id="servicioModalTitle" class="text-lg font-semibold text-gray-900">Servicio</h3>
+          <button id="btnServicioModalClose" type="button" class="w-9 h-9 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-gray-600">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <form id="servicioForm" class="space-y-3 border border-gray-200 rounded-xl p-3 bg-gray-50">
+          <input id="servicioId" type="hidden" />
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label class="text-sm sm:col-span-2">
+              <span class="font-medium">Profesional *</span>
+              <select id="servicioStaffId" required class="mt-1 w-full border rounded-lg px-3 py-2"></select>
+            </label>
+            <label class="text-sm sm:col-span-2">
+              <span class="font-medium">Nombre del servicio *</span>
+              <input id="servicioNombre" type="text" required class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="Corte, Barba, Manicure, Color..." />
+            </label>
+            <label class="text-sm sm:col-span-2">
+              <span class="font-medium">Descripción</span>
+              <textarea id="servicioDescripcion" rows="2" class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="Detalle breve del servicio"></textarea>
+            </label>
+            <label class="text-sm">
+              <span class="font-medium">Duración (min) *</span>
+              <input id="servicioDuracion" type="number" min="15" max="480" value="60" required class="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+            <label class="text-sm">
+              <span class="font-medium">Precio / Rango *</span>
+              <input id="servicioPrecio" type="text" value="" required class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="$25 o $20 - $35" />
+            </label>
+            <label class="text-sm">
+              <span class="font-medium">Orden</span>
+              <input id="servicioOrden" type="number" min="1" value="100" class="mt-1 w-full border rounded-lg px-3 py-2" />
+            </label>
+            <label class="text-sm inline-flex items-center gap-2 pt-6 sm:col-span-3">
+              <input id="servicioActivo" type="checkbox" checked class="accent-blue-600" />
+              <span class="font-medium">Activo</span>
+            </label>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button id="btnServicioGuardar" type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">Guardar servicio</button>
+            <button id="btnServicioLimpiar" type="button" class="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-sm font-semibold">Limpiar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="./shared/supabaseClient.js"></script>
   <script type="module" src="./js/staffServicios.js"></script>

@@ -38,12 +38,16 @@ const state = {
   staffList: [],
   staffById: new Map(),
   trabajosByStaff: new Map(),
+  serviciosByStaff: new Map(),
   activeStaffId: null,
   activeStaffName: '',
+  selectedServiceIds: new Set(),
   selectedDate: '',
   selectedTime: '',
   calendarMonthAnchor: null,
   calendarMonthCache: new Map(),
+  staffGallerySwiper: null,
+  staffWorkViewerSwiper: null,
   modalBound: false,
 };
 
@@ -220,25 +224,29 @@ function normalizeAgendaConfig(raw) {
   };
 }
 
-function buildSlotsFromAgenda(agenda, dateISO, bookedIntervals = []) {
+function buildSlotsFromAgenda(agenda, dateISO, bookedIntervals = [], appointmentDurationMin = null) {
   const day = getDayNumberFromDateISO(dateISO);
   if (day == null) return [];
 
   const intervals = Array.isArray(agenda?.dias?.[day]) ? agenda.dias[day] : [];
   if (!intervals.length) return [];
 
-  const step = Math.max(agenda.slot_minutes + agenda.buffer_minutes, agenda.slot_minutes, 15);
+  const duration = Math.max(15, Math.floor(Number(appointmentDurationMin) || Number(agenda?.slot_minutes) || DEFAULT_AGENDA.slot_minutes));
+  const step = Math.max(15, Math.floor(Number(agenda?.slot_minutes) || DEFAULT_AGENDA.slot_minutes));
+  const buffer = Math.max(0, Math.floor(Number(agenda?.buffer_minutes) || 0));
   const slots = [];
 
   intervals.forEach((interval) => {
-    for (let start = interval.iniMin; start + agenda.slot_minutes <= interval.finMin; start += step) {
-      const end = start + agenda.slot_minutes;
-      const isBooked = bookedIntervals.some((booked) => overlaps(start, end, booked.start, booked.end));
+    for (let start = interval.iniMin; start + duration <= interval.finMin; start += step) {
+      const end = start + duration;
+      const endWithBuffer = end + buffer;
+      if (endWithBuffer > interval.finMin) continue;
+      const isBooked = bookedIntervals.some((booked) => overlaps(start, endWithBuffer, booked.start, booked.end));
       if (!isBooked) {
         slots.push({
           hora: minutesToHHmm(start),
           inicioMin: start,
-          finMin: end,
+          finMin: endWithBuffer,
         });
       }
     }
@@ -365,6 +373,41 @@ async function fetchStaffTrabajos(staffIds = []) {
   return Array.isArray(data) ? data : [];
 }
 
+async function fetchStaffServicios(staffIds = []) {
+  const ids = Array.from(new Set((staffIds || []).map((value) => Number(value)).filter((value) => Number.isFinite(value) && value > 0)));
+  if (!ids.length) return [];
+
+  let { data, error } = await supabase
+    .from('ComercioStaffServicios')
+    .select('id,id_staff,nombre,descripcion,duracion_min,precio,orden,activo')
+    .in('id_staff', ids)
+    .eq('activo', true)
+    .order('orden', { ascending: true })
+    .order('id', { ascending: true });
+
+  if (error && String(error?.code || '') === '42703' && /precio/i.test(String(error?.message || error?.details || ''))) {
+    const fallback = await supabase
+      .from('ComercioStaffServicios')
+      .select('id,id_staff,nombre,descripcion,duracion_min,orden,activo')
+      .in('id_staff', ids)
+      .eq('activo', true)
+      .order('orden', { ascending: true })
+      .order('id', { ascending: true });
+    data = fallback.data;
+    error = fallback.error;
+  }
+
+  if (error) {
+    console.warn('No se pudieron cargar servicios de staff:', error?.message || error);
+    return [];
+  }
+
+  return (Array.isArray(data) ? data : []).map((row) => ({
+    ...row,
+    precio: sanitizeText(row?.precio),
+  }));
+}
+
 async function fetchBookedIntervals(staffId, dateISO) {
   const id = Number(staffId);
   if (!Number.isFinite(id) || id <= 0 || !dateISO) return [];
@@ -416,6 +459,133 @@ function getActiveStaff() {
   return state.staffById.get(id) || null;
 }
 
+function getActiveStaffServices() {
+  const staff = getActiveStaff();
+  if (!staff) return [];
+  return state.serviciosByStaff.get(Number(staff.id)) || [];
+}
+
+function getSelectedServices() {
+  const selected = state.selectedServiceIds instanceof Set
+    ? state.selectedServiceIds
+    : new Set();
+  return getActiveStaffServices().filter((service) => selected.has(Number(service.id)));
+}
+
+function getSelectedDurationMinutes(staff = null) {
+  const selected = getSelectedServices();
+  if (!selected.length) return 0;
+  const fallbackAgenda = normalizeAgendaConfig(staff?.agenda_config);
+  const fallbackDuration = Math.max(15, Math.floor(Number(fallbackAgenda.slot_minutes) || 60));
+  return selected.reduce((sum, service) => {
+    const duration = Math.max(15, Math.floor(Number(service?.duracion_min) || fallbackDuration));
+    return sum + duration;
+  }, 0);
+}
+
+function formatDurationLabel(minutes) {
+  const total = Math.max(0, Math.floor(Number(minutes) || 0));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (!h) return `${m} min`;
+  if (!m) return `${h} h`;
+  return `${h} h ${m} min`;
+}
+
+function formatPriceText(value) {
+  const clean = sanitizeText(value);
+  if (!clean) return 'A consultar';
+  if (/^\d+(?:[.,]\d+)?$/.test(clean)) {
+    const parsed = Number(clean.replace(',', '.'));
+    if (Number.isFinite(parsed)) return `$${parsed.toFixed(2)}`;
+  }
+  return clean;
+}
+
+function formatCurrencyCompact(value) {
+  const amount = Math.max(0, Number(value) || 0);
+  const fixed = amount.toFixed(2);
+  return `$${fixed.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')}`;
+}
+
+function parsePriceRangeText(value) {
+  const clean = sanitizeText(value);
+  if (!clean) return null;
+  const matches = [...clean.matchAll(/(\d+(?:[.,]\d+)?)/g)];
+  if (!matches.length) return null;
+
+  const values = matches
+    .map((match) => Number(String(match[1]).replace(',', '.')))
+    .filter((num) => Number.isFinite(num) && num >= 0);
+
+  if (!values.length) return null;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  return { min, max };
+}
+
+function getSelectedPriceEstimate(selectedServices = []) {
+  let sumMin = 0;
+  let sumMax = 0;
+  let knownCount = 0;
+  let unknownCount = 0;
+
+  (selectedServices || []).forEach((service) => {
+    const parsed = parsePriceRangeText(service?.precio);
+    if (!parsed) {
+      unknownCount += 1;
+      return;
+    }
+    knownCount += 1;
+    sumMin += parsed.min;
+    sumMax += parsed.max;
+  });
+
+  return {
+    hasKnown: knownCount > 0,
+    sumMin,
+    sumMax,
+    unknownCount,
+  };
+}
+
+function getSelectedCostLabel(selectedServices = []) {
+  const estimate = getSelectedPriceEstimate(selectedServices);
+  if (!estimate.hasKnown) return 'Por confirmar';
+
+  const minLabel = formatCurrencyCompact(estimate.sumMin);
+  const maxLabel = formatCurrencyCompact(estimate.sumMax);
+  let costLabel = estimate.sumMin === estimate.sumMax
+    ? minLabel
+    : `${minLabel} - ${maxLabel}`;
+
+  if (estimate.unknownCount > 0) {
+    costLabel += ` + ${estimate.unknownCount} por confirmar`;
+  }
+  return costLabel;
+}
+
+function updateCitaServicioResumen() {
+  const servicesLabel = document.getElementById('citaServiciosLabel');
+  const timeLabel = document.getElementById('citaTiempoAproxLabel');
+  const costLabel = document.getElementById('citaCostoAproxLabel');
+  if (!servicesLabel || !timeLabel || !costLabel) return;
+
+  const staff = getActiveStaff();
+  const selected = getSelectedServices();
+  if (!staff || !selected.length) {
+    servicesLabel.textContent = 'Sin seleccionar';
+    timeLabel.textContent = 'Sin seleccionar';
+    costLabel.textContent = 'Por confirmar';
+    return;
+  }
+
+  const labels = selected.map((service) => sanitizeText(service.nombre)).filter(Boolean);
+  servicesLabel.textContent = labels.join(', ') || 'Sin seleccionar';
+  timeLabel.textContent = formatDurationLabel(getSelectedDurationMinutes(staff));
+  costLabel.textContent = getSelectedCostLabel(selected);
+}
+
 function setFeedback(type, message) {
   const feedback = document.getElementById('citaFeedback');
   if (!feedback) return;
@@ -454,6 +624,7 @@ function updateSelectedLabels() {
   }
   if (inputFecha) inputFecha.value = state.selectedDate;
   if (inputHora) inputHora.value = state.selectedTime;
+  updateCitaServicioResumen();
 }
 
 function renderStaffCards() {
@@ -482,7 +653,7 @@ function renderStaffCards() {
 
     return `
       <article
-        class="snap-start shrink-0 rounded-xl border border-gray-200 px-2 pt-1.5 pb-2 flex flex-col justify-between items-center text-center bg-white shadow-sm cursor-pointer select-none h-[182px]"
+        class="snap-start shrink-0 rounded-xl border border-gray-200 px-2 pt-2 pb-2 flex flex-col justify-between items-center text-center bg-white shadow-sm cursor-pointer select-none h-[204px]"
         style="flex: 0 0 calc((100% - 1rem) / 3);"
         data-action="abrir-staff-card"
         data-staff-id="${Number(staff.id)}"
@@ -491,14 +662,16 @@ function renderStaffCards() {
         aria-label="Abrir perfil de ${escapeHtml(nombreRaw)}"
       >
         <div class="w-full flex flex-col items-center gap-1.5">
-          <img src="${escapeHtml(foto)}" alt="${escapeHtml(nombreRaw)}" class="w-20 h-20 rounded-xl object-cover border border-gray-200">
+          <img src="${escapeHtml(foto)}" alt="${escapeHtml(nombreRaw)}" class="w-24 h-24 rounded-2xl object-cover border border-gray-200">
           <div class="w-full min-h-[50px] flex flex-col items-center justify-center text-center">
             <p class="w-full text-center text-sm font-normal text-gray-800 leading-tight h-[16px] overflow-hidden">${nombreLinea1}</p>
             <p class="w-full text-center text-sm font-normal text-gray-800 leading-tight h-[16px] overflow-hidden">${nombreLinea2 || '&nbsp;'}</p>
             <p class="text-[11px] text-gray-500 leading-tight h-[14px] overflow-hidden">${profesion}</p>
           </div>
         </div>
-        <div class="w-full rounded-lg bg-[#121212] text-white text-[11px] font-normal py-1">Ver perfil y citas</div>
+        <div class="w-full flex justify-center">
+          <div class="inline-flex items-center justify-center rounded-md bg-[#121212] text-white text-[10px] font-light px-2.5 py-0.5 leading-tight">Ver perfil y citas</div>
+        </div>
       </article>
     `;
   }).join('');
@@ -572,28 +745,222 @@ function renderStaffContacts(staff) {
     `).join('');
 }
 
-function renderStaffGallery(staffId) {
+function destroySwiper(swiperInstance) {
+  if (!swiperInstance || typeof swiperInstance.destroy !== 'function') return null;
+  swiperInstance.destroy(true, true);
+  return null;
+}
+
+function initStaffGallerySwiper() {
   const gallery = document.getElementById('staffModalGaleria');
+  const wrapper = document.getElementById('staffModalGaleriaWrapper');
+  const pagination = document.getElementById('staffModalGaleriaPagination');
+  if (!gallery || !wrapper) return;
+
+  state.staffGallerySwiper = destroySwiper(state.staffGallerySwiper);
+  const totalSlides = wrapper.querySelectorAll('.swiper-slide').length;
+  if (!totalSlides) {
+    if (pagination) pagination.innerHTML = '';
+    return;
+  }
+
+  state.staffGallerySwiper = new Swiper(gallery, {
+    slidesPerView: 2.2,
+    spaceBetween: 8,
+    grabCursor: true,
+    watchOverflow: true,
+    pagination: pagination
+      ? {
+          el: pagination,
+          clickable: true,
+        }
+      : undefined,
+    breakpoints: {
+      480: { slidesPerView: 2.6 },
+      640: { slidesPerView: 3.1 },
+    },
+  });
+}
+
+function renderStaffWorkViewer(staffId, startIndex = 0) {
+  const slider = document.getElementById('staffTrabajoViewerSlider');
+  const wrapper = document.getElementById('staffTrabajoViewerWrapper');
+  const prevBtn = document.getElementById('staffTrabajoViewerPrev');
+  const nextBtn = document.getElementById('staffTrabajoViewerNext');
+  const pagination = document.getElementById('staffTrabajoViewerPagination');
+  if (!slider || !wrapper) return false;
+
+  const trabajos = state.trabajosByStaff.get(Number(staffId)) || [];
+  state.staffWorkViewerSwiper = destroySwiper(state.staffWorkViewerSwiper);
+
+  if (!trabajos.length) {
+    wrapper.innerHTML = '';
+    if (pagination) pagination.innerHTML = '';
+    return false;
+  }
+
+  wrapper.innerHTML = trabajos.map((item) => {
+    const image = sanitizeText(item.media_url) || STAFF_WORK_PLACEHOLDER;
+    const titulo = sanitizeText(item.titulo) || 'Trabajo';
+    return `
+      <div class="swiper-slide">
+        <img src="${escapeHtml(image)}" alt="${escapeHtml(titulo)}">
+      </div>
+    `;
+  }).join('');
+
+  const hasMultiple = trabajos.length > 1;
+  if (prevBtn) prevBtn.classList.toggle('hidden', !hasMultiple);
+  if (nextBtn) nextBtn.classList.toggle('hidden', !hasMultiple);
+
+  state.staffWorkViewerSwiper = new Swiper(slider, {
+    initialSlide: Math.max(0, Math.min(Number(startIndex) || 0, trabajos.length - 1)),
+    slidesPerView: 1,
+    spaceBetween: 12,
+    watchOverflow: true,
+    grabCursor: true,
+    navigation: hasMultiple && prevBtn && nextBtn
+      ? {
+          prevEl: prevBtn,
+          nextEl: nextBtn,
+        }
+      : undefined,
+    pagination: pagination
+      ? {
+          el: pagination,
+          clickable: true,
+        }
+      : undefined,
+    keyboard: { enabled: true },
+  });
+
+  return true;
+}
+
+function openStaffWorkViewer(staffId, startIndex = 0) {
+  const modal = document.getElementById('modalStaffTrabajoViewer');
+  if (!modal) return;
+  const ready = renderStaffWorkViewer(staffId, startIndex);
+  if (!ready) return;
+  modal.classList.remove('hidden');
+}
+
+function closeStaffWorkViewer() {
+  const modal = document.getElementById('modalStaffTrabajoViewer');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  state.staffWorkViewerSwiper = destroySwiper(state.staffWorkViewerSwiper);
+}
+
+function renderStaffGallery(staffId) {
+  const wrapper = document.getElementById('staffModalGaleriaWrapper');
+  const pagination = document.getElementById('staffModalGaleriaPagination');
   const empty = document.getElementById('staffModalGaleriaVacia');
-  if (!gallery || !empty) return;
+  if (!wrapper || !empty) return;
 
   const trabajos = state.trabajosByStaff.get(Number(staffId)) || [];
   if (!trabajos.length) {
-    gallery.innerHTML = '';
+    wrapper.innerHTML = '';
+    if (pagination) pagination.innerHTML = '';
+    state.staffGallerySwiper = destroySwiper(state.staffGallerySwiper);
     empty.classList.remove('hidden');
     return;
   }
 
   empty.classList.add('hidden');
-  gallery.innerHTML = trabajos.map((item) => {
+  wrapper.innerHTML = trabajos.map((item, index) => {
     const image = sanitizeText(item.media_url) || STAFF_WORK_PLACEHOLDER;
     const titulo = sanitizeText(item.titulo) || 'Trabajo';
     return `
-      <a href="${escapeHtml(image)}" target="_blank" rel="noopener noreferrer" class="shrink-0">
-        <img src="${escapeHtml(image)}" alt="${escapeHtml(titulo)}" class="w-28 h-20 rounded-lg object-cover border border-gray-200">
-      </a>
+      <button
+        type="button"
+        class="swiper-slide rounded-lg overflow-hidden border border-gray-200 h-20"
+        data-action="open-staff-work"
+        data-staff-id="${Number(staffId)}"
+        data-index="${index}"
+        aria-label="Abrir imagen de trabajo ${index + 1}"
+      >
+        <img src="${escapeHtml(image)}" alt="${escapeHtml(titulo)}" class="w-full h-full object-cover">
+      </button>
     `;
   }).join('');
+  initStaffGallerySwiper();
+}
+
+function renderServiceSelector() {
+  const container = document.getElementById('staffServiciosSelector');
+  const empty = document.getElementById('staffServiciosSelectorEmpty');
+  const clearBtn = document.getElementById('btnServiciosLimpiar');
+  const staff = getActiveStaff();
+  if (!container || !empty) return;
+  if (!staff) {
+    container.innerHTML = '';
+    empty.classList.add('hidden');
+    if (clearBtn) clearBtn.classList.add('hidden');
+    updateCitaServicioResumen();
+    return;
+  }
+
+  const services = getActiveStaffServices();
+  const validIds = new Set(services.map((item) => Number(item.id)));
+  const nextSelected = new Set();
+  (state.selectedServiceIds || new Set()).forEach((id) => {
+    const parsed = Number(id);
+    if (validIds.has(parsed)) nextSelected.add(parsed);
+  });
+  state.selectedServiceIds = nextSelected;
+
+  if (!services.length) {
+    container.innerHTML = '';
+    empty.classList.remove('hidden');
+    if (clearBtn) clearBtn.classList.add('hidden');
+    updateCitaServicioResumen();
+    return;
+  }
+
+  empty.classList.add('hidden');
+  container.innerHTML = services.map((service) => {
+    const id = Number(service.id);
+    const selected = state.selectedServiceIds.has(id);
+    const nombre = escapeHtml(sanitizeText(service.nombre) || 'Servicio');
+    const descripcion = sanitizeText(service.descripcion);
+    const descripcionHtml = descripcion
+      ? `<p class="text-[12px] text-gray-500 leading-tight mt-1">${escapeHtml(descripcion)}</p>`
+      : '';
+
+    return `
+      <button
+        type="button"
+        data-action="toggle-service"
+        data-service-id="${id}"
+        class="w-full text-left rounded-xl border px-3 py-2 transition ${selected ? 'border-[#fb8500] bg-[#fff4e8] shadow-[0_0_0_1px_rgba(251,133,0,0.18)]' : 'border-gray-200 bg-white hover:bg-gray-50'}"
+      >
+        <div class="flex items-start gap-2">
+          <span class="mt-0.5 w-5 h-5 rounded-full border inline-flex items-center justify-center ${selected ? 'bg-[#fb8500] border-[#fb8500] text-white' : 'bg-white border-gray-300 text-transparent'}">
+            <i class="fa-solid fa-check text-[10px]"></i>
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-[14px] leading-tight text-gray-800">${nombre}</span>
+            ${descripcionHtml}
+            <span class="mt-1 flex flex-wrap gap-1.5">
+              <span class="text-[11px] px-2 py-0.5 rounded-full border border-gray-200 bg-white text-gray-600">${Math.max(15, Math.floor(Number(service.duracion_min) || 60))} min</span>
+              <span class="text-[11px] px-2 py-0.5 rounded-full border border-gray-200 bg-white text-gray-600">${escapeHtml(formatPriceText(service.precio))}</span>
+            </span>
+          </span>
+        </div>
+      </button>
+    `;
+  }).join('');
+
+  const selected = getSelectedServices();
+  if (!selected.length) {
+    if (clearBtn) clearBtn.classList.add('hidden');
+    updateCitaServicioResumen();
+    return;
+  }
+
+  if (clearBtn) clearBtn.classList.remove('hidden');
+  updateCitaServicioResumen();
 }
 
 function buildBookedByDateMap(rows = []) {
@@ -614,16 +981,16 @@ function buildBookedByDateMap(rows = []) {
   return map;
 }
 
-function getMonthCacheKey(staffId, monthStartISO) {
-  return `${Number(staffId)}:${monthStartISO}`;
+function getMonthCacheKey(staffId, monthStartISO, durationMinutes) {
+  return `${Number(staffId)}:${monthStartISO}:${Math.max(0, Math.floor(Number(durationMinutes) || 0))}`;
 }
 
-async function getMonthAvailability(staff, monthAnchorDate) {
+async function getMonthAvailability(staff, monthAnchorDate, durationMinutes) {
   const monthStart = firstDayOfMonth(monthAnchorDate);
   const monthEnd = lastDayOfMonth(monthStart);
   const fromISO = formatDateISO(monthStart);
   const toISO = formatDateISO(monthEnd);
-  const cacheKey = getMonthCacheKey(staff.id, fromISO);
+  const cacheKey = getMonthCacheKey(staff.id, fromISO, durationMinutes);
   const cached = state.calendarMonthCache.get(cacheKey);
   if (cached) return cached;
 
@@ -644,7 +1011,7 @@ async function getMonthAvailability(staff, monthAnchorDate) {
     if (dateISO >= todayISO) {
       const booked = bookedByDate.get(dateISO) || [];
       const nowMinutes = dateISO === todayISO ? ((new Date().getHours() * 60) + new Date().getMinutes()) : null;
-      slots = buildSlotsFromAgenda(agenda, dateISO, booked)
+      slots = buildSlotsFromAgenda(agenda, dateISO, booked, durationMinutes)
         .filter((slot) => nowMinutes == null || slot.inicioMin > (nowMinutes + 4));
     }
 
@@ -684,7 +1051,21 @@ async function renderCalendarDays() {
     state.calendarMonthAnchor = firstDayOfMonth(state.calendarMonthAnchor);
   }
 
-  const monthData = await getMonthAvailability(staff, state.calendarMonthAnchor);
+  const selectedDuration = getSelectedDurationMinutes(staff);
+  if (selectedDuration <= 0) {
+    if (label) label.textContent = formatMonthLabel(state.calendarMonthAnchor);
+    container.innerHTML = '';
+    if (empty) {
+      empty.textContent = 'Selecciona al menos un servicio para ver días disponibles.';
+      empty.classList.remove('hidden');
+    }
+    state.selectedDate = '';
+    state.selectedTime = '';
+    updateSelectedLabels();
+    return;
+  }
+
+  const monthData = await getMonthAvailability(staff, state.calendarMonthAnchor, selectedDuration);
   const { monthStart, monthEnd, dayInfo, firstAvailableDate } = monthData;
   const monthStartISO = formatDateISO(monthStart);
   const monthEndISO = formatDateISO(monthEnd);
@@ -697,7 +1078,10 @@ async function renderCalendarDays() {
   }
 
   if (label) label.textContent = formatMonthLabel(monthStart);
-  if (empty) empty.classList.toggle('hidden', !!firstAvailableDate);
+  if (empty) {
+    empty.textContent = 'Este profesional no tiene disponibilidad en este mes.';
+    empty.classList.toggle('hidden', !!firstAvailableDate);
+  }
 
   const firstWeekday = monthStart.getDay();
   const cells = [];
@@ -708,7 +1092,7 @@ async function renderCalendarDays() {
 
   for (let day = 1; day <= monthEnd.getDate(); day += 1) {
     const dayISO = formatDateISO(new Date(monthStart.getFullYear(), monthStart.getMonth(), day));
-    const info = dayInfo.get(dayISO) || { available: false, slotsCount: 0 };
+    const info = dayInfo.get(dayISO) || { available: false };
     const selected = state.selectedDate === dayISO;
     const disabled = !info.available;
 
@@ -723,11 +1107,10 @@ async function renderCalendarDays() {
         type="button"
         data-action="select-day"
         data-day="${dayISO}"
-        class="h-11 rounded-md border text-[11px] leading-tight ${classes}"
+        class="h-11 rounded-md border flex items-center justify-center text-base font-normal leading-none ${classes}"
         ${disabled ? 'disabled' : ''}
       >
-        <span class="block text-sm font-normal">${day}</span>
-        ${info.available ? `<span class="block text-[10px] opacity-80">${info.slotsCount}</span>` : '<span class="block text-[10px] opacity-70">—</span>'}
+        <span>${day}</span>
       </button>
     `);
   }
@@ -748,9 +1131,13 @@ async function renderSlotsForSelectedDay() {
   if (!slotsContainer || !empty) return;
 
   const staff = getActiveStaff();
-  if (!staff || !state.selectedDate) {
+  const selectedDuration = getSelectedDurationMinutes(staff);
+  if (!staff || selectedDuration <= 0 || !state.selectedDate) {
     slotsContainer.innerHTML = '';
-    empty.classList.add('hidden');
+    empty.classList.toggle('hidden', selectedDuration > 0 || !staff);
+    if (empty && selectedDuration <= 0 && staff) {
+      empty.textContent = 'Selecciona uno o más servicios para habilitar los horarios.';
+    }
     if (title) title.textContent = 'Horarios disponibles';
     updateSelectedLabels();
     return;
@@ -763,7 +1150,7 @@ async function renderSlotsForSelectedDay() {
   const agenda = normalizeAgendaConfig(staff.agenda_config);
   const selectedDateObj = new Date(`${state.selectedDate}T12:00:00`);
   const monthAnchor = firstDayOfMonth(selectedDateObj);
-  const monthData = await getMonthAvailability(staff, monthAnchor);
+  const monthData = await getMonthAvailability(staff, monthAnchor, selectedDuration);
   const booked = monthData.bookedByDate.get(state.selectedDate) || await fetchBookedIntervals(staff.id, state.selectedDate);
   const todayISO = formatDateISO(new Date());
   const nowMinutes = (() => {
@@ -772,12 +1159,13 @@ async function renderSlotsForSelectedDay() {
     return now.getHours() * 60 + now.getMinutes();
   })();
 
-  const slots = buildSlotsFromAgenda(agenda, state.selectedDate, booked)
+  const slots = buildSlotsFromAgenda(agenda, state.selectedDate, booked, selectedDuration)
     .filter((slot) => nowMinutes == null || slot.inicioMin > (nowMinutes + 4));
 
   if (!slots.length) {
     slotsContainer.innerHTML = '';
     empty.classList.remove('hidden');
+    empty.textContent = 'No hay horarios disponibles para ese día.';
     state.selectedTime = '';
     updateSelectedLabels();
     return;
@@ -815,6 +1203,7 @@ function closeModal() {
   const modal = document.getElementById('modalStaffServicios');
   const stickyName = document.getElementById('modalStaffStickyName');
   if (!modal) return;
+  closeStaffWorkViewer();
   modal.classList.add('hidden');
   document.body.classList.remove('overflow-hidden');
   if (stickyName) stickyName.textContent = '';
@@ -860,6 +1249,7 @@ async function openStaffProfile(staffId) {
 
   state.activeStaffId = Number(staff.id);
   state.activeStaffName = sanitizeText(staff.nombre) || 'Profesional';
+  state.selectedServiceIds = new Set();
   state.selectedDate = '';
   state.selectedTime = '';
   state.calendarMonthAnchor = firstDayOfMonth(new Date());
@@ -876,6 +1266,7 @@ async function openStaffProfile(staffId) {
 
   renderStaffContacts(staff);
   renderStaffGallery(staff.id);
+  renderServiceSelector();
 
   await renderCalendarDays();
   await renderSlotsForSelectedDay();
@@ -883,6 +1274,7 @@ async function openStaffProfile(staffId) {
   updateSelectedLabels();
   setFeedback('', '');
   await prefillUserContact();
+  closeStaffWorkViewer();
   openModal();
 
   const panel = document.getElementById('modalStaffPanel');
@@ -901,11 +1293,25 @@ function buildTrabajosMap(trabajos = []) {
   return map;
 }
 
+function buildServiciosMap(servicios = []) {
+  const map = new Map();
+  (servicios || []).forEach((item) => {
+    const staffId = Number(item?.id_staff);
+    if (!Number.isFinite(staffId) || staffId <= 0) return;
+    if (!map.has(staffId)) map.set(staffId, []);
+    map.get(staffId).push(item);
+  });
+  return map;
+}
+
 function bindEvents() {
   if (state.modalBound) return;
   state.modalBound = true;
 
   const grid = document.getElementById('staffServiciosGrid');
+  const serviceSelector = document.getElementById('staffServiciosSelector');
+  const gallery = document.getElementById('staffModalGaleria');
+  const btnServiciosLimpiar = document.getElementById('btnServiciosLimpiar');
   const modalPanel = document.getElementById('modalStaffPanel');
   const daysContainer = document.getElementById('calendarioCitasDias');
   const slotsContainer = document.getElementById('citasSlotsContainer');
@@ -914,6 +1320,8 @@ function bindEvents() {
   const form = document.getElementById('formCitaStaff');
   const closeBtn = document.getElementById('cerrarModalStaffServicios');
   const backdrop = document.getElementById('modalBackdropStaffServicios');
+  const closeViewerBtn = document.getElementById('cerrarModalStaffTrabajoViewer');
+  const viewerBackdrop = document.getElementById('modalBackdropStaffTrabajoViewer');
 
   grid?.addEventListener('click', (event) => {
     const card = event.target.closest('[data-action="abrir-staff-card"]');
@@ -931,6 +1339,53 @@ function bindEvents() {
     const staffId = Number(card.getAttribute('data-staff-id'));
     if (!Number.isFinite(staffId) || staffId <= 0) return;
     void openStaffProfile(staffId);
+  });
+
+  serviceSelector?.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-action="toggle-service"]');
+    if (!button) return;
+    const serviceId = Number(button.getAttribute('data-service-id'));
+    if (!Number.isFinite(serviceId) || serviceId <= 0) return;
+
+    if (!(state.selectedServiceIds instanceof Set)) {
+      state.selectedServiceIds = new Set();
+    }
+
+    if (state.selectedServiceIds.has(serviceId)) {
+      state.selectedServiceIds.delete(serviceId);
+    } else {
+      state.selectedServiceIds.add(serviceId);
+    }
+
+    state.selectedDate = '';
+    state.selectedTime = '';
+    state.calendarMonthCache.clear();
+    renderServiceSelector();
+    void (async () => {
+      await renderCalendarDays();
+      await renderSlotsForSelectedDay();
+    })();
+  });
+
+  gallery?.addEventListener('click', (event) => {
+    const trigger = event.target.closest('[data-action="open-staff-work"]');
+    if (!trigger) return;
+    const staffId = Number(trigger.getAttribute('data-staff-id'));
+    const index = Number(trigger.getAttribute('data-index'));
+    if (!Number.isFinite(staffId) || staffId <= 0) return;
+    openStaffWorkViewer(staffId, Number.isFinite(index) ? index : 0);
+  });
+
+  btnServiciosLimpiar?.addEventListener('click', () => {
+    state.selectedServiceIds = new Set();
+    state.selectedDate = '';
+    state.selectedTime = '';
+    state.calendarMonthCache.clear();
+    renderServiceSelector();
+    void (async () => {
+      await renderCalendarDays();
+      await renderSlotsForSelectedDay();
+    })();
   });
 
   daysContainer?.addEventListener('click', (event) => {
@@ -977,7 +1432,22 @@ function bindEvents() {
 
   closeBtn?.addEventListener('click', closeModal);
   backdrop?.addEventListener('click', closeModal);
+  closeViewerBtn?.addEventListener('click', closeStaffWorkViewer);
+  viewerBackdrop?.addEventListener('click', closeStaffWorkViewer);
   modalPanel?.addEventListener('scroll', updateModalStickyName);
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    const viewerModal = document.getElementById('modalStaffTrabajoViewer');
+    if (viewerModal && !viewerModal.classList.contains('hidden')) {
+      closeStaffWorkViewer();
+      return;
+    }
+    const staffModal = document.getElementById('modalStaffServicios');
+    if (staffModal && !staffModal.classList.contains('hidden')) {
+      closeModal();
+    }
+  });
 
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -996,14 +1466,12 @@ function bindEvents() {
     const inputNombre = document.getElementById('inputCitaNombre');
     const inputTelefono = document.getElementById('inputCitaTelefono');
     const inputEmail = document.getElementById('inputCitaEmail');
-    const inputServicio = document.getElementById('inputCitaServicio');
     const inputNotas = document.getElementById('inputCitaNotas');
     const submitBtn = document.getElementById('btnReservarCita');
 
     const clienteNombre = sanitizeText(inputNombre?.value);
     const clienteTelefono = sanitizeText(inputTelefono?.value);
     const clienteEmail = sanitizeText(inputEmail?.value);
-    const servicio = sanitizeText(inputServicio?.value);
     const notas = sanitizeText(inputNotas?.value);
 
     if (!clienteNombre || !clienteTelefono) {
@@ -1012,6 +1480,18 @@ function bindEvents() {
     }
 
     const agenda = normalizeAgendaConfig(staff.agenda_config);
+    const selectedServices = getSelectedServices();
+    const selectedDuration = getSelectedDurationMinutes(staff);
+    if (!selectedServices.length || selectedDuration <= 0) {
+      setFeedback('error', 'Selecciona al menos un servicio antes de elegir horario.');
+      return;
+    }
+
+    const servicio = selectedServices
+      .map((service) => `${sanitizeText(service.nombre)} (${Math.max(15, Math.floor(Number(service.duracion_min) || 60))} min · ${formatPriceText(service.precio)})`)
+      .filter(Boolean)
+      .join(' + ');
+
     const horaInicio = state.selectedTime;
     const startMin = toMinutes(horaInicio);
     if (startMin == null) {
@@ -1019,7 +1499,7 @@ function bindEvents() {
       return;
     }
 
-    const horaFin = minutesToHHmm(startMin + agenda.slot_minutes);
+    const horaFin = minutesToHHmm(startMin + selectedDuration);
 
     let userId = null;
     try {
@@ -1081,10 +1561,11 @@ function bindEvents() {
       }
 
       setFeedback('success', 'Cita reservada. Recibiras notificacion cuando el comercio la confirme.');
-      if (inputServicio) inputServicio.value = '';
       if (inputNotas) inputNotas.value = '';
+      state.selectedServiceIds = new Set();
       state.selectedTime = '';
       state.calendarMonthCache.clear();
+      renderServiceSelector();
       await renderCalendarDays();
       await renderSlotsForSelectedDay();
     } catch (error) {
@@ -1111,12 +1592,16 @@ export async function initPerfilServicios({ idComercio, comercio = null } = {}) 
   state.staffList = [];
   state.staffById = new Map();
   state.trabajosByStaff = new Map();
+  state.serviciosByStaff = new Map();
   state.activeStaffId = null;
   state.activeStaffName = '';
+  state.selectedServiceIds = new Set();
   state.selectedDate = '';
   state.selectedTime = '';
   state.calendarMonthAnchor = firstDayOfMonth(new Date());
   state.calendarMonthCache = new Map();
+  state.staffGallerySwiper = destroySwiper(state.staffGallerySwiper);
+  state.staffWorkViewerSwiper = destroySwiper(state.staffWorkViewerSwiper);
 
   const fetchedCategorias = await fetchCategoriasComercio(id);
   const categoriasBase = fetchedCategorias.length ? fetchedCategorias : getCategoriasFromComercioData(comercio);
@@ -1133,6 +1618,8 @@ export async function initPerfilServicios({ idComercio, comercio = null } = {}) 
 
   const trabajos = await fetchStaffTrabajos(staff.map((row) => row.id));
   state.trabajosByStaff = buildTrabajosMap(trabajos);
+  const servicios = await fetchStaffServicios(staff.map((row) => row.id));
+  state.serviciosByStaff = buildServiciosMap(servicios);
 
   showSection(true);
   bindEvents();

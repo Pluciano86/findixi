@@ -116,6 +116,25 @@
       position: relative;
       z-index: 1000;
     }
+    .staff-galeria-swiper .swiper-slide {
+      height: auto;
+    }
+    .staff-galeria-swiper .swiper-pagination-bullet-active,
+    .staff-lightbox-swiper .swiper-pagination-bullet-active {
+      background: #fb8500;
+    }
+    .staff-lightbox-swiper .swiper-slide {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 58vh;
+    }
+    .staff-lightbox-swiper .swiper-slide img {
+      max-width: min(92vw, 560px);
+      max-height: 72vh;
+      object-fit: contain;
+      border-radius: 14px;
+    }
   </style>
   <script type="module" src="./js/i18n.js"></script>
 </head>
@@ -333,7 +352,10 @@
 
         <div>
           <h4 class="text-base font-normal text-gray-700 mb-2">Galería de trabajos</h4>
-          <div id="staffModalGaleria" class="flex gap-2 overflow-x-auto pb-1"></div>
+          <div id="staffModalGaleria" class="swiper staff-galeria-swiper">
+            <div id="staffModalGaleriaWrapper" class="swiper-wrapper"></div>
+          </div>
+          <div id="staffModalGaleriaPagination" class="swiper-pagination !relative !bottom-0 mt-1"></div>
           <p id="staffModalGaleriaVacia" class="hidden text-xs text-gray-500">Este profesional aún no tiene trabajos publicados.</p>
         </div>
 
@@ -344,7 +366,16 @@
 
         <div class="border border-gray-200 rounded-xl p-3">
           <h4 class="text-base font-normal text-gray-700">Reservar cita</h4>
-          <p class="text-xs text-gray-500 mt-1">Selecciona fecha, hora y completa tus datos.</p>
+          <p class="text-xs text-gray-500 mt-1">Selecciona uno o varios servicios, luego fecha y hora.</p>
+
+          <div class="mt-3">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <p class="text-sm font-normal text-gray-700">Servicios</p>
+              <button id="btnServiciosLimpiar" type="button" class="hidden text-[11px] text-[#fb8500] underline underline-offset-2">Limpiar selección</button>
+            </div>
+            <div id="staffServiciosSelector" class="space-y-2"></div>
+            <p id="staffServiciosSelectorEmpty" class="hidden text-xs text-gray-500 mt-1">Este profesional aún no tiene servicios publicados.</p>
+          </div>
 
           <div class="mt-3">
             <div class="flex items-center justify-between mb-2">
@@ -379,7 +410,7 @@
           <form id="formCitaStaff" class="mt-4 space-y-2">
             <input id="citaFecha" type="hidden" />
             <input id="citaHora" type="hidden" />
-            <div class="text-sm text-gray-500 space-y-0.5">
+            <div class="text-sm text-gray-500 space-y-1">
               <div>
                 <span>Fecha:</span>
                 <span id="citaFechaLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
@@ -388,17 +419,47 @@
                 <span>Hora:</span>
                 <span id="citaHoraLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
               </div>
+              <div>
+                <span>Servicios:</span>
+                <span id="citaServiciosLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
+              </div>
+              <div>
+                <span>Tiempo Aproximado:</span>
+                <span id="citaTiempoAproxLabel" class="text-base text-[#424242] font-normal">Sin seleccionar</span>
+              </div>
+              <div>
+                <span>Costo Aproximado:</span>
+                <span id="citaCostoAproxLabel" class="text-base text-[#424242] font-normal">Por confirmar</span>
+              </div>
             </div>
             <input id="inputCitaNombre" type="text" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Tu nombre completo" required />
             <input id="inputCitaTelefono" type="tel" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Teléfono" required />
             <input id="inputCitaEmail" type="email" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Email (opcional)" />
-            <input id="inputCitaServicio" type="text" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Servicio (ej. Corte + Barba)" />
             <textarea id="inputCitaNotas" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Notas adicionales (opcional)"></textarea>
             <button id="btnReservarCita" type="submit" class="w-full rounded-lg bg-[#fb8500] text-white font-normal text-base py-2 hover:bg-[#ea7c00] transition">Confirmar cita</button>
           </form>
 
           <p id="citaFeedback" class="hidden text-xs mt-2"></p>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modalStaffTrabajoViewer" class="fixed inset-0 z-[100003] hidden">
+  <div id="modalBackdropStaffTrabajoViewer" class="absolute inset-0 bg-black/85"></div>
+  <div class="relative h-full w-full flex items-center justify-center px-4 py-6">
+    <button id="cerrarModalStaffTrabajoViewer" class="absolute top-3 right-4 text-white text-3xl leading-none" aria-label="Cerrar galería de trabajos">&times;</button>
+    <div class="w-full max-w-2xl">
+      <div id="staffTrabajoViewerSlider" class="swiper staff-lightbox-swiper">
+        <div id="staffTrabajoViewerWrapper" class="swiper-wrapper"></div>
+        <button id="staffTrabajoViewerPrev" type="button" class="absolute top-1/2 -translate-y-1/2 left-0 z-10 w-10 h-10 rounded-full bg-black/45 text-white border border-white/30 hover:bg-black/65">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <button id="staffTrabajoViewerNext" type="button" class="absolute top-1/2 -translate-y-1/2 right-0 z-10 w-10 h-10 rounded-full bg-black/45 text-white border border-white/30 hover:bg-black/65">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+        <div id="staffTrabajoViewerPagination" class="swiper-pagination !relative !bottom-0 mt-3"></div>
       </div>
     </div>
   </div>
