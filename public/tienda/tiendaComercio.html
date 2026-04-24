@@ -12,11 +12,24 @@
     :root {
       --tienda-color-btn: #fb8500;
       --tienda-color-btn-text: #ffffff;
+      --tienda-color-btn-idle-bg: #ffffff;
+      --tienda-color-btn-idle-text: #374151;
+      --tienda-cat-border-width: 1px;
+      --tienda-cat-border-color: #fb8500;
+      --tienda-cat-border-radius: 9999px;
       --tienda-color-price: #111827;
       --tienda-color-title: #111827;
       --tienda-color-text: #374151;
       --tienda-background: #f8fafc;
       --tienda-item-bg: #ffffff;
+      --tienda-font-button: 'Kanit', sans-serif;
+      --tienda-font-title: 'Kanit', sans-serif;
+      --tienda-font-price: 'Kanit', sans-serif;
+      --tienda-font-desc: 'Kanit', sans-serif;
+      --tienda-font-title-size: 16px;
+      --tienda-font-price-size: 16px;
+      --tienda-font-desc-size: 14px;
+      --tienda-text-align: left;
     }
 
     html,
@@ -72,16 +85,76 @@
     }
 
     .tienda-categoria-btn {
-      border: 1px solid var(--tienda-color-btn);
-      color: var(--tienda-color-btn);
-      background: #ffffff;
+      border-style: solid;
+      border-width: var(--tienda-cat-border-width);
+      border-color: var(--tienda-cat-border-color);
+      color: var(--tienda-color-btn-idle-text);
+      background: var(--tienda-color-btn-idle-bg);
       opacity: 0.9;
+      border-radius: var(--tienda-cat-border-radius);
+      font-family: var(--tienda-font-button);
     }
 
     .tienda-categoria-btn.is-active {
       background: var(--tienda-color-btn);
       color: var(--tienda-color-btn-text);
       border-color: var(--tienda-color-btn);
+    }
+
+    .tienda-card-title {
+      font-family: var(--tienda-font-title);
+      text-align: var(--tienda-text-align);
+      font-size: var(--tienda-font-title-size);
+    }
+
+    .tienda-card-price {
+      font-family: var(--tienda-font-price);
+      text-align: var(--tienda-text-align);
+      font-size: var(--tienda-font-price-size);
+    }
+
+    .tienda-card-desc {
+      font-family: var(--tienda-font-desc);
+      text-align: var(--tienda-text-align);
+      font-size: var(--tienda-font-desc-size);
+    }
+
+    .tienda-card-desc {
+      color: var(--tienda-color-text);
+    }
+
+    .tienda-slider-dots {
+      pointer-events: none;
+    }
+
+    .tienda-slider-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.55);
+      transition: transform 0.18s ease, background-color 0.18s ease;
+    }
+
+    .tienda-slider-dot.is-active {
+      background: rgba(255, 255, 255, 0.95);
+      transform: scale(1.12);
+    }
+
+    .tienda-soldout-badge {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      z-index: 10;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      background: rgba(153, 27, 27, 0.9);
+      color: #fff;
     }
 
     .tienda-modal-backdrop {
@@ -99,6 +172,23 @@
 
     .tienda-galeria-track > img {
       scroll-snap-align: center;
+    }
+
+    .tienda-size-chip {
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      color: #111827;
+      border-radius: 10px;
+      padding: 8px 10px;
+      min-width: 64px;
+      text-align: center;
+    }
+
+    .tienda-size-chip.is-disabled {
+      border-color: #e5e7eb;
+      background: #f8fafc;
+      color: #9ca3af;
+      text-decoration: line-through;
     }
   </style>
 </head>
@@ -120,8 +210,17 @@
   <main class="tienda-content-layer max-w-md mx-auto px-3 pt-4">
     <p id="estadoTienda" class="text-sm text-gray-500 px-1">Cargando productos...</p>
 
+    <section id="storeGreetingWrap" class="hidden mt-3">
+      <p id="storeGreetingText" class="text-sm text-gray-600 px-1 whitespace-pre-line"></p>
+    </section>
+
     <section id="categoriaSection" class="hidden mt-3">
       <div id="categoriaButtons" class="flex gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
+      <div class="mt-2 flex items-center justify-end">
+        <button id="toggleHideSoldOut" type="button" class="hidden tienda-categoria-btn px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition">
+          Ocultar agotados
+        </button>
+      </div>
     </section>
 
     <section id="productosSection" class="hidden mt-4">
@@ -133,7 +232,7 @@
     <div id="modalProductoBackdrop" class="absolute inset-0 tienda-modal-backdrop"></div>
 
     <div class="relative h-full w-full flex items-center justify-center p-3">
-      <article class="tienda-modal-panel relative w-full max-w-md overflow-y-auto bg-white rounded-2xl shadow-2xl">
+      <article id="modalProductoPanel" class="tienda-modal-panel relative w-full max-w-md overflow-y-auto bg-white rounded-2xl shadow-2xl">
         <button id="modalCerrar" class="absolute top-2 right-3 z-10 text-2xl text-gray-600" aria-label="Cerrar">&times;</button>
 
         <section class="p-4">
@@ -157,6 +256,11 @@
           <section id="modalOpcionesSection" class="hidden mt-4">
             <h3 class="text-base font-semibold text-gray-800">Opciones</h3>
             <div id="modalOpciones" class="mt-2 space-y-2"></div>
+          </section>
+
+          <section id="modalTallasSection" class="hidden mt-4">
+            <h3 class="text-base font-semibold text-gray-800">Tamaños disponibles</h3>
+            <div id="modalTallas" class="mt-2 flex flex-wrap gap-2"></div>
           </section>
 
           <section id="modalVariantesSection" class="hidden mt-4">

@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Editar Tienda | Findixi Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&family=Poppins:wght@300;400;600;700&family=Montserrat:wght@300;400;600;700&family=Lato:wght@300;400;700&family=Roboto+Slab:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <style>
     body {
       font-family: 'Kanit', sans-serif;
@@ -59,6 +61,11 @@
 
       <p id="storeVisualStatus" class="text-xs text-slate-500 mt-2"></p>
 
+      <div class="mt-3">
+        <label for="themeStoreGreeting" class="block text-xs font-medium text-slate-600">Saludo / descripción de tienda</label>
+        <textarea id="themeStoreGreeting" rows="3" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" placeholder="Escribe un saludo o mensaje corto para mostrar arriba de las categorías en tienda pública."></textarea>
+      </div>
+
       <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
         <article class="border border-slate-200 rounded-xl p-3">
           <div class="flex items-center justify-between gap-2 mb-2">
@@ -102,6 +109,221 @@
           <input id="storeBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp" class="mt-1 w-full text-sm" />
         </article>
       </div>
+
+      <article class="mt-4 border border-slate-200 rounded-xl p-3">
+        <h3 class="text-sm font-semibold text-slate-700">Titulo</h3>
+        <p class="text-xs text-slate-500 mt-1">Personaliza botones y tarjeta de producto.</p>
+
+        <h4 class="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Estilo Botón Categoría</h4>
+        <div class="mt-2 space-y-3">
+          <div class="flex items-end gap-2">
+            <label class="text-sm text-slate-700 pb-2 w-[70px] shrink-0">Activo</label>
+            <div class="flex-1 min-w-0">
+              <label class="block text-xs font-medium text-slate-600">Botón</label>
+              <div class="mt-1 flex items-center gap-2">
+                <input id="themeColorButton" type="color" class="h-9 w-10 min-w-[2.5rem] border border-slate-300 rounded-md p-1" />
+                <input id="themeColorButtonHex" type="text" maxlength="7" placeholder="#FB8500" class="w-full border border-slate-300 rounded-md px-2 py-2 text-sm uppercase" />
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <label class="block text-xs font-medium text-slate-600">Texto</label>
+              <div class="mt-1 flex items-center gap-2">
+                <input id="themeColorButtonText" type="color" class="h-9 w-10 min-w-[2.5rem] border border-slate-300 rounded-md p-1" />
+                <input id="themeColorButtonTextHex" type="text" maxlength="7" placeholder="#FFFFFF" class="w-full border border-slate-300 rounded-md px-2 py-2 text-sm uppercase" />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-end gap-2">
+            <label class="text-sm text-slate-700 pb-2 w-[70px] shrink-0">Normal</label>
+            <div class="flex-1 min-w-0">
+              <label class="block text-xs font-medium text-slate-600">Botón</label>
+              <div class="mt-1 flex items-center gap-2">
+                <input id="themeColorButtonIdle" type="color" class="h-9 w-10 min-w-[2.5rem] border border-slate-300 rounded-md p-1" />
+                <input id="themeColorButtonIdleHex" type="text" maxlength="7" placeholder="#FFFFFF" class="w-full border border-slate-300 rounded-md px-2 py-2 text-sm uppercase" />
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <label class="block text-xs font-medium text-slate-600">Texto</label>
+              <div class="mt-1 flex items-center gap-2">
+                <input id="themeColorButtonIdleText" type="color" class="h-9 w-10 min-w-[2.5rem] border border-slate-300 rounded-md p-1" />
+                <input id="themeColorButtonIdleTextHex" type="text" maxlength="7" placeholder="#374151" class="w-full border border-slate-300 rounded-md px-2 py-2 text-sm uppercase" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="flex flex-wrap items-center gap-5">
+            <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+              <input id="themeButtonNoBorder" type="checkbox" class="h-4 w-4" />
+              <span>Sin borde</span>
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+              <input id="themeButtonPill" type="checkbox" class="h-4 w-4" checked />
+              <span>Redondeado</span>
+            </label>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600">Fuente Botón</label>
+            <select id="themeButtonFont" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+              <option value="Kanit">Kanit</option>
+              <option value="Poppins">Poppins</option>
+              <option value="Montserrat">Montserrat</option>
+              <option value="Lato">Lato</option>
+              <option value="Roboto Slab">Roboto Slab</option>
+            </select>
+          </div>
+        </div>
+
+        <article class="mt-3 border border-slate-200 rounded-xl p-3 bg-slate-50">
+          <h5 class="text-xs font-semibold uppercase tracking-wide text-slate-600">Preview Botones Categoría</h5>
+          <div class="mt-2 flex flex-wrap items-center gap-2">
+            <button id="previewCategoryBtnActive" type="button" class="px-3 py-1.5 text-xs border rounded-full">Todos</button>
+            <button id="previewCategoryBtnIdleA" type="button" class="px-3 py-1.5 text-xs border rounded-full">Gorras</button>
+            <button id="previewCategoryBtnIdleB" type="button" class="px-3 py-1.5 text-xs border rounded-full">Camisas</button>
+          </div>
+          <div class="mt-3 flex justify-end">
+            <button id="btnSaveButtonStyles" type="button" class="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-[#fb8500] hover:bg-[#e67700] text-white text-xs font-medium">
+              Guardar estilo de botones
+            </button>
+          </div>
+        </article>
+
+        <h4 class="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-600">Estilo Tarjeta Producto</h4>
+        <div class="mt-2 space-y-3">
+          <div class="space-y-1.5">
+            <label class="text-sm text-slate-700">Nombre</label>
+            <div class="grid grid-cols-[2.25rem_5.8rem_1fr_4.6rem] gap-1.5 items-center">
+              <input id="themeColorTitle" type="color" class="h-8 w-9 border border-slate-300 rounded-md p-1" />
+              <input id="themeColorTitleHex" type="text" maxlength="7" placeholder="#111827" class="h-8 border border-slate-300 rounded-md px-2 text-xs uppercase" />
+              <select id="themeTitleFont" class="h-8 border border-slate-300 rounded-md px-2 text-xs">
+                <option value="Kanit">Kanit</option>
+                <option value="Poppins">Poppins</option>
+                <option value="Montserrat">Montserrat</option>
+                <option value="Lato">Lato</option>
+                <option value="Roboto Slab">Roboto Slab</option>
+              </select>
+              <select id="themeTitleSize" class="h-8 border border-slate-300 rounded-md px-2 text-xs">
+                <option value="14">14 px</option>
+                <option value="15">15 px</option>
+                <option value="16">16 px</option>
+                <option value="18">18 px</option>
+                <option value="20">20 px</option>
+                <option value="22">22 px</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-sm text-slate-700">Precio</label>
+            <div class="grid grid-cols-[2.25rem_5.8rem_1fr_4.6rem] gap-1.5 items-center">
+              <input id="themeColorPrice" type="color" class="h-8 w-9 border border-slate-300 rounded-md p-1" />
+              <input id="themeColorPriceHex" type="text" maxlength="7" placeholder="#111827" class="h-8 border border-slate-300 rounded-md px-2 text-xs uppercase" />
+              <select id="themePriceFont" class="h-8 border border-slate-300 rounded-md px-2 text-xs">
+                <option value="Kanit">Kanit</option>
+                <option value="Poppins">Poppins</option>
+                <option value="Montserrat">Montserrat</option>
+                <option value="Lato">Lato</option>
+                <option value="Roboto Slab">Roboto Slab</option>
+              </select>
+              <select id="themePriceSize" class="h-8 border border-slate-300 rounded-md px-2 text-xs">
+                <option value="14">14 px</option>
+                <option value="15">15 px</option>
+                <option value="16">16 px</option>
+                <option value="18">18 px</option>
+                <option value="20">20 px</option>
+                <option value="22">22 px</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-sm text-slate-700">Descripción</label>
+            <div class="grid grid-cols-[2.25rem_5.8rem_1fr_4.6rem] gap-1.5 items-center">
+              <input id="themeColorText" type="color" class="h-8 w-9 border border-slate-300 rounded-md p-1" />
+              <input id="themeColorTextHex" type="text" maxlength="7" placeholder="#374151" class="h-8 border border-slate-300 rounded-md px-2 text-xs uppercase" />
+              <select id="themeDescFont" class="h-8 border border-slate-300 rounded-md px-2 text-xs">
+                <option value="Kanit">Kanit</option>
+                <option value="Poppins">Poppins</option>
+                <option value="Montserrat">Montserrat</option>
+                <option value="Lato">Lato</option>
+                <option value="Roboto Slab">Roboto Slab</option>
+              </select>
+              <select id="themeDescSize" class="h-8 border border-slate-300 rounded-md px-2 text-xs">
+                <option value="12">12 px</option>
+                <option value="13">13 px</option>
+                <option value="14">14 px</option>
+                <option value="15">15 px</option>
+                <option value="16">16 px</option>
+                <option value="18">18 px</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-sm text-slate-700">Bienvenida</label>
+            <div class="grid grid-cols-[2.25rem_5.8rem_1fr_4.6rem] gap-1.5 items-center">
+              <input id="themeColorGreeting" type="color" class="h-8 w-9 border border-slate-300 rounded-md p-1" />
+              <input id="themeColorGreetingHex" type="text" maxlength="7" placeholder="#374151" class="h-8 border border-slate-300 rounded-md px-2 text-xs uppercase" />
+              <select id="themeGreetingFont" class="h-8 border border-slate-300 rounded-md px-2 text-xs">
+                <option value="Kanit">Kanit</option>
+                <option value="Poppins">Poppins</option>
+                <option value="Montserrat">Montserrat</option>
+                <option value="Lato">Lato</option>
+                <option value="Roboto Slab">Roboto Slab</option>
+              </select>
+              <select id="themeGreetingSize" class="h-8 border border-slate-300 rounded-md px-2 text-xs">
+                <option value="12">12 px</option>
+                <option value="13">13 px</option>
+                <option value="14">14 px</option>
+                <option value="15">15 px</option>
+                <option value="16">16 px</option>
+                <option value="18">18 px</option>
+                <option value="20">20 px</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-5">
+          <span class="text-sm text-slate-700">Alineación</span>
+          <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+            <input id="themeAlignLeft" type="checkbox" class="h-4 w-4" checked />
+            <span>Izquierda</span>
+          </label>
+          <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+            <input id="themeAlignCenter" type="checkbox" class="h-4 w-4" />
+            <span>Centralizado</span>
+          </label>
+        </div>
+
+        <article class="mt-4 border border-slate-200 rounded-xl p-3 bg-slate-50">
+          <h5 class="text-xs font-semibold uppercase tracking-wide text-slate-600">Preview Tarjeta Producto</h5>
+          <p class="text-xs text-slate-500 mt-1">Este preview se actualiza al instante y no guarda cambios hasta que presiones "Guardar visual".</p>
+
+          <article id="previewProductCard" class="mt-3 max-w-[280px] rounded-2xl overflow-hidden border border-slate-200 bg-white">
+            <div class="relative h-28 bg-slate-200">
+              <div class="absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300"></div>
+              <div class="absolute left-1/2 -translate-x-1/2 bottom-2 flex items-center gap-1.5">
+                <span data-preview-dot="1" class="w-2 h-2 rounded-full bg-white/95"></span>
+                <span data-preview-dot="2" class="w-2 h-2 rounded-full bg-white/60"></span>
+                <span data-preview-dot="3" class="w-2 h-2 rounded-full bg-white/60"></span>
+              </div>
+            </div>
+            <div class="p-3">
+              <p id="previewProductTitle" class="text-sm font-semibold leading-tight">Nombre de Producto Demo</p>
+              <p id="previewProductPrice" class="text-sm font-semibold mt-1">$25.00 - $45.00</p>
+              <p id="previewProductDesc" class="text-xs mt-1.5">Descripción breve para validar color, tipografía y alineación.</p>
+            </div>
+          </article>
+          <div class="mt-3 flex justify-end">
+            <button id="btnSaveCardStyles" type="button" class="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-[#fb8500] hover:bg-[#e67700] text-white text-xs font-medium">
+              Guardar estilo de tarjeta
+            </button>
+          </div>
+        </article>
+      </article>
     </section>
 
     <section class="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">

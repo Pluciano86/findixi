@@ -22,6 +22,46 @@ const storeBackgroundPreviewEmpty = document.getElementById('storeBackgroundPrev
 const storeBackgroundPath = document.getElementById('storeBackgroundPath');
 const storeBackgroundFile = document.getElementById('storeBackgroundFile');
 const btnClearStoreBackground = document.getElementById('btnClearStoreBackground');
+const themeStoreGreeting = document.getElementById('themeStoreGreeting');
+const themeColorButton = document.getElementById('themeColorButton');
+const themeColorButtonText = document.getElementById('themeColorButtonText');
+const themeColorButtonIdle = document.getElementById('themeColorButtonIdle');
+const themeColorButtonIdleText = document.getElementById('themeColorButtonIdleText');
+const themeColorButtonHex = document.getElementById('themeColorButtonHex');
+const themeColorButtonTextHex = document.getElementById('themeColorButtonTextHex');
+const themeColorButtonIdleHex = document.getElementById('themeColorButtonIdleHex');
+const themeColorButtonIdleTextHex = document.getElementById('themeColorButtonIdleTextHex');
+const themeButtonNoBorder = document.getElementById('themeButtonNoBorder');
+const themeButtonPill = document.getElementById('themeButtonPill');
+const themeButtonFont = document.getElementById('themeButtonFont');
+const themeColorTitle = document.getElementById('themeColorTitle');
+const themeColorPrice = document.getElementById('themeColorPrice');
+const themeColorText = document.getElementById('themeColorText');
+const themeColorTitleHex = document.getElementById('themeColorTitleHex');
+const themeColorPriceHex = document.getElementById('themeColorPriceHex');
+const themeColorTextHex = document.getElementById('themeColorTextHex');
+const themeColorGreeting = document.getElementById('themeColorGreeting');
+const themeColorGreetingHex = document.getElementById('themeColorGreetingHex');
+const themeAlignLeft = document.getElementById('themeAlignLeft');
+const themeAlignCenter = document.getElementById('themeAlignCenter');
+const themeTitleFont = document.getElementById('themeTitleFont');
+const themePriceFont = document.getElementById('themePriceFont');
+const themeDescFont = document.getElementById('themeDescFont');
+const themeGreetingFont = document.getElementById('themeGreetingFont');
+const themeTitleSize = document.getElementById('themeTitleSize');
+const themePriceSize = document.getElementById('themePriceSize');
+const themeDescSize = document.getElementById('themeDescSize');
+const themeGreetingSize = document.getElementById('themeGreetingSize');
+const previewCategoryBtnActive = document.getElementById('previewCategoryBtnActive');
+const previewCategoryBtnIdleA = document.getElementById('previewCategoryBtnIdleA');
+const previewCategoryBtnIdleB = document.getElementById('previewCategoryBtnIdleB');
+const previewProductCard = document.getElementById('previewProductCard');
+const previewProductTitle = document.getElementById('previewProductTitle');
+const previewProductPrice = document.getElementById('previewProductPrice');
+const previewProductDesc = document.getElementById('previewProductDesc');
+const previewDots = Array.from(document.querySelectorAll('[data-preview-dot]'));
+const btnSaveButtonStyles = document.getElementById('btnSaveButtonStyles');
+const btnSaveCardStyles = document.getElementById('btnSaveCardStyles');
 
 const btnNewCategory = document.getElementById('btnNewCategory');
 const categoriesList = document.getElementById('categoriesList');
@@ -63,6 +103,47 @@ const btnSaveProduct = document.getElementById('btnSaveProduct');
 const BUCKET = 'galeriacomercios';
 const DEFAULT_PRODUCTS_VISIBLE = 9;
 const LOAD_MORE_STEP = 3;
+const FONT_URL_BY_NAME = Object.freeze({
+  Kanit: 'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap',
+  Poppins: 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap',
+  Montserrat: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap',
+  Lato: 'https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap',
+  'Roboto Slab': 'https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@300;400;600;700&display=swap',
+});
+const BUTTON_THEME_KEYS = Object.freeze([
+  'colorboton',
+  'colorbotontexto',
+  'colorboton_idle_bg',
+  'colorboton_idle_text',
+  'boton_stroke_width',
+  'boton_stroke_color',
+  'boton_round',
+  'fontbuttonfamily',
+  'fontbuttonurl',
+]);
+const CARD_THEME_KEYS = Object.freeze([
+  'saludo_tienda',
+  'colorsaludo',
+  'colortitulo',
+  'colorprecio',
+  'colortexto',
+  'productoAlign',
+  'fontsaludofamily',
+  'fontsaludourl',
+  'fontsaludo_size',
+  'fonttitlefamily',
+  'fonttitleurl',
+  'fonttitle_size',
+  'fontpricefamily',
+  'fontpriceurl',
+  'fontprice_size',
+  'fontdescfamily',
+  'fontdescurl',
+  'fontdesc_size',
+  'fontbodyfamily',
+  'fontbodyurl',
+  'fontbody_size',
+]);
 
 const state = {
   comercio: null,
@@ -83,6 +164,38 @@ const state = {
     portadaimagen: '',
     backgroundimagen: '',
     idColumn: 'idcomercio',
+  },
+  storeTheme: {
+    saludo_tienda: '',
+    colorsaludo: '#374151',
+    colorboton: '#fb8500',
+    colorbotontexto: '#ffffff',
+    colorboton_idle_bg: '#ffffff',
+    colorboton_idle_text: '#374151',
+    colortitulo: '#111827',
+    colorprecio: '#111827',
+    colortexto: '#374151',
+    productoAlign: 'left',
+    boton_stroke_width: 1,
+    boton_stroke_color: '#fb8500',
+    boton_round: true,
+    fontbuttonfamily: 'Kanit',
+    fontbuttonurl: FONT_URL_BY_NAME.Kanit,
+    fontsaludofamily: 'Kanit',
+    fontsaludourl: FONT_URL_BY_NAME.Kanit,
+    fontsaludo_size: 14,
+    fonttitlefamily: 'Kanit',
+    fonttitleurl: FONT_URL_BY_NAME.Kanit,
+    fonttitle_size: 16,
+    fontpricefamily: 'Kanit',
+    fontpriceurl: FONT_URL_BY_NAME.Kanit,
+    fontprice_size: 16,
+    fontdescfamily: 'Kanit',
+    fontdescurl: FONT_URL_BY_NAME.Kanit,
+    fontdesc_size: 14,
+    fontbodyfamily: 'Kanit',
+    fontbodyurl: FONT_URL_BY_NAME.Kanit,
+    fontbody_size: 14,
   },
   columns: {
     menuCommerceColumn: 'idComercio',
@@ -174,6 +287,86 @@ function isMissingColumnError(error) {
   const details = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
   if (code === '42703' || code.startsWith('pgrst')) return true;
   return details.includes('does not exist') || details.includes('column');
+}
+
+function asHexColor(value, fallback = '#111827') {
+  const raw = String(value || '').trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw;
+  if (/^#[0-9a-fA-F]{3}$/.test(raw)) {
+    const r = raw[1];
+    const g = raw[2];
+    const b = raw[3];
+    return `#${r}${r}${g}${g}${b}${b}`;
+  }
+  return fallback;
+}
+
+function normalizeHexCandidate(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const withHash = raw.startsWith('#') ? raw : `#${raw}`;
+  if (/^#[0-9a-fA-F]{3}$/.test(withHash) || /^#[0-9a-fA-F]{6}$/.test(withHash)) {
+    return asHexColor(withHash, '#111827');
+  }
+  return '';
+}
+
+function readColorControl(pickerEl, hexEl, fallback = '#111827') {
+  const fromHex = normalizeHexCandidate(hexEl?.value);
+  const fromPicker = normalizeHexCandidate(pickerEl?.value);
+  const resolved = asHexColor(fromHex || fromPicker || fallback, fallback);
+  if (pickerEl) pickerEl.value = resolved;
+  if (hexEl) hexEl.value = resolved.toUpperCase();
+  return resolved;
+}
+
+function getColorPreviewValue(pickerEl, hexEl, fallback = '#111827') {
+  const fromHex = normalizeHexCandidate(hexEl?.value);
+  const fromPicker = normalizeHexCandidate(pickerEl?.value);
+  return asHexColor(fromHex || fromPicker || fallback, fallback);
+}
+
+function resolveFontFamily(name) {
+  const safe = String(name || 'Kanit').trim().replace(/'/g, "\\'");
+  return `'${safe}', 'Kanit', sans-serif`;
+}
+
+function parseFontSizePx(value, fallback = 14) {
+  const n = Number.parseInt(String(value ?? '').trim(), 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(10, Math.min(40, n));
+}
+
+function bindColorControlPair(pickerEl, hexEl, fallback = '#111827') {
+  if (!pickerEl || !hexEl) return;
+  if (pickerEl.dataset.boundHexSync === '1') return;
+  pickerEl.dataset.boundHexSync = '1';
+
+  const syncFromPicker = () => {
+    const color = asHexColor(pickerEl.value, fallback);
+    pickerEl.value = color;
+    hexEl.value = color.toUpperCase();
+    renderStoreThemePreview();
+  };
+
+  const syncFromHexInput = () => {
+    const color = normalizeHexCandidate(hexEl.value);
+    if (color) pickerEl.value = color;
+    renderStoreThemePreview();
+  };
+
+  const normalizeHexOnBlur = () => {
+    const color = normalizeHexCandidate(hexEl.value) || asHexColor(pickerEl.value, fallback);
+    pickerEl.value = asHexColor(color, fallback);
+    hexEl.value = pickerEl.value.toUpperCase();
+    renderStoreThemePreview();
+  };
+
+  hexEl.value = asHexColor(pickerEl.value, fallback).toUpperCase();
+  pickerEl.addEventListener('input', syncFromPicker);
+  pickerEl.addEventListener('change', syncFromPicker);
+  hexEl.addEventListener('input', syncFromHexInput);
+  hexEl.addEventListener('blur', normalizeHexOnBlur);
 }
 
 function extractMissingColumnName(error) {
@@ -569,6 +762,78 @@ function revokePreviewObjectUrl(previewEl) {
   previewEl.dataset.objectUrl = '';
 }
 
+function renderStoreThemePreview() {
+  if (!previewProductCard || !previewCategoryBtnActive) return;
+
+  const colorboton = getColorPreviewValue(themeColorButton, themeColorButtonHex, state.storeTheme.colorboton || '#fb8500');
+  const colorbotontexto = getColorPreviewValue(themeColorButtonText, themeColorButtonTextHex, state.storeTheme.colorbotontexto || '#ffffff');
+  const colorbotonIdleBg = getColorPreviewValue(themeColorButtonIdle, themeColorButtonIdleHex, state.storeTheme.colorboton_idle_bg || '#ffffff');
+  const colorbotonIdleText = getColorPreviewValue(themeColorButtonIdleText, themeColorButtonIdleTextHex, state.storeTheme.colorboton_idle_text || '#374151');
+  const colortitulo = getColorPreviewValue(themeColorTitle, themeColorTitleHex, state.storeTheme.colortitulo || '#111827');
+  const colorprecio = getColorPreviewValue(themeColorPrice, themeColorPriceHex, state.storeTheme.colorprecio || '#111827');
+  const colortexto = getColorPreviewValue(themeColorText, themeColorTextHex, state.storeTheme.colortexto || '#374151');
+  const colorsaludo = getColorPreviewValue(themeColorGreeting, themeColorGreetingHex, state.storeTheme.colorsaludo || '#374151');
+
+  const noBorder = !!themeButtonNoBorder?.checked;
+  const isRounded = !!themeButtonPill?.checked;
+  const alignCenter = !!themeAlignCenter?.checked && !themeAlignLeft?.checked;
+  const align = alignCenter ? 'center' : 'left';
+  const buttonFont = String(themeButtonFont?.value || state.storeTheme.fontbuttonfamily || state.storeTheme.fontdescfamily || state.storeTheme.fontbodyfamily || 'Kanit');
+  const titleFont = String(themeTitleFont?.value || state.storeTheme.fonttitlefamily || 'Kanit');
+  const priceFont = String(themePriceFont?.value || state.storeTheme.fontpricefamily || state.storeTheme.fontbodyfamily || 'Kanit');
+  const descFont = String(themeDescFont?.value || state.storeTheme.fontdescfamily || state.storeTheme.fontbodyfamily || 'Kanit');
+  const greetingFont = String(themeGreetingFont?.value || state.storeTheme.fontsaludofamily || state.storeTheme.fontdescfamily || state.storeTheme.fontbodyfamily || 'Kanit');
+  const titleSize = parseFontSizePx(themeTitleSize?.value, Number(state.storeTheme.fonttitle_size) || 16);
+  const priceSize = parseFontSizePx(themePriceSize?.value, Number(state.storeTheme.fontprice_size) || 16);
+  const descSize = parseFontSizePx(themeDescSize?.value, Number(state.storeTheme.fontdesc_size) || Number(state.storeTheme.fontbody_size) || 14);
+  const greetingSize = parseFontSizePx(themeGreetingSize?.value, Number(state.storeTheme.fontsaludo_size) || Number(state.storeTheme.fontdesc_size) || Number(state.storeTheme.fontbody_size) || 14);
+  const radius = isRounded ? '9999px' : '10px';
+  const borderCss = noBorder ? '0 solid transparent' : `1px solid ${colorboton}`;
+
+  previewCategoryBtnActive.style.backgroundColor = colorboton;
+  previewCategoryBtnActive.style.color = colorbotontexto;
+  previewCategoryBtnActive.style.border = borderCss;
+  previewCategoryBtnActive.style.borderRadius = radius;
+  previewCategoryBtnActive.style.fontFamily = resolveFontFamily(buttonFont);
+
+  [previewCategoryBtnIdleA, previewCategoryBtnIdleB].forEach((btn) => {
+    if (!btn) return;
+    btn.style.backgroundColor = colorbotonIdleBg;
+    btn.style.color = colorbotonIdleText;
+    btn.style.border = borderCss;
+    btn.style.borderRadius = radius;
+    btn.style.fontFamily = resolveFontFamily(buttonFont);
+  });
+
+  previewProductTitle.style.color = colortitulo;
+  previewProductTitle.style.fontFamily = resolveFontFamily(titleFont);
+  previewProductTitle.style.fontSize = `${titleSize}px`;
+  previewProductTitle.style.textAlign = align;
+
+  previewProductPrice.style.color = colorprecio;
+  previewProductPrice.style.fontFamily = resolveFontFamily(priceFont);
+  previewProductPrice.style.fontSize = `${priceSize}px`;
+  previewProductPrice.style.textAlign = align;
+
+  previewProductDesc.style.color = colortexto;
+  previewProductDesc.style.fontFamily = resolveFontFamily(descFont);
+  previewProductDesc.style.fontSize = `${descSize}px`;
+  previewProductDesc.style.textAlign = align;
+
+  if (themeStoreGreeting) {
+    themeStoreGreeting.style.color = colorsaludo;
+    themeStoreGreeting.style.fontFamily = resolveFontFamily(greetingFont);
+    themeStoreGreeting.style.fontSize = `${greetingSize}px`;
+    themeStoreGreeting.style.textAlign = align;
+  }
+
+  previewDots.forEach((dot, index) => {
+    if (!dot) return;
+    dot.style.backgroundColor = index === 0 ? colorboton : colorbotonIdleText;
+    dot.style.opacity = index === 0 ? '1' : '0.55';
+  });
+}
+
 function renderStoreVisualPreviews() {
   const bannerPath = String(state.storeVisual?.portadaimagen || '').trim();
   const backgroundPath = String(state.storeVisual?.backgroundimagen || '').trim();
@@ -606,6 +871,51 @@ function renderStoreVisualPreviews() {
   if (storeBackgroundPath) {
     storeBackgroundPath.textContent = backgroundPath ? `Ruta actual: ${backgroundPath}` : 'Sin fondo guardado.';
   }
+
+  if (themeColorButton) themeColorButton.value = asHexColor(state.storeTheme.colorboton, '#fb8500');
+  if (themeColorButtonText) themeColorButtonText.value = asHexColor(state.storeTheme.colorbotontexto, '#ffffff');
+  if (themeColorButtonIdle) themeColorButtonIdle.value = asHexColor(state.storeTheme.colorboton_idle_bg, '#ffffff');
+  if (themeColorButtonIdleText) themeColorButtonIdleText.value = asHexColor(state.storeTheme.colorboton_idle_text, '#374151');
+  if (themeColorButtonHex) themeColorButtonHex.value = asHexColor(state.storeTheme.colorboton, '#fb8500').toUpperCase();
+  if (themeColorButtonTextHex) themeColorButtonTextHex.value = asHexColor(state.storeTheme.colorbotontexto, '#ffffff').toUpperCase();
+  if (themeColorButtonIdleHex) themeColorButtonIdleHex.value = asHexColor(state.storeTheme.colorboton_idle_bg, '#ffffff').toUpperCase();
+  if (themeColorButtonIdleTextHex) themeColorButtonIdleTextHex.value = asHexColor(state.storeTheme.colorboton_idle_text, '#374151').toUpperCase();
+  if (themeButtonNoBorder) themeButtonNoBorder.checked = Number(state.storeTheme.boton_stroke_width || 0) <= 0;
+  if (themeButtonPill) {
+    const roundRaw = state.storeTheme.boton_round;
+    const roundText = String(roundRaw ?? '').trim().toLowerCase();
+    themeButtonPill.checked = !(roundRaw === false || roundText === 'false' || roundText === '0' || roundText === 'no');
+  }
+  if (themeColorTitle) themeColorTitle.value = asHexColor(state.storeTheme.colortitulo, '#111827');
+  if (themeColorPrice) themeColorPrice.value = asHexColor(state.storeTheme.colorprecio, '#111827');
+  if (themeColorText) themeColorText.value = asHexColor(state.storeTheme.colortexto, '#374151');
+  if (themeColorGreeting) themeColorGreeting.value = asHexColor(state.storeTheme.colorsaludo, '#374151');
+  if (themeColorTitleHex) themeColorTitleHex.value = asHexColor(state.storeTheme.colortitulo, '#111827').toUpperCase();
+  if (themeColorPriceHex) themeColorPriceHex.value = asHexColor(state.storeTheme.colorprecio, '#111827').toUpperCase();
+  if (themeColorTextHex) themeColorTextHex.value = asHexColor(state.storeTheme.colortexto, '#374151').toUpperCase();
+  if (themeColorGreetingHex) themeColorGreetingHex.value = asHexColor(state.storeTheme.colorsaludo, '#374151').toUpperCase();
+  const align = String(state.storeTheme.productoAlign || 'left').toLowerCase() === 'center' ? 'center' : 'left';
+  if (themeAlignLeft) themeAlignLeft.checked = align !== 'center';
+  if (themeAlignCenter) themeAlignCenter.checked = align === 'center';
+
+  const titleFont = String(state.storeTheme.fonttitlefamily || 'Kanit');
+  const buttonFont = String(state.storeTheme.fontbuttonfamily || state.storeTheme.fontdescfamily || state.storeTheme.fontbodyfamily || 'Kanit');
+  const priceFont = String(state.storeTheme.fontpricefamily || state.storeTheme.fontbodyfamily || 'Kanit');
+  const descFont = String(state.storeTheme.fontdescfamily || state.storeTheme.fontbodyfamily || 'Kanit');
+  const greetingFont = String(state.storeTheme.fontsaludofamily || state.storeTheme.fontdescfamily || state.storeTheme.fontbodyfamily || 'Kanit');
+  if (themeButtonFont) themeButtonFont.value = Object.prototype.hasOwnProperty.call(FONT_URL_BY_NAME, buttonFont) ? buttonFont : 'Kanit';
+  if (themeTitleFont) themeTitleFont.value = Object.prototype.hasOwnProperty.call(FONT_URL_BY_NAME, titleFont) ? titleFont : 'Kanit';
+  if (themePriceFont) themePriceFont.value = Object.prototype.hasOwnProperty.call(FONT_URL_BY_NAME, priceFont) ? priceFont : 'Kanit';
+  if (themeDescFont) themeDescFont.value = Object.prototype.hasOwnProperty.call(FONT_URL_BY_NAME, descFont) ? descFont : 'Kanit';
+  if (themeGreetingFont) themeGreetingFont.value = Object.prototype.hasOwnProperty.call(FONT_URL_BY_NAME, greetingFont) ? greetingFont : 'Kanit';
+
+  if (themeTitleSize) themeTitleSize.value = String(parseFontSizePx(state.storeTheme.fonttitle_size, 16));
+  if (themePriceSize) themePriceSize.value = String(parseFontSizePx(state.storeTheme.fontprice_size, 16));
+  if (themeDescSize) themeDescSize.value = String(parseFontSizePx(state.storeTheme.fontdesc_size ?? state.storeTheme.fontbody_size, 14));
+  if (themeGreetingSize) themeGreetingSize.value = String(parseFontSizePx(state.storeTheme.fontsaludo_size ?? state.storeTheme.fontdesc_size ?? state.storeTheme.fontbody_size, 14));
+  if (themeStoreGreeting) themeStoreGreeting.value = String(state.storeTheme.saludo_tienda || '');
+
+  renderStoreThemePreview();
 }
 
 function previewStoreVisualFile(kind = 'banner') {
@@ -634,7 +944,7 @@ async function fetchStoreVisualTheme() {
   for (const idColumn of candidates) {
     const lookup = await supabase
       .from('menu_tema')
-      .select('portadaimagen,backgroundimagen')
+      .select('*')
       .eq(idColumn, idComercio)
       .maybeSingle();
 
@@ -644,6 +954,39 @@ async function fetchStoreVisualTheme() {
         idColumn,
         portadaimagen: String(lookup.data?.portadaimagen || '').trim(),
         backgroundimagen: String(lookup.data?.backgroundimagen || '').trim(),
+      };
+      state.storeTheme = {
+        ...state.storeTheme,
+        saludo_tienda: lookup.data?.saludo_tienda ?? state.storeTheme.saludo_tienda,
+        colorsaludo: lookup.data?.colorsaludo ?? state.storeTheme.colorsaludo,
+        colorboton: lookup.data?.colorboton ?? state.storeTheme.colorboton,
+        colorbotontexto: lookup.data?.colorbotontexto ?? state.storeTheme.colorbotontexto,
+        colorboton_idle_bg: lookup.data?.colorboton_idle_bg ?? state.storeTheme.colorboton_idle_bg,
+        colorboton_idle_text: lookup.data?.colorboton_idle_text ?? state.storeTheme.colorboton_idle_text,
+        colortitulo: lookup.data?.colortitulo ?? state.storeTheme.colortitulo,
+        colorprecio: lookup.data?.colorprecio ?? state.storeTheme.colorprecio,
+        colortexto: lookup.data?.colortexto ?? state.storeTheme.colortexto,
+        productoAlign: lookup.data?.productoAlign ?? state.storeTheme.productoAlign,
+        boton_stroke_width: lookup.data?.boton_stroke_width ?? state.storeTheme.boton_stroke_width,
+        boton_stroke_color: lookup.data?.boton_stroke_color ?? state.storeTheme.boton_stroke_color,
+        boton_round: lookup.data?.boton_round ?? state.storeTheme.boton_round,
+        fontbuttonfamily: lookup.data?.fontbuttonfamily ?? state.storeTheme.fontbuttonfamily,
+        fontbuttonurl: lookup.data?.fontbuttonurl ?? state.storeTheme.fontbuttonurl,
+        fontsaludofamily: lookup.data?.fontsaludofamily ?? state.storeTheme.fontsaludofamily,
+        fontsaludourl: lookup.data?.fontsaludourl ?? state.storeTheme.fontsaludourl,
+        fontsaludo_size: lookup.data?.fontsaludo_size ?? state.storeTheme.fontsaludo_size,
+        fonttitlefamily: lookup.data?.fonttitlefamily ?? state.storeTheme.fonttitlefamily,
+        fonttitleurl: lookup.data?.fonttitleurl ?? state.storeTheme.fonttitleurl,
+        fonttitle_size: lookup.data?.fonttitle_size ?? state.storeTheme.fonttitle_size,
+        fontpricefamily: lookup.data?.fontpricefamily ?? state.storeTheme.fontpricefamily,
+        fontpriceurl: lookup.data?.fontpriceurl ?? state.storeTheme.fontpriceurl,
+        fontprice_size: lookup.data?.fontprice_size ?? state.storeTheme.fontprice_size,
+        fontdescfamily: lookup.data?.fontdescfamily ?? state.storeTheme.fontdescfamily,
+        fontdescurl: lookup.data?.fontdescurl ?? state.storeTheme.fontdescurl,
+        fontdesc_size: lookup.data?.fontdesc_size ?? state.storeTheme.fontdesc_size,
+        fontbodyfamily: lookup.data?.fontbodyfamily ?? state.storeTheme.fontbodyfamily,
+        fontbodyurl: lookup.data?.fontbodyurl ?? state.storeTheme.fontbodyurl,
+        fontbody_size: lookup.data?.fontbody_size ?? state.storeTheme.fontbody_size,
       };
       return;
     }
@@ -666,6 +1009,92 @@ async function fetchStoreVisualTheme() {
   if (lastError) {
     console.warn('No se pudo cargar visual de tienda:', lastError);
     setStoreVisualStatus('No se pudo cargar el banner/fondo actual.', 'warning');
+  }
+}
+
+function readStoreThemeInputs() {
+  const buttonFont = String(themeButtonFont?.value || 'Kanit');
+  const titleFont = String(themeTitleFont?.value || 'Kanit');
+  const priceFont = String(themePriceFont?.value || 'Kanit');
+  const descFont = String(themeDescFont?.value || 'Kanit');
+  const greetingFont = String(themeGreetingFont?.value || 'Kanit');
+  const titleSize = parseFontSizePx(themeTitleSize?.value, 16);
+  const priceSize = parseFontSizePx(themePriceSize?.value, 16);
+  const descSize = parseFontSizePx(themeDescSize?.value, 14);
+  const greetingSize = parseFontSizePx(themeGreetingSize?.value, 14);
+  const noBorder = !!themeButtonNoBorder?.checked;
+  const align = themeAlignCenter?.checked ? 'center' : 'left';
+  const saludoTienda = String(themeStoreGreeting?.value || '').trim();
+
+  return {
+    saludo_tienda: saludoTienda,
+    colorsaludo: readColorControl(themeColorGreeting, themeColorGreetingHex, '#374151'),
+    colorboton: readColorControl(themeColorButton, themeColorButtonHex, '#fb8500'),
+    colorbotontexto: readColorControl(themeColorButtonText, themeColorButtonTextHex, '#ffffff'),
+    colorboton_idle_bg: readColorControl(themeColorButtonIdle, themeColorButtonIdleHex, '#ffffff'),
+    colorboton_idle_text: readColorControl(themeColorButtonIdleText, themeColorButtonIdleTextHex, '#374151'),
+    colortitulo: readColorControl(themeColorTitle, themeColorTitleHex, '#111827'),
+    colorprecio: readColorControl(themeColorPrice, themeColorPriceHex, '#111827'),
+    colortexto: readColorControl(themeColorText, themeColorTextHex, '#374151'),
+    productoAlign: align,
+    boton_stroke_width: noBorder ? 0 : 1,
+    boton_stroke_color: readColorControl(themeColorButton, themeColorButtonHex, '#fb8500'),
+    boton_round: themeButtonPill?.checked !== false,
+    fontbuttonfamily: buttonFont,
+    fontbuttonurl: FONT_URL_BY_NAME[buttonFont] || FONT_URL_BY_NAME.Kanit,
+    fontsaludofamily: greetingFont,
+    fontsaludourl: FONT_URL_BY_NAME[greetingFont] || FONT_URL_BY_NAME.Kanit,
+    fontsaludo_size: greetingSize,
+    fonttitlefamily: titleFont,
+    fonttitleurl: FONT_URL_BY_NAME[titleFont] || FONT_URL_BY_NAME.Kanit,
+    fonttitle_size: titleSize,
+    fontpricefamily: priceFont,
+    fontpriceurl: FONT_URL_BY_NAME[priceFont] || FONT_URL_BY_NAME.Kanit,
+    fontprice_size: priceSize,
+    fontdescfamily: descFont,
+    fontdescurl: FONT_URL_BY_NAME[descFont] || FONT_URL_BY_NAME.Kanit,
+    fontdesc_size: descSize,
+    fontbodyfamily: descFont,
+    fontbodyurl: FONT_URL_BY_NAME[descFont] || FONT_URL_BY_NAME.Kanit,
+    fontbody_size: descSize,
+  };
+}
+
+function pickThemeFields(keys = []) {
+  const source = readStoreThemeInputs();
+  const payload = {};
+  keys.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      payload[key] = source[key];
+    }
+  });
+  return payload;
+}
+
+function setBusyButton(button, isBusy) {
+  if (!button) return;
+  button.disabled = !!isBusy;
+  button.classList.toggle('opacity-70', !!isBusy);
+  button.classList.toggle('cursor-not-allowed', !!isBusy);
+}
+
+async function handleSaveThemeSection({ keys = [], button = null, successMessage = 'Estilos guardados.' } = {}) {
+  if (!keys.length) return;
+
+  setBusyButton(button, true);
+  setStoreVisualStatus('Guardando estilos...', 'neutral');
+
+  try {
+    const payload = pickThemeFields(keys);
+    await upsertStoreVisualTheme(payload);
+    state.storeTheme = { ...state.storeTheme, ...payload };
+    renderStoreThemePreview();
+    setStoreVisualStatus(successMessage, 'success');
+  } catch (error) {
+    console.error('Error guardando estilos de tienda:', error);
+    setStoreVisualStatus('No se pudieron guardar los estilos.', 'error');
+  } finally {
+    setBusyButton(button, false);
   }
 }
 
@@ -705,10 +1134,15 @@ async function upsertStoreVisualTheme(payloadFields = {}) {
   ].filter(Boolean)));
   let lastError = null;
 
+  let globalFields = { ...(payloadFields || {}) };
+
   for (const idColumn of candidates) {
+    let fields = { ...globalFields };
+
+    for (let attempt = 0; attempt < 16; attempt += 1) {
     const payload = {
       [idColumn]: idComercio,
-      ...payloadFields,
+      ...fields,
     };
 
     const upsertRes = await supabase
@@ -721,9 +1155,16 @@ async function upsertStoreVisualTheme(payloadFields = {}) {
       return;
     }
 
+    const missingField = extractMissingColumnName(upsertRes.error);
+    if (missingField && Object.prototype.hasOwnProperty.call(fields, missingField)) {
+      delete fields[missingField];
+      delete globalFields[missingField];
+      continue;
+    }
+
     if (isMissingColumnError(upsertRes.error)) {
       lastError = upsertRes.error;
-      continue;
+      break;
     }
 
     const msg = `${upsertRes.error?.message || ''} ${upsertRes.error?.details || ''}`.toLowerCase();
@@ -735,7 +1176,7 @@ async function upsertStoreVisualTheme(payloadFields = {}) {
 
     const updateRes = await supabase
       .from('menu_tema')
-      .update(payloadFields)
+      .update(fields)
       .eq(idColumn, idComercio)
       .select('portadaimagen');
 
@@ -744,9 +1185,16 @@ async function upsertStoreVisualTheme(payloadFields = {}) {
       return;
     }
 
+    const missingUpdateField = extractMissingColumnName(updateRes.error);
+    if (missingUpdateField && Object.prototype.hasOwnProperty.call(fields, missingUpdateField)) {
+      delete fields[missingUpdateField];
+      delete globalFields[missingUpdateField];
+      continue;
+    }
+
     if (updateRes.error && !isMissingColumnError(updateRes.error)) {
       lastError = updateRes.error;
-      continue;
+      break;
     }
 
     const insertRes = await supabase
@@ -759,10 +1207,20 @@ async function upsertStoreVisualTheme(payloadFields = {}) {
       return;
     }
 
+    const missingInsertField = extractMissingColumnName(insertRes.error);
+    if (missingInsertField && Object.prototype.hasOwnProperty.call(fields, missingInsertField)) {
+      delete fields[missingInsertField];
+      delete globalFields[missingInsertField];
+      continue;
+    }
+
     if (!isMissingColumnError(insertRes.error)) {
       lastError = insertRes.error;
     } else {
       lastError = insertRes.error;
+    }
+
+    break;
     }
   }
 
@@ -790,17 +1248,21 @@ async function handleSaveStoreVisual() {
       nextBackgroundPath = await uploadStoreVisualAsset(backgroundFile, 'menus/background', 'tienda-background');
     }
 
+    const themePayload = readStoreThemeInputs();
+
     await upsertStoreVisualTheme({
       portadaimagen: nextBannerPath || '',
       backgroundimagen: nextBackgroundPath || '',
+      ...themePayload,
     });
 
     state.storeVisual.portadaimagen = nextBannerPath || '';
     state.storeVisual.backgroundimagen = nextBackgroundPath || '';
+    state.storeTheme = { ...state.storeTheme, ...themePayload };
     if (storeBannerFile) storeBannerFile.value = '';
     if (storeBackgroundFile) storeBackgroundFile.value = '';
     renderStoreVisualPreviews();
-    setStoreVisualStatus('Banner y fondo guardados correctamente.', 'success');
+    setStoreVisualStatus('Visual de tienda guardada (banner, fondo y estilos).', 'success');
   } catch (error) {
     console.error('Error guardando visual de tienda:', error);
     setStoreVisualStatus('No se pudo guardar el banner/fondo. Revisa la consola.', 'error');
@@ -810,7 +1272,74 @@ async function handleSaveStoreVisual() {
   }
 }
 
+function bindThemePreviewLiveEvents() {
+  bindColorControlPair(themeColorButton, themeColorButtonHex, '#fb8500');
+  bindColorControlPair(themeColorButtonText, themeColorButtonTextHex, '#ffffff');
+  bindColorControlPair(themeColorButtonIdle, themeColorButtonIdleHex, '#ffffff');
+  bindColorControlPair(themeColorButtonIdleText, themeColorButtonIdleTextHex, '#374151');
+  bindColorControlPair(themeColorTitle, themeColorTitleHex, '#111827');
+  bindColorControlPair(themeColorPrice, themeColorPriceHex, '#111827');
+  bindColorControlPair(themeColorText, themeColorTextHex, '#374151');
+  bindColorControlPair(themeColorGreeting, themeColorGreetingHex, '#374151');
+
+  const listen = (el, type = 'change') => {
+    if (!el) return;
+    if (el.dataset.previewBound === '1') return;
+    el.dataset.previewBound = '1';
+    el.addEventListener(type, () => {
+      renderStoreThemePreview();
+    });
+  };
+
+  listen(themeButtonNoBorder, 'change');
+  listen(themeButtonPill, 'change');
+  listen(themeButtonFont, 'change');
+  listen(themeAlignLeft, 'change');
+  listen(themeAlignCenter, 'change');
+  listen(themeTitleFont, 'change');
+  listen(themePriceFont, 'change');
+  listen(themeDescFont, 'change');
+  listen(themeGreetingFont, 'change');
+  listen(themeTitleSize, 'change');
+  listen(themePriceSize, 'change');
+  listen(themeDescSize, 'change');
+  listen(themeGreetingSize, 'change');
+  listen(themeStoreGreeting, 'input');
+
+  if (themeAlignLeft && !themeAlignLeft.dataset.alignBound) {
+    themeAlignLeft.dataset.alignBound = '1';
+    themeAlignLeft.addEventListener('change', () => {
+      if (themeAlignLeft.checked) {
+        if (themeAlignCenter) themeAlignCenter.checked = false;
+      } else if (themeAlignCenter) {
+        themeAlignCenter.checked = true;
+      } else {
+        themeAlignLeft.checked = true;
+      }
+      renderStoreThemePreview();
+    });
+  }
+
+  if (themeAlignCenter && !themeAlignCenter.dataset.alignBound) {
+    themeAlignCenter.dataset.alignBound = '1';
+    themeAlignCenter.addEventListener('change', () => {
+      if (themeAlignCenter.checked) {
+        if (themeAlignLeft) themeAlignLeft.checked = false;
+      } else if (themeAlignLeft) {
+        themeAlignLeft.checked = true;
+      } else {
+        themeAlignCenter.checked = true;
+      }
+      renderStoreThemePreview();
+    });
+  }
+
+  renderStoreThemePreview();
+}
+
 function bindStoreVisualActions() {
+  bindThemePreviewLiveEvents();
+
   storeBannerFile?.addEventListener('change', () => {
     previewStoreVisualFile('banner');
   });
@@ -835,6 +1364,22 @@ function bindStoreVisualActions() {
 
   btnSaveStoreVisual?.addEventListener('click', () => {
     void handleSaveStoreVisual();
+  });
+
+  btnSaveButtonStyles?.addEventListener('click', () => {
+    void handleSaveThemeSection({
+      keys: BUTTON_THEME_KEYS,
+      button: btnSaveButtonStyles,
+      successMessage: 'Estilo de botones guardado.',
+    });
+  });
+
+  btnSaveCardStyles?.addEventListener('click', () => {
+    void handleSaveThemeSection({
+      keys: CARD_THEME_KEYS,
+      button: btnSaveCardStyles,
+      successMessage: 'Estilo de tarjeta guardado.',
+    });
   });
 }
 

@@ -9,13 +9,17 @@ const tiendaFixedBackground = document.getElementById('tiendaFixedBackground');
 const tiendaFixedBackgroundOverlay = document.getElementById('tiendaFixedBackgroundOverlay');
 const btnVolverPerfil = document.getElementById('btnVolverPerfil');
 const estadoTienda = document.getElementById('estadoTienda');
+const storeGreetingWrap = document.getElementById('storeGreetingWrap');
+const storeGreetingText = document.getElementById('storeGreetingText');
 const categoriaSection = document.getElementById('categoriaSection');
 const categoriaButtons = document.getElementById('categoriaButtons');
+const toggleHideSoldOut = document.getElementById('toggleHideSoldOut');
 const productosSection = document.getElementById('productosSection');
 const productosGrid = document.getElementById('productosGrid');
 
 const modalProducto = document.getElementById('modalProducto');
 const modalProductoBackdrop = document.getElementById('modalProductoBackdrop');
+const modalProductoPanel = document.getElementById('modalProductoPanel');
 const modalCerrar = document.getElementById('modalCerrar');
 const modalImagenPrincipal = document.getElementById('modalImagenPrincipal');
 const modalPrevImagen = document.getElementById('modalPrevImagen');
@@ -26,6 +30,8 @@ const modalPrecio = document.getElementById('modalPrecio');
 const modalDescripcion = document.getElementById('modalDescripcion');
 const modalOpcionesSection = document.getElementById('modalOpcionesSection');
 const modalOpciones = document.getElementById('modalOpciones');
+const modalTallasSection = document.getElementById('modalTallasSection');
+const modalTallas = document.getElementById('modalTallas');
 const modalVariantesSection = document.getElementById('modalVariantesSection');
 const modalVariantes = document.getElementById('modalVariantes');
 const modalComprarBtn = document.getElementById('modalComprarBtn');
@@ -33,6 +39,8 @@ const modalComprarBtn = document.getElementById('modalComprarBtn');
 const DEFAULT_THEME = {
   colorboton: '#fb8500',
   colorbotontexto: '#ffffff',
+  colorboton_idle_bg: '#ffffff',
+  colorboton_idle_text: '#374151',
   colorprecio: '#111827',
   colortitulo: '#111827',
   colortexto: '#374151',
@@ -41,7 +49,52 @@ const DEFAULT_THEME = {
   overlayoscuro: 20,
   portadaimagen: '',
   backgroundimagen: '',
+  productoAlign: 'left',
+  boton_stroke_width: 1,
+  boton_stroke_color: '#fb8500',
+  boton_round: true,
+  fontbuttonfamily: 'Kanit',
+  fontbuttonurl: 'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap',
+  colorsaludo: '#374151',
+  fontsaludofamily: 'Kanit',
+  fontsaludourl: 'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap',
+  fontsaludo_size: 14,
+  fonttitlefamily: 'Kanit',
+  fonttitleurl: 'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap',
+  fonttitle_size: 16,
+  fontpricefamily: 'Kanit',
+  fontpriceurl: 'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap',
+  fontprice_size: 16,
+  fontdescfamily: 'Kanit',
+  fontdescurl: 'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap',
+  fontdesc_size: 14,
+  fontbodyfamily: 'Kanit',
+  fontbodyurl: 'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap',
+  fontbody_size: 14,
+  saludo_tienda: '',
 };
+const CARD_DOT_COUNT = 3;
+
+function ensureFontLink(id, url) {
+  const href = String(url || '').trim();
+  if (!href || !/^https?:\/\//i.test(href)) return;
+  const existing = document.getElementById(id);
+  if (existing) {
+    if (existing.getAttribute('href') !== href) existing.setAttribute('href', href);
+    return;
+  }
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = href;
+  document.head.appendChild(link);
+}
+
+function resolveThemeFontFamily(value, fallback = "'Kanit', sans-serif") {
+  const name = String(value || '').trim();
+  if (!name) return fallback;
+  return `'${name.replace(/'/g, "\\'")}', 'Kanit', sans-serif`;
+}
 
 const state = {
   comercio: null,
@@ -50,6 +103,7 @@ const state = {
   categories: [],
   products: [],
   selectedCategory: 'all',
+  hideSoldOut: false,
   modalProductId: null,
   modalImageIndex: 0,
 };
@@ -91,6 +145,15 @@ function stripHtml(value) {
     .trim();
 }
 
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function parseJsonMaybe(value, fallback = null) {
   if (value === null || value === undefined) return fallback;
   if (typeof value === 'object') return value;
@@ -113,6 +176,50 @@ function normalizeExternalUrl(url) {
 function parseMoney(value) {
   const num = Number.parseFloat(String(value ?? '').replace(/[^0-9.-]/g, ''));
   return Number.isFinite(num) ? num : null;
+}
+
+function parseBoolean(value, fallback = null) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return fallback;
+    if (['true', '1', 'si', 'sí', 'yes', 'on', 'agotado'].includes(normalized)) return true;
+    if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+  }
+  return fallback;
+}
+
+function normalizeOptionName(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function isDefaultOptionText(value) {
+  const normalized = normalizeOptionName(value).replace(/\s+/g, ' ').trim();
+  return normalized === 'default title'
+    || normalized === 'titulo por defecto'
+    || normalized === 'titulo predeterminado'
+    || normalized === 'default'
+    || normalized === 'title';
+}
+
+function isTitleLikeOptionName(value) {
+  const normalized = normalizeOptionName(value);
+  return normalized === 'title' || normalized === 'titulo';
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function parseFontSizePx(value, fallback = 14) {
+  const n = Number.parseInt(String(value ?? '').trim(), 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(10, Math.min(40, n));
 }
 
 function formatMoney(value) {
@@ -412,6 +519,55 @@ function resolveProductPriceLabel(product, variantBundle) {
   return 'Por confirmar';
 }
 
+function resolveProductAvailability(product, variantBundle, isShopify) {
+  const raw = product || {};
+  const variants = Array.isArray(variantBundle?.variants) ? variantBundle.variants : [];
+  const variantAvailableCount = variants.filter((variant) => variant?.available).length;
+  const variantsSoldOut = variants.length > 0 && variantAvailableCount === 0;
+
+  const explicitSoldOut = [
+    raw?.agotado,
+    raw?.is_sold_out,
+    raw?.sold_out,
+    raw?.no_disponible,
+    raw?.out_of_stock,
+  ].some((value) => parseBoolean(value, false) === true);
+
+  const explicitAvailable = [
+    raw?.available,
+    raw?.availableForSale,
+    raw?.disponible,
+    raw?.en_stock,
+    raw?.in_stock,
+    raw?.activo,
+  ]
+    .map((value) => parseBoolean(value, null))
+    .find((value) => typeof value === 'boolean');
+
+  const stockValue = [
+    raw?.stock,
+    raw?.inventario,
+    raw?.inventory,
+    raw?.inventory_quantity,
+    raw?.quantity_available,
+    raw?.cantidad,
+  ]
+    .map((value) => Number(value))
+    .find((value) => Number.isFinite(value));
+
+  const soldOutByStock = Number.isFinite(stockValue) ? stockValue <= 0 : false;
+  const soldOutByAvailable = explicitAvailable === false;
+  const soldOut = explicitSoldOut || soldOutByAvailable || soldOutByStock || variantsSoldOut;
+
+  const activeFlag = parseBoolean(raw?.activo, null);
+  const hiddenInactive = activeFlag === false && !isShopify && !soldOut;
+
+  return {
+    soldOut,
+    isVisible: !hiddenInactive,
+  };
+}
+
 function toTimestamp(value) {
   if (!value) return 0;
   const date = new Date(value);
@@ -425,6 +581,7 @@ function normalizeProduct(product, menuMap, fallbackOrigin = 'findixi') {
   const images = resolveProductImages(product);
   const buyUrl = resolveBuyUrl(product);
   const shopify = isShopifyProduct(product);
+  const availability = resolveProductAvailability(product, variants, shopify);
 
   const name = String(product?.nombre || product?.title || product?.product_title || 'Producto sin nombre').trim();
   const description = String(
@@ -452,6 +609,8 @@ function normalizeProduct(product, menuMap, fallbackOrigin = 'findixi') {
     categoryId: categoryInfo.categoryId,
     categoryName: categoryInfo.categoryName,
     categoryOrder: categoryInfo.categoryOrder,
+    soldOut: availability.soldOut,
+    isVisible: availability.isVisible,
     raw: product,
   };
 }
@@ -468,13 +627,45 @@ function sortProducts(list = []) {
 
 function applyTheme() {
   const t = state.theme;
+  const roundedButtons = parseBoolean(t.boton_round, true) !== false;
   document.documentElement.style.setProperty('--tienda-color-btn', t.colorboton || DEFAULT_THEME.colorboton);
   document.documentElement.style.setProperty('--tienda-color-btn-text', t.colorbotontexto || DEFAULT_THEME.colorbotontexto);
+  document.documentElement.style.setProperty('--tienda-color-btn-idle-bg', t.colorboton_idle_bg || DEFAULT_THEME.colorboton_idle_bg);
+  document.documentElement.style.setProperty('--tienda-color-btn-idle-text', t.colorboton_idle_text || DEFAULT_THEME.colorboton_idle_text);
+  document.documentElement.style.setProperty('--tienda-cat-border-width', `${Math.max(0, Number(t.boton_stroke_width ?? DEFAULT_THEME.boton_stroke_width) || 0)}px`);
+  document.documentElement.style.setProperty('--tienda-cat-border-color', t.boton_stroke_color || DEFAULT_THEME.boton_stroke_color);
+  document.documentElement.style.setProperty('--tienda-cat-border-radius', roundedButtons ? '9999px' : '10px');
   document.documentElement.style.setProperty('--tienda-color-price', t.colorprecio || DEFAULT_THEME.colorprecio);
   document.documentElement.style.setProperty('--tienda-color-title', t.colortitulo || DEFAULT_THEME.colortitulo);
   document.documentElement.style.setProperty('--tienda-color-text', t.colortexto || DEFAULT_THEME.colortexto);
   document.documentElement.style.setProperty('--tienda-background', t.backgroundcolor || DEFAULT_THEME.backgroundcolor);
   document.documentElement.style.setProperty('--tienda-item-bg', t.item_bg_color || DEFAULT_THEME.item_bg_color);
+  document.documentElement.style.setProperty('--tienda-font-button', resolveThemeFontFamily(t.fontbuttonfamily || t.fontdescfamily || t.fontbodyfamily, "'Kanit', sans-serif"));
+  document.documentElement.style.setProperty('--tienda-font-title', resolveThemeFontFamily(t.fonttitlefamily, "'Kanit', sans-serif"));
+  document.documentElement.style.setProperty('--tienda-font-price', resolveThemeFontFamily(t.fontpricefamily || t.fontbodyfamily, "'Kanit', sans-serif"));
+  document.documentElement.style.setProperty('--tienda-font-desc', resolveThemeFontFamily(t.fontdescfamily || t.fontbodyfamily, "'Kanit', sans-serif"));
+  document.documentElement.style.setProperty('--tienda-font-title-size', `${parseFontSizePx(t.fonttitle_size, 16)}px`);
+  document.documentElement.style.setProperty('--tienda-font-price-size', `${parseFontSizePx(t.fontprice_size, 16)}px`);
+  document.documentElement.style.setProperty('--tienda-font-desc-size', `${parseFontSizePx(t.fontdesc_size ?? t.fontbody_size, 14)}px`);
+  document.documentElement.style.setProperty('--tienda-text-align', String(t.productoAlign || DEFAULT_THEME.productoAlign).toLowerCase() === 'center' ? 'center' : 'left');
+
+  ensureFontLink('tienda-theme-font-button', t.fontbuttonurl || t.fontdescurl || t.fontbodyurl || DEFAULT_THEME.fontbuttonurl);
+  ensureFontLink('tienda-theme-font-greeting', t.fontsaludourl || t.fontdescurl || t.fontbodyurl || DEFAULT_THEME.fontsaludourl);
+  ensureFontLink('tienda-theme-font-title', t.fonttitleurl || DEFAULT_THEME.fonttitleurl);
+  ensureFontLink('tienda-theme-font-price', t.fontpriceurl || t.fontbodyurl || DEFAULT_THEME.fontpriceurl);
+  ensureFontLink('tienda-theme-font-desc', t.fontdescurl || t.fontbodyurl || DEFAULT_THEME.fontdescurl);
+
+  if (storeGreetingText && storeGreetingWrap) {
+    const greeting = String(t.saludo_tienda || '').trim();
+    storeGreetingText.textContent = greeting;
+    storeGreetingWrap.classList.toggle('hidden', !greeting);
+    if (greeting) {
+      storeGreetingText.style.fontFamily = resolveThemeFontFamily(t.fontsaludofamily || t.fontdescfamily || t.fontbodyfamily, "'Kanit', sans-serif");
+      storeGreetingText.style.fontSize = `${parseFontSizePx(t.fontsaludo_size ?? t.fontdesc_size ?? t.fontbody_size, 14)}px`;
+      storeGreetingText.style.color = t.colorsaludo || t.colortexto || DEFAULT_THEME.colorsaludo;
+      storeGreetingText.style.textAlign = String(t.productoAlign || DEFAULT_THEME.productoAlign).toLowerCase() === 'center' ? 'center' : 'left';
+    }
+  }
 
   const heroSrc = toStorageUrl(t.portadaimagen || state.comercio?.portada || state.comercio?.logo || '');
   if (heroBannerImg) {
@@ -512,12 +703,35 @@ function applyTheme() {
     }
     document.body.style.backgroundImage = '';
   }
+
+  if (modalNombre) {
+    modalNombre.style.fontFamily = resolveThemeFontFamily(t.fonttitlefamily, "'Kanit', sans-serif");
+    modalNombre.style.fontSize = `${parseFontSizePx(t.fonttitle_size, 16)}px`;
+    modalNombre.style.color = t.colortitulo || DEFAULT_THEME.colortitulo;
+    modalNombre.style.textAlign = String(t.productoAlign || DEFAULT_THEME.productoAlign).toLowerCase() === 'center' ? 'center' : 'left';
+  }
+  if (modalPrecio) {
+    modalPrecio.style.fontFamily = resolveThemeFontFamily(t.fontpricefamily || t.fontbodyfamily, "'Kanit', sans-serif");
+    modalPrecio.style.fontSize = `${parseFontSizePx(t.fontprice_size, 16)}px`;
+    modalPrecio.style.color = t.colorprecio || DEFAULT_THEME.colorprecio;
+    modalPrecio.style.textAlign = String(t.productoAlign || DEFAULT_THEME.productoAlign).toLowerCase() === 'center' ? 'center' : 'left';
+  }
+  if (modalDescripcion) {
+    modalDescripcion.style.fontFamily = resolveThemeFontFamily(t.fontdescfamily || t.fontbodyfamily, "'Kanit', sans-serif");
+    modalDescripcion.style.fontSize = `${parseFontSizePx(t.fontdesc_size ?? t.fontbody_size, 14)}px`;
+    modalDescripcion.style.color = t.colortexto || DEFAULT_THEME.colortexto;
+    modalDescripcion.style.textAlign = String(t.productoAlign || DEFAULT_THEME.productoAlign).toLowerCase() === 'center' ? 'center' : 'left';
+  }
 }
 
 function setStatus(message, tone = 'neutral') {
   if (!estadoTienda) return;
-  estadoTienda.textContent = message;
+  const text = String(message || '').trim();
+  estadoTienda.textContent = text;
   estadoTienda.className = 'text-sm px-1';
+  estadoTienda.classList.toggle('hidden', !text);
+
+  if (!text) return;
 
   if (tone === 'error') {
     estadoTienda.classList.add('text-red-600');
@@ -557,34 +771,57 @@ async function fetchComercio() {
 }
 
 async function fetchTheme() {
-  const { data, error } = await supabase
-    .from('menu_tema')
-    .select('colorboton,colorbotontexto,colorprecio,colortitulo,colortexto,backgroundcolor,item_bg_color,overlayoscuro,portadaimagen,backgroundimagen')
-    .eq('idcomercio', idComercio)
-    .maybeSingle();
+  const idColumns = ['idcomercio', 'idComercio'];
+  let loadedTheme = null;
+  let lastError = null;
 
-  if (error) {
-    console.warn('No se pudo cargar tema de tienda, usando default:', error?.message || error);
+  for (const idColumn of idColumns) {
+    const lookup = await supabase
+      .from('menu_tema')
+      .select('*')
+      .eq(idColumn, idComercio)
+      .maybeSingle();
+
+    if (!lookup.error) {
+      loadedTheme = lookup.data || null;
+      break;
+    }
+
+    lastError = lookup.error;
+    const errText = String(lookup.error?.message || lookup.error?.details || '').toLowerCase();
+    if (!errText.includes('column') && !errText.includes('does not exist')) {
+      break;
+    }
   }
 
-  state.theme = { ...DEFAULT_THEME, ...(data || {}) };
+  if (lastError && !loadedTheme) {
+    console.warn('No se pudo cargar tema de tienda, usando default:', lastError?.message || lastError);
+  }
+
+  state.theme = { ...DEFAULT_THEME, ...(loadedTheme || {}) };
 }
 
 async function fetchCategoriesFromMenus() {
-  const { data, error } = await supabase
-    .from('menus')
-    .select('id,titulo,descripcion,orden,activo')
-    .eq('idComercio', idComercio)
-    .eq('activo', true)
-    .order('orden', { ascending: true })
-    .order('id', { ascending: true });
+  const idColumns = ['idComercio', 'idcomercio'];
+  for (const idColumn of idColumns) {
+    const lookup = await supabase
+      .from('menus')
+      .select('id,titulo,descripcion,orden,activo')
+      .eq(idColumn, idComercio)
+      .eq('activo', true)
+      .order('orden', { ascending: true })
+      .order('id', { ascending: true });
 
-  if (error) {
-    console.warn('No se pudieron cargar categorías (menus):', error?.message || error);
-    return [];
+    if (!lookup.error) return Array.isArray(lookup.data) ? lookup.data : [];
+
+    const errText = String(lookup.error?.message || lookup.error?.details || '').toLowerCase();
+    if (!errText.includes('column') && !errText.includes('does not exist')) {
+      console.warn('No se pudieron cargar categorías (menus):', lookup.error?.message || lookup.error);
+      return [];
+    }
   }
 
-  return Array.isArray(data) ? data : [];
+  return [];
 }
 
 async function fetchProductsByMenuIds(menuIds = []) {
@@ -594,8 +831,7 @@ async function fetchProductsByMenuIds(menuIds = []) {
   let query = await supabase
     .from('productos')
     .select('*')
-    .in('idMenu', ids)
-    .eq('activo', true);
+    .in('idMenu', ids);
 
   if (!query.error) return Array.isArray(query.data) ? query.data : [];
 
@@ -608,8 +844,7 @@ async function fetchProductsByMenuIds(menuIds = []) {
   query = await supabase
     .from('productos')
     .select('*')
-    .in('idmenu', ids)
-    .eq('activo', true);
+    .in('idmenu', ids);
 
   if (query.error) {
     console.warn('No se pudieron cargar productos por idmenu fallback:', query.error);
@@ -623,8 +858,7 @@ async function fetchProductsDirectByCommerce() {
   let lookup = await supabase
     .from('productos')
     .select('*')
-    .eq('idComercio', idComercio)
-    .eq('activo', true);
+    .eq('idComercio', idComercio);
 
   if (!lookup.error) return Array.isArray(lookup.data) ? lookup.data : [];
 
@@ -636,8 +870,7 @@ async function fetchProductsDirectByCommerce() {
   lookup = await supabase
     .from('productos')
     .select('*')
-    .eq('idcomercio', idComercio)
-    .eq('activo', true);
+    .eq('idcomercio', idComercio);
 
   if (lookup.error) return [];
   return Array.isArray(lookup.data) ? lookup.data : [];
@@ -647,23 +880,13 @@ async function fetchShopifyProductsFallback() {
   let lookup = await supabase
     .from('shopify_productos')
     .select('*')
-    .eq('idComercio', idComercio)
-    .eq('activo', true);
+    .eq('idComercio', idComercio);
 
   if (!lookup.error) return Array.isArray(lookup.data) ? lookup.data : [];
 
   const msg = String(lookup.error?.message || lookup.error?.details || '').toLowerCase();
   if (msg.includes('relation') || msg.includes('does not exist') || msg.includes('shopify_productos')) {
     return [];
-  }
-
-  if (msg.includes('activo')) {
-    lookup = await supabase
-      .from('shopify_productos')
-      .select('*')
-      .eq('idComercio', idComercio);
-
-    if (!lookup.error) return Array.isArray(lookup.data) ? lookup.data : [];
   }
 
   const fallbackMsg = String(lookup.error?.message || lookup.error?.details || '').toLowerCase();
@@ -675,28 +898,29 @@ async function fetchShopifyProductsFallback() {
   lookup = await supabase
     .from('shopify_productos')
     .select('*')
-    .eq('idcomercio', idComercio)
-    .eq('activo', true);
-
-  if (lookup.error && String(lookup.error?.message || lookup.error?.details || '').toLowerCase().includes('activo')) {
-    lookup = await supabase
-      .from('shopify_productos')
-      .select('*')
-      .eq('idcomercio', idComercio);
-  }
+    .eq('idcomercio', idComercio);
 
   if (lookup.error) return [];
   return Array.isArray(lookup.data) ? lookup.data : [];
 }
 
 function buildCategories(products = [], menus = []) {
-  const menuCategories = (menus || []).map((menu) => ({
-    id: `menu:${menu.id}`,
-    name: String(menu.titulo || 'General').trim() || 'General',
-    order: Number(menu.orden) || 0,
-  }));
+  const productCountByCategory = new Map();
+  (products || []).forEach((product) => {
+    const key = String(product?.categoryId || '').trim();
+    if (!key) return;
+    productCountByCategory.set(key, (productCountByCategory.get(key) || 0) + 1);
+  });
 
-  const categoryMap = new Map(menuCategories.map((cat) => [cat.id, cat]));
+  const menuCategories = (menus || [])
+    .map((menu) => ({
+      id: `menu:${menu.id}`,
+      name: String(menu.titulo || 'General').trim() || 'General',
+      order: Number(menu.orden) || 0,
+    }))
+    .filter((category) => (productCountByCategory.get(category.id) || 0) > 0);
+
+  const categoryMap = new Map(menuCategories.map((category) => [category.id, category]));
 
   products.forEach((product) => {
     if (!product?.categoryId || !product?.categoryName) return;
@@ -718,8 +942,29 @@ function buildCategories(products = [], menus = []) {
 }
 
 function getFilteredProducts() {
-  if (state.selectedCategory === 'all') return state.products;
-  return state.products.filter((product) => product.categoryId === state.selectedCategory);
+  const byAvailability = state.hideSoldOut
+    ? state.products.filter((product) => !product.soldOut)
+    : state.products;
+  if (state.selectedCategory === 'all') return byAvailability;
+  return byAvailability.filter((product) => product.categoryId === state.selectedCategory);
+}
+
+function resolveDotIndex(slider, imageCount) {
+  if (!slider || imageCount <= 1) return 0;
+  const itemWidth = slider.clientWidth || slider.firstElementChild?.clientWidth || 1;
+  const imageIndex = clamp(Math.round(slider.scrollLeft / itemWidth), 0, imageCount - 1);
+  if (imageCount <= CARD_DOT_COUNT) return imageIndex;
+
+  const ratio = imageIndex / Math.max(imageCount - 1, 1);
+  return clamp(Math.round(ratio * (CARD_DOT_COUNT - 1)), 0, CARD_DOT_COUNT - 1);
+}
+
+function renderCardDots(slider, dots, imageCount) {
+  if (!slider || !Array.isArray(dots) || !dots.length) return;
+  const activeDot = resolveDotIndex(slider, imageCount);
+  dots.forEach((dot, index) => {
+    dot.classList.toggle('is-active', index === activeDot);
+  });
 }
 
 function createProductCard(product) {
@@ -744,18 +989,35 @@ function createProductCard(product) {
 
   card.innerHTML = `
     <div class="relative bg-gray-100 border-b border-gray-100">
-      <div id="${sliderId}" class="tienda-galeria-track hide-scrollbar flex overflow-x-auto">
+      <div id="${sliderId}" class="tienda-galeria-track hide-scrollbar flex overflow-x-auto" data-role="card-slider">
         ${imagesHtml}
       </div>
+      ${product.soldOut ? '<span class="tienda-soldout-badge">AGOTADO</span>' : ''}
       ${images.length > 1
-        ? '<span class="absolute bottom-1 right-1 text-[11px] px-2 py-0.5 rounded-full bg-black/60 text-white">Desliza</span>'
+        ? `<div class="tienda-slider-dots absolute left-1/2 -translate-x-1/2 bottom-2 flex items-center gap-1.5">
+            ${Array.from({ length: CARD_DOT_COUNT }).map((_, index) => `
+              <span class="tienda-slider-dot ${index === 0 ? 'is-active' : ''}"></span>
+            `).join('')}
+          </div>`
         : ''}
     </div>
     <div class="p-3">
-      <h3 class="text-sm leading-tight font-semibold text-[var(--tienda-color-title)] min-h-[2.5rem] line-clamp-2">${product.name}</h3>
-      <p class="text-sm mt-1 font-semibold text-[var(--tienda-color-price)]">${product.priceLabel}</p>
+      <h3 class="tienda-card-title leading-tight font-semibold text-[var(--tienda-color-title)] min-h-[2.5rem] line-clamp-2">${product.name}</h3>
+      <p class="tienda-card-price mt-1 font-semibold text-[var(--tienda-color-price)]">${product.priceLabel}</p>
     </div>
   `;
+
+  const slider = card.querySelector('[data-role="card-slider"]');
+  const dots = Array.from(card.querySelectorAll('.tienda-slider-dot'));
+  if (slider && dots.length) {
+    renderCardDots(slider, dots, images.length);
+    slider.addEventListener('scroll', () => {
+      renderCardDots(slider, dots, images.length);
+    }, { passive: true });
+    window.requestAnimationFrame(() => {
+      renderCardDots(slider, dots, images.length);
+    });
+  }
 
   card.addEventListener('click', () => {
     openProductModal(product.id);
@@ -785,7 +1047,16 @@ function renderCategories() {
     categoriaButtons.appendChild(btn);
   });
 
-  categoriaSection?.classList.toggle('hidden', state.categories.length <= 1);
+  const hasSoldOut = state.products.some((product) => product.soldOut);
+  if (toggleHideSoldOut) {
+    toggleHideSoldOut.classList.toggle('hidden', !hasSoldOut);
+    toggleHideSoldOut.classList.toggle('is-active', state.hideSoldOut);
+    toggleHideSoldOut.textContent = state.hideSoldOut ? 'Mostrar agotados' : 'Ocultar agotados';
+  }
+
+  categoriaButtons.classList.toggle('hidden', state.categories.length <= 1);
+  const shouldHideSection = state.categories.length <= 1 && !hasSoldOut;
+  categoriaSection?.classList.toggle('hidden', shouldHideSection);
 }
 
 function renderProducts() {
@@ -796,11 +1067,14 @@ function renderProducts() {
 
   if (!visibleProducts.length) {
     productosSection?.classList.remove('hidden');
-    setStatus('No hay productos para esta categoría todavía.', 'warning');
+    const message = state.hideSoldOut
+      ? 'No hay productos disponibles para esta categoría.'
+      : 'No hay productos para esta categoría todavía.';
+    setStatus(message, 'warning');
     return;
   }
 
-  setStatus(`${visibleProducts.length} producto${visibleProducts.length === 1 ? '' : 's'} disponibles.`);
+  setStatus('');
 
   visibleProducts.forEach((product) => {
     productosGrid.appendChild(createProductCard(product));
@@ -866,6 +1140,180 @@ function renderVariantOptions(options = []) {
   modalOpcionesSection.classList.remove('hidden');
 }
 
+function sanitizeVariantBundle(variantBundle = {}) {
+  const sourceOptions = Array.isArray(variantBundle?.options) ? variantBundle.options : [];
+  const sourceVariants = Array.isArray(variantBundle?.variants) ? variantBundle.variants : [];
+
+  const options = sourceOptions
+    .map((option) => {
+      const name = String(option?.name || '').trim();
+      const valuesRaw = Array.isArray(option?.values) ? option.values : [];
+      const values = valuesRaw
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+        .filter((value) => !(isTitleLikeOptionName(name) && isDefaultOptionText(value)));
+
+      if (!name || !values.length) return null;
+      if (isTitleLikeOptionName(name) && values.every(isDefaultOptionText)) return null;
+      return { name, values: Array.from(new Set(values)) };
+    })
+    .filter(Boolean);
+
+  const variants = sourceVariants
+    .map((variant) => {
+      const optionPairs = (Array.isArray(variant?.options) ? variant.options : [])
+        .map((pair) => ({
+          name: String(pair?.name || '').trim(),
+          value: String(pair?.value || '').trim(),
+        }))
+        .filter((pair) => pair.name && pair.value)
+        .filter((pair) => !(isTitleLikeOptionName(pair.name) && isDefaultOptionText(pair.value)));
+
+      const title = String(variant?.title || '').trim();
+      const titleLooksDefault = !title || isDefaultOptionText(title);
+
+      if (titleLooksDefault && !optionPairs.length) return null;
+
+      return {
+        ...variant,
+        title: titleLooksDefault ? optionPairs.map((pair) => pair.value).join(' / ') : title,
+        options: optionPairs,
+      };
+    })
+    .filter((variant) => variant && variant.title);
+
+  return { options, variants };
+}
+
+function getSizeOptionName(variantBundle = {}) {
+  const optionList = Array.isArray(variantBundle?.options) ? variantBundle.options : [];
+  const direct = optionList
+    .map((option) => String(option?.name || '').trim())
+    .find((name) => {
+      const normalized = normalizeOptionName(name);
+      return normalized === 'size'
+        || normalized === 'talla'
+        || normalized === 'tamano'
+        || normalized.includes('talla')
+        || normalized.includes('tamano')
+        || normalized.includes('size');
+    });
+  if (direct) return direct;
+
+  const fromPairs = (Array.isArray(variantBundle?.variants) ? variantBundle.variants : [])
+    .flatMap((variant) => Array.isArray(variant?.options) ? variant.options : [])
+    .map((pair) => String(pair?.name || '').trim())
+    .find((name) => {
+      const normalized = normalizeOptionName(name);
+      return normalized === 'size'
+        || normalized === 'talla'
+        || normalized === 'tamano'
+        || normalized.includes('talla')
+        || normalized.includes('tamano')
+        || normalized.includes('size');
+    });
+  return fromPairs || '';
+}
+
+function getVariantSizeValue(variant = {}, sizeOptionName = '') {
+  const options = Array.isArray(variant?.options) ? variant.options : [];
+  const exact = options.find((pair) => normalizeOptionName(pair?.name) === normalizeOptionName(sizeOptionName));
+  if (exact?.value) return String(exact.value).trim();
+
+  const fallback = options.find((pair) => {
+    const normalized = normalizeOptionName(pair?.name);
+    return normalized === 'size'
+      || normalized === 'talla'
+      || normalized === 'tamano'
+      || normalized.includes('talla')
+      || normalized.includes('tamano')
+      || normalized.includes('size');
+  });
+  return fallback?.value ? String(fallback.value).trim() : '';
+}
+
+function resolveSizeOrder(label = '') {
+  const normalized = normalizeOptionName(label).replace(/\s+/g, '');
+  const ordered = ['xxs', 'xs', 's', 'm', 'l', 'xl', '2xl', '3xl', '4xl', '5xl'];
+  const idx = ordered.indexOf(normalized);
+  return idx >= 0 ? idx : 999;
+}
+
+function updateModalPrice(product) {
+  if (!modalPrecio || !product) return;
+  const basePrice = product.priceLabel;
+  modalPrecio.textContent = product.soldOut ? `${basePrice} · AGOTADO` : basePrice;
+}
+
+function renderSizeBlocks(variantBundle = {}) {
+  if (!modalTallas || !modalTallasSection) return false;
+  modalTallas.innerHTML = '';
+
+  const variants = Array.isArray(variantBundle?.variants) ? variantBundle.variants : [];
+  if (!variants.length) {
+    modalTallasSection.classList.add('hidden');
+    return false;
+  }
+
+  const sizeOptionName = getSizeOptionName(variantBundle);
+  if (!sizeOptionName) {
+    modalTallasSection.classList.add('hidden');
+    return false;
+  }
+
+  const bySize = new Map();
+  variants.forEach((variant) => {
+    const sizeLabel = getVariantSizeValue(variant, sizeOptionName);
+    if (!sizeLabel) return;
+    const key = normalizeOptionName(sizeLabel);
+    const existing = bySize.get(key);
+    if (!existing) {
+      bySize.set(key, { ...variant, sizeLabel });
+      return;
+    }
+    if (variant.available && !existing.available) {
+      bySize.set(key, { ...variant, sizeLabel });
+      return;
+    }
+    const existingPrice = Number.isFinite(existing.price) ? existing.price : Number.POSITIVE_INFINITY;
+    const currentPrice = Number.isFinite(variant.price) ? variant.price : Number.POSITIVE_INFINITY;
+    if (currentPrice < existingPrice) {
+      bySize.set(key, { ...variant, sizeLabel });
+    }
+  });
+
+  const sizes = Array.from(bySize.values()).sort((a, b) => {
+    const orderA = resolveSizeOrder(a.sizeLabel);
+    const orderB = resolveSizeOrder(b.sizeLabel);
+    if (orderA !== orderB) return orderA - orderB;
+    return String(a.sizeLabel).localeCompare(String(b.sizeLabel), 'es', { sensitivity: 'base' });
+  });
+
+  if (!sizes.length) {
+    modalTallasSection.classList.add('hidden');
+    return false;
+  }
+
+  sizes.forEach((variantSize) => {
+    const block = document.createElement('div');
+    const unavailable = !variantSize.available;
+    block.className = 'tienda-size-chip';
+    if (unavailable) block.classList.add('is-disabled');
+
+    const label = escapeHtml(String(variantSize.sizeLabel || variantSize.title || '').trim());
+    const price = Number.isFinite(variantSize.price) ? formatMoney(variantSize.price) : 'Por confirmar';
+    block.innerHTML = `
+      <span class="block text-sm font-semibold leading-tight">${label}</span>
+      <span class="block text-[11px] mt-0.5 ${unavailable ? 'text-gray-400' : 'text-gray-600'}">${price}</span>
+    `;
+
+    modalTallas.appendChild(block);
+  });
+
+  modalTallasSection.classList.remove('hidden');
+  return true;
+}
+
 function renderVariantList(variants = []) {
   modalVariantes.innerHTML = '';
 
@@ -911,13 +1359,25 @@ function openProductModal(productId) {
   if (!product) return;
 
   modalNombre.textContent = product.name;
-  modalPrecio.textContent = product.priceLabel;
-  modalDescripcion.textContent = product.description || 'Sin descripción disponible.';
+  const hasDescription = String(product.description || '').trim().length > 0;
+  modalDescripcion.textContent = hasDescription ? product.description : '';
+  modalDescripcion.classList.toggle('hidden', !hasDescription);
 
-  renderVariantOptions(product.variants.options || []);
-  renderVariantList(product.variants.variants || []);
+  const cleanVariantBundle = sanitizeVariantBundle(product?.variants || {});
+  const variants = cleanVariantBundle.variants || [];
+  if (!variants.length) {
+    renderVariantOptions([]);
+    renderVariantList([]);
+    if (modalTallas) modalTallas.innerHTML = '';
+    modalTallasSection?.classList.add('hidden');
+  } else {
+    const hasSizes = renderSizeBlocks(cleanVariantBundle);
+    renderVariantOptions(hasSizes ? [] : (cleanVariantBundle.options || []));
+    renderVariantList(hasSizes ? [] : variants);
+  }
+  updateModalPrice(product);
 
-  const canBuy = state.storeMode.tiendaOnline && product.isShopify && !!product.buyUrl;
+  const canBuy = state.storeMode.tiendaOnline && product.isShopify && !!product.buyUrl && !product.soldOut;
   if (canBuy) {
     modalComprarBtn.href = product.buyUrl;
     modalComprarBtn.classList.remove('hidden');
@@ -940,6 +1400,14 @@ function closeProductModal() {
 function mountModalEvents() {
   modalCerrar?.addEventListener('click', closeProductModal);
   modalProductoBackdrop?.addEventListener('click', closeProductModal);
+  modalProducto?.addEventListener('click', (event) => {
+    if (modalProducto.classList.contains('hidden')) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const panel = modalProductoPanel || modalProducto.querySelector('.tienda-modal-panel');
+    if (panel && panel.contains(target)) return;
+    closeProductModal();
+  });
 
   modalPrevImagen?.addEventListener('click', () => {
     const product = getModalProduct();
@@ -959,6 +1427,12 @@ function mountModalEvents() {
     if (event.key === 'Escape' && !modalProducto.classList.contains('hidden')) {
       closeProductModal();
     }
+  });
+
+  toggleHideSoldOut?.addEventListener('click', () => {
+    state.hideSoldOut = !state.hideSoldOut;
+    renderCategories();
+    renderProducts();
   });
 }
 
@@ -992,8 +1466,9 @@ async function loadStoreData() {
 
   const originHint = productsRaw.some((product) => isShopifyProduct(product)) ? 'shopify' : 'findixi';
   const normalized = productsRaw.map((product) => normalizeProduct(product, menuMap, originHint));
+  const visible = normalized.filter((product) => product.isVisible !== false);
 
-  state.products = sortProducts(normalized);
+  state.products = sortProducts(visible);
   state.categories = buildCategories(state.products, menus);
 
   if (!state.categories.some((cat) => cat.id === state.selectedCategory)) {
