@@ -4,9 +4,23 @@ import { t } from './i18n.js';
 const formRecuperarPassword = document.getElementById('formRecuperarPassword');
 const emailInput = document.getElementById('emailRecuperar');
 const mensaje = document.getElementById('mensajeRecuperarPassword');
-const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-const basePath = isLocal ? '/public' : '';
-const redirectTo = `${window.location.origin}${basePath}/nuevaPassword.html`;
+
+function getBasePath() {
+  const path = String(window.location.pathname || '');
+  return path.startsWith('/public/') ? '/public' : '';
+}
+
+function buildRedirectCandidates() {
+  const origin = window.location.origin;
+  const basePath = getBasePath();
+  const candidates = [`${origin}${basePath}/nuevaPassword.html`, `${origin}/nuevaPassword.html`];
+  return [...new Set(candidates)];
+}
+
+function isRedirectConfigError(error) {
+  const raw = `${error?.message || ''} ${error?.code || ''}`.toLowerCase();
+  return raw.includes('redirect') || raw.includes('site url') || raw.includes('not allowed');
+}
 
 function mostrarMensaje(texto, tipo) {
   if (!mensaje) return;
@@ -30,9 +44,15 @@ formRecuperarPassword?.addEventListener('submit', async (event) => {
     button.classList.add('opacity-70');
   }
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo
-  });
+  let error = null;
+  const redirectCandidates = buildRedirectCandidates();
+
+  for (const redirectTo of redirectCandidates) {
+    const result = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    error = result.error;
+    if (!error) break;
+    if (!isRedirectConfigError(error)) break;
+  }
 
   if (button) {
     button.disabled = false;
@@ -41,7 +61,7 @@ formRecuperarPassword?.addEventListener('submit', async (event) => {
 
   if (error) {
     mostrarMensaje(t('recoverPassword.errorSend'), 'error');
-    console.error('Error resetPasswordForEmail:', error.message);
+    console.error('Error resetPasswordForEmail:', { message: error.message, code: error.code });
     return;
   }
 
