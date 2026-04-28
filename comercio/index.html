@@ -38,6 +38,27 @@
       </div>
     </section>
 
+    <!-- Notificaciones de comercio -->
+    <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h3 class="text-xl font-semibold text-gray-900">Notificaciones</h3>
+          <p class="text-sm text-gray-500">Ultimas 10 notificaciones de tus comercios.</p>
+        </div>
+        <button
+          id="btnVerMasNotificacionesComercio"
+          class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 text-sm font-semibold"
+        >
+          <i class="fa-solid fa-list"></i>
+          Ver mas
+        </button>
+      </div>
+      <div id="notificacionesComercioLista" class="space-y-3"></div>
+      <p id="notificacionesComercioVacio" class="hidden text-sm text-gray-500 text-center">
+        No hay notificaciones para mostrar.
+      </p>
+    </section>
+
     <!-- Comercios -->
     <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 space-y-4">
       <div class="flex items-center justify-between">

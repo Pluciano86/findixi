@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notificaciones de Comercios</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-100 text-gray-900">
+  <div id="businessChromeHeader"></div>
+
+  <main class="max-w-5xl mx-auto px-4 py-6 space-y-4">
+    <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 sm:p-5 space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Centro de notificaciones</p>
+          <h1 class="text-2xl font-semibold text-gray-900">Notificaciones de comercios</h1>
+          <p id="notificacionesResumen" class="text-sm text-gray-500 mt-1">Cargando...</p>
+        </div>
+        <a href="./index.html" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-sm font-medium">
+          <i class="fa-solid fa-arrow-left"></i>
+          Volver
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+        <label class="block">
+          <span class="text-sm font-medium text-gray-700">Filtrar por comercio</span>
+          <select id="filtroComercio" class="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+            <option value="all">Todos los comercios</option>
+          </select>
+        </label>
+        <button id="btnRecargarNotificaciones" class="self-end inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 text-sm font-semibold">
+          <i class="fa-solid fa-rotate"></i>
+          Recargar
+        </button>
+      </div>
+    </section>
+
+    <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 sm:p-5 space-y-3">
+      <div id="notificacionesLista" class="space-y-3"></div>
+      <p id="notificacionesVacio" class="hidden text-sm text-gray-500 text-center py-6">No hay notificaciones para mostrar.</p>
+      <div class="pt-2 flex justify-center">
+        <button id="btnCargarMasNotificaciones" class="hidden inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-sm font-semibold text-gray-700">
+          <i class="fa-solid fa-chevron-down text-xs"></i>
+          Ver mas
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <div id="businessChromeFooter"></div>
+  <script type="module">
+    import { renderBusinessChrome } from "./shared/businessChrome.js";
+    void renderBusinessChrome({
+      active: 'dashboard',
+      basePath: '.',
+      title: 'Notificaciones',
+      showBack: true,
+      backHref: './index.html',
+      showFooter: false,
+    });
+  </script>
+  <script type="module" src="./shared/supabaseClient.js"></script>
+  <script type="module" src="./js/notificacionesComercio.js"></script>
+</body>
+</html>

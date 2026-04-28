@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { triggerDispatchNotifications } from '../shared/dispatchNotifications.js';
 
 const SENT_STATUSES = new Set(['paid', 'sent', 'confirmed']);
 const ACTIVE_STATUSES = new Set(['paid', 'sent', 'confirmed', 'preparing', 'ready']);
@@ -685,6 +686,10 @@ function bindEvents() {
 
     try {
       await updateOrderStatus(orderId, nextStatus);
+      void triggerDispatchNotifications({
+        reason: `orden_status_update_comercio_${idComercio}_orden_${orderId}_${nextStatus}`,
+        timeoutMs: 2000,
+      });
       await loadOrders();
     } catch (err) {
       console.error('No se pudo actualizar estado de orden', err);

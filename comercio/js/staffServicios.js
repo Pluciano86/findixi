@@ -1,12 +1,28 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { triggerDispatchNotifications } from '../shared/dispatchNotifications.js';
 
 const params = new URLSearchParams(window.location.search);
 const idComercio = Number(params.get('id') || 0);
+const currentPageName = String(window.location.pathname.split('/').pop() || '').toLowerCase();
+const requestedView = String(params.get('view') || '').trim().toLowerCase();
+const pageMode = requestedView === 'staff'
+  ? 'staff'
+  : requestedView === 'citas'
+    ? 'citas'
+    : currentPageName === 'staff.html'
+      ? 'staff'
+      : 'citas';
 
 const subtitleComercio = document.getElementById('subtitleComercio');
+const pageHeading = document.getElementById('pageHeading');
 const btnBackPerfil = document.getElementById('btnBackPerfil');
 const schemaWarning = document.getElementById('schemaWarning');
 const globalFeedback = document.getElementById('globalFeedback');
+const staffShortcutSection = document.getElementById('staffShortcut');
+const btnOpenStaffPage = document.getElementById('btnOpenStaffPage');
+const staffSection = document.getElementById('staff');
+const citasSection = document.getElementById('citas');
+const notificacionesSection = document.getElementById('notificaciones');
 
 const staffAgendaRows = document.getElementById('staffAgendaRows');
 const staffListEl = document.getElementById('staffList');
@@ -78,6 +94,9 @@ const servicioOrdenInput = document.getElementById('servicioOrden');
 const servicioActivoInput = document.getElementById('servicioActivo');
 
 const citaManualForm = document.getElementById('citaManualForm');
+const btnToggleCitaManual = document.getElementById('btnToggleCitaManual');
+const citaManualContainer = document.getElementById('citaManualContainer');
+const citaManualChevron = document.getElementById('citaManualChevron');
 const citaManualStaff = document.getElementById('citaManualStaff');
 const citaManualFecha = document.getElementById('citaManualFecha');
 const citaManualHora = document.getElementById('citaManualHora');
@@ -103,8 +122,15 @@ const btnCalendarClearDay = document.getElementById('btnCalendarClearDay');
 const calendarMonthLabel = document.getElementById('calendarMonthLabel');
 const calendarDayFilterLabel = document.getElementById('calendarDayFilterLabel');
 const calendarCitasGrid = document.getElementById('calendarCitasGrid');
+const calendarDayModal = document.getElementById('calendarDayModal');
+const calendarDayModalTitle = document.getElementById('calendarDayModalTitle');
+const calendarDayModalSubtitle = document.getElementById('calendarDayModalSubtitle');
+const calendarDayModalList = document.getElementById('calendarDayModalList');
+const btnCalendarDayModalClose = document.getElementById('btnCalendarDayModalClose');
 
 const btnNotifRecargar = document.getElementById('btnNotifRecargar');
+const notificacionesSummaryEl = document.getElementById('notificacionesSummary');
+const notificacionesFiltersEl = document.getElementById('notificacionesFilters');
 const notificacionesListEl = document.getElementById('notificacionesList');
 const notificacionesEmptyEl = document.getElementById('notificacionesEmpty');
 
@@ -132,6 +158,7 @@ let citasSourceList = [];
 let notificacionesList = [];
 let calendarMonthAnchor = null;
 let calendarSelectedDay = '';
+let notificacionesFilter = 'all';
 
 function toNumber(value) {
   const parsed = Number(value);
@@ -390,8 +417,40 @@ function openModal(modalEl) {
 function closeModal(modalEl) {
   if (!modalEl) return;
   modalEl.classList.add('hidden');
-  if (staffModal?.classList.contains('hidden') && trabajoModal?.classList.contains('hidden') && servicioModal?.classList.contains('hidden')) {
+  if (
+    staffModal?.classList.contains('hidden')
+    && trabajoModal?.classList.contains('hidden')
+    && servicioModal?.classList.contains('hidden')
+    && calendarDayModal?.classList.contains('hidden')
+  ) {
     document.body.classList.remove('overflow-hidden');
+  }
+}
+
+function configurePageByMode() {
+  const isStaffMode = pageMode === 'staff';
+  if (pageHeading) {
+    pageHeading.textContent = isStaffMode ? 'Gestión de staff y servicios' : 'Gestión de citas';
+  }
+
+  if (staffSection) staffSection.classList.toggle('hidden', !isStaffMode);
+  if (citasSection) citasSection.classList.toggle('hidden', isStaffMode);
+  if (notificacionesSection) notificacionesSection.classList.toggle('hidden', isStaffMode);
+  if (staffShortcutSection) staffShortcutSection.classList.toggle('hidden', isStaffMode);
+
+  if (btnOpenStaffPage) {
+    btnOpenStaffPage.href = `./staff.html?id=${idComercio}`;
+  }
+}
+
+function setManualCitaExpanded(expanded) {
+  if (!citaManualContainer || !btnToggleCitaManual) return;
+  citaManualContainer.classList.toggle('hidden', !expanded);
+  btnToggleCitaManual.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  if (citaManualChevron) {
+    citaManualChevron.innerHTML = expanded
+      ? '<i class="fa-solid fa-chevron-up"></i>'
+      : '<i class="fa-solid fa-chevron-down"></i>';
   }
 }
 
@@ -482,8 +541,9 @@ function getStatusBadgeClass(status) {
   const s = cleanText(status).toLowerCase();
   if (s === 'pendiente') return 'bg-amber-100 text-amber-800';
   if (s === 'confirmada') return 'bg-sky-100 text-sky-800';
-  if (s === 'completada') return 'bg-emerald-100 text-emerald-800';
+  if (s === 'completada' || s === 'enviada') return 'bg-emerald-100 text-emerald-800';
   if (s === 'cancelada' || s === 'rechazada') return 'bg-red-100 text-red-700';
+  if (s === 'error') return 'bg-red-100 text-red-700';
   return 'bg-gray-100 text-gray-700';
 }
 
@@ -576,7 +636,7 @@ function renderCitasCalendar() {
   const cells = [];
 
   for (let index = 0; index < firstWeekday; index += 1) {
-    cells.push('<div class="h-[58px] rounded-md"></div>');
+    cells.push('<div class="h-[88px] sm:h-[104px] rounded-lg"></div>');
   }
 
   for (let day = 1; day <= daysInMonth; day += 1) {
@@ -591,10 +651,10 @@ function renderCitasCalendar() {
     const isToday = dayIso === todayIso;
 
     const buttonClass = selected
-      ? 'border-cyan-500 bg-cyan-50'
+      ? 'border-cyan-500 bg-cyan-50 shadow-sm'
       : total > 0
         ? 'border-gray-300 bg-white hover:bg-gray-50'
-        : 'border-gray-200 bg-gray-50 hover:bg-gray-100';
+        : 'border-gray-200 bg-gray-100 hover:bg-gray-200/70';
 
     const numberClass = selected
       ? 'text-cyan-700'
@@ -604,7 +664,7 @@ function renderCitasCalendar() {
 
     const todayRing = isToday && !selected ? ' ring-1 ring-slate-300' : '';
     const dotsHtml = statuses.map((status) => `
-      <span class="w-1.5 h-1.5 rounded-full ${getCalendarStatusDotClass(status)}"></span>
+      <span class="w-2 h-2 rounded-full ${getCalendarStatusDotClass(status)}"></span>
     `).join('');
 
     cells.push(`
@@ -612,23 +672,25 @@ function renderCitasCalendar() {
         type="button"
         data-action="calendar-day"
         data-date="${dayIso}"
-        class="h-[58px] rounded-md border px-1.5 py-1 text-left transition ${buttonClass}${todayRing}"
+        data-total="${total}"
+        class="h-[88px] sm:h-[104px] rounded-lg border px-2 py-1.5 text-left transition ${buttonClass}${todayRing}"
         aria-label="${dayIso}"
       >
         <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold ${numberClass}">${day}</span>
-          ${total ? `<span class="text-[10px] font-semibold text-gray-600">${total}</span>` : ''}
+          <span class="text-sm font-semibold ${numberClass}">${day}</span>
+          ${total ? `<span class="text-[11px] font-semibold text-gray-700 bg-gray-100 rounded-full px-1.5 py-0.5">${total}</span>` : ''}
         </div>
-        <div class="mt-1 flex flex-wrap gap-1 min-h-[8px]">
+        <div class="mt-2 flex flex-wrap gap-1 min-h-[12px]">
           ${dotsHtml}
         </div>
+        ${total ? '<p class="mt-2 text-[10px] text-gray-500 font-medium">Ver detalle</p>' : ''}
       </button>
     `);
   }
 
   const fillerCells = (7 - (cells.length % 7)) % 7;
   for (let index = 0; index < fillerCells; index += 1) {
-    cells.push('<div class="h-[58px] rounded-md"></div>');
+    cells.push('<div class="h-[88px] sm:h-[104px] rounded-lg"></div>');
   }
 
   if (calendarMonthLabel) {
@@ -661,6 +723,58 @@ function applyCitasViewFilter() {
 
   renderCitasList();
   renderCitasCalendar();
+}
+
+function citasForDate(dateIso) {
+  const key = cleanText(dateIso);
+  if (!key) return [];
+  return citasSourceList
+    .filter((cita) => cleanText(cita.fecha_cita) === key)
+    .sort((a, b) => String(a.hora_inicio || '').localeCompare(String(b.hora_inicio || '')));
+}
+
+function renderCalendarDayModal(dateIso) {
+  if (!calendarDayModalList || !calendarDayModalSubtitle) return;
+  const rows = citasForDate(dateIso);
+  const count = rows.length;
+
+  if (calendarDayModalTitle) {
+    calendarDayModalTitle.textContent = `Citas · ${formatDate(dateIso)}`;
+  }
+  calendarDayModalSubtitle.textContent = `${count} cita${count === 1 ? '' : 's'} en este día.`;
+
+  if (!count) {
+    calendarDayModalList.innerHTML = '<p class="text-sm text-gray-500">No hay citas para este día.</p>';
+    return;
+  }
+
+  calendarDayModalList.innerHTML = rows.map((cita) => {
+    const status = cleanText(cita.estado).toLowerCase();
+    const statusClass = getStatusBadgeClass(status);
+    const cliente = escapeHtml(cita.cliente_nombre || 'Cliente');
+    const telefono = escapeHtml(cita.cliente_telefono || 'Sin teléfono');
+    const staff = escapeHtml(currentStaffName(cita.id_staff));
+    const hora = `${escapeHtml(String(cita.hora_inicio || '').slice(0, 5))} - ${escapeHtml(String(cita.hora_fin || '').slice(0, 5))}`;
+    return `
+      <article class="border border-gray-200 rounded-xl p-3 bg-gray-50">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <p class="text-sm font-semibold text-gray-900">${cliente}</p>
+            <p class="text-xs text-gray-600">${telefono}</p>
+            <p class="text-xs text-gray-500 mt-1">${hora} · ${staff}</p>
+            <p class="text-xs text-gray-500">${escapeHtml(cita.servicio || 'Sin servicio')}</p>
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full ${statusClass}">${escapeHtml(status || 'pendiente')}</span>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+function openCalendarDayModal(dateIso) {
+  if (!calendarDayModal) return;
+  renderCalendarDayModal(dateIso);
+  openModal(calendarDayModal);
 }
 
 async function validateAccessOrRedirect() {
@@ -1508,6 +1622,11 @@ async function updateCitaStatus(id, nextStatus) {
 
   if (error) throw error;
 
+  void triggerDispatchNotifications({
+    reason: `cita_status_update_comercio_${idComercio}_cita_${citaId}_${nextStatus}`,
+    timeoutMs: 2000,
+  });
+
   showGlobalFeedback(`Cita #${citaId} actualizada a ${nextStatus}.`, 'success');
   await loadCitas();
   await loadNotificaciones();
@@ -1567,6 +1686,11 @@ async function createManualCita(event) {
     throw error;
   }
 
+  void triggerDispatchNotifications({
+    reason: `cita_manual_create_comercio_${idComercio}`,
+    timeoutMs: 2000,
+  });
+
   showGlobalFeedback('Cita manual creada.', 'success');
   citaManualForm.reset();
   citaManualDuracion.value = '60';
@@ -1576,36 +1700,91 @@ async function createManualCita(event) {
   await loadNotificaciones();
 }
 
+function normalizeNotificationStatus(value) {
+  const raw = cleanText(value).toLowerCase();
+  if (['sent', 'enviada', 'enviado', 'delivered', 'completed', 'completada'].includes(raw)) return 'sent';
+  if (['error', 'failed', 'fallida', 'rechazada'].includes(raw)) return 'error';
+  return 'pending';
+}
+
+function formatNotificationStatusLabel(value) {
+  const normalized = normalizeNotificationStatus(value);
+  if (normalized === 'sent') return 'enviada';
+  if (normalized === 'error') return 'error';
+  return 'pendiente';
+}
+
 function renderNotificacionesList() {
   if (!notificacionesListEl || !notificacionesEmptyEl) return;
 
-  if (!notificacionesList.length) {
+  const counts = { all: notificacionesList.length, pending: 0, sent: 0, error: 0 };
+  for (const item of notificacionesList) {
+    counts[normalizeNotificationStatus(item.estado)] += 1;
+  }
+
+  if (notificacionesSummaryEl) {
+    const cards = [
+      { key: 'all', label: 'Total', cls: 'border-cyan-200 bg-cyan-50 text-cyan-800' },
+      { key: 'pending', label: 'Pendientes', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
+      { key: 'sent', label: 'Enviadas', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+      { key: 'error', label: 'Errores', cls: 'border-red-200 bg-red-50 text-red-700' },
+    ];
+    notificacionesSummaryEl.innerHTML = cards.map((card) => `
+      <article class="border rounded-lg px-3 py-2 ${card.cls}">
+        <p class="text-[11px] uppercase tracking-wide">${card.label}</p>
+        <p class="text-base font-semibold">${counts[card.key]}</p>
+      </article>
+    `).join('');
+  }
+
+  if (notificacionesFiltersEl) {
+    const buttons = Array.from(notificacionesFiltersEl.querySelectorAll('button[data-filter]'));
+    buttons.forEach((button) => {
+      const key = cleanText(button.getAttribute('data-filter')) || 'all';
+      const isActive = key === notificacionesFilter;
+      button.className = isActive
+        ? 'px-2.5 py-1.5 rounded-lg border border-cyan-500 bg-cyan-50 text-cyan-700 text-xs font-semibold'
+        : 'px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-xs font-semibold';
+    });
+  }
+
+  const visibleItems = notificacionesFilter === 'all'
+    ? [...notificacionesList]
+    : notificacionesList.filter((item) => normalizeNotificationStatus(item.estado) === notificacionesFilter);
+
+  if (!visibleItems.length) {
     notificacionesListEl.innerHTML = '';
     notificacionesEmptyEl.classList.remove('hidden');
+    notificacionesEmptyEl.textContent = notificacionesList.length
+      ? 'No hay notificaciones para este filtro.'
+      : 'No hay notificaciones para mostrar.';
     return;
   }
 
   notificacionesEmptyEl.classList.add('hidden');
-  notificacionesListEl.innerHTML = notificacionesList.map((item) => {
-    const badge = getStatusBadgeClass(item.estado);
+  notificacionesListEl.innerHTML = visibleItems.map((item) => {
+    const statusLabel = formatNotificationStatusLabel(item.estado);
+    const badge = getStatusBadgeClass(statusLabel);
     const payloadText = cleanText(item.payload?.message || item.payload?.subject || '');
     const citaInfo = item.cita
       ? `${formatDate(item.cita.fecha_cita)} ${String(item.cita.hora_inicio || '').slice(0, 5)} · ${item.cita.cliente_nombre || 'Cliente'}`
       : `Cita #${item.id_cita}`;
+    const createdAt = item.created_at ? formatDateTime(item.created_at) : '—';
 
     return `
       <article class="border border-gray-200 rounded-xl p-3 bg-white">
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <p class="text-sm font-semibold text-gray-900">${escapeHtml(item.destinatario)} · ${escapeHtml(item.canal)}</p>
-            <p class="text-xs text-gray-600">Destino: ${escapeHtml(item.destino || '—')}</p>
+            <p class="text-sm font-semibold text-gray-900">${escapeHtml(item.destinatario || 'usuario')} · ${escapeHtml(item.canal || 'canal')}</p>
+            <p class="text-xs text-gray-600 mt-0.5">Destino: ${escapeHtml(item.destino || '—')}</p>
             <p class="text-xs text-gray-500 mt-1">${escapeHtml(citaInfo)}</p>
+            <p class="text-xs text-gray-500">Creada: ${escapeHtml(createdAt)}</p>
             <p class="text-xs text-gray-500">Programada: ${escapeHtml(formatDateTime(item.scheduled_at))}</p>
             ${item.sent_at ? `<p class="text-xs text-gray-500">Enviada: ${escapeHtml(formatDateTime(item.sent_at))}</p>` : ''}
-            ${payloadText ? `<p class="text-xs text-gray-600 mt-1">${escapeHtml(payloadText)}</p>` : ''}
+            ${payloadText ? `<p class="text-xs text-gray-700 mt-2 rounded-lg bg-gray-50 border border-gray-200 px-2 py-1">${escapeHtml(payloadText)}</p>` : ''}
             ${item.error_text ? `<p class="text-xs text-red-600 mt-1">Error: ${escapeHtml(item.error_text)}</p>` : ''}
           </div>
-          <span class="text-xs px-2 py-1 rounded-full ${badge}">${escapeHtml(item.estado || 'pendiente')}</span>
+          <span class="text-xs px-2 py-1 rounded-full ${badge}">${escapeHtml(statusLabel)}</span>
         </div>
       </article>
     `;
@@ -1669,6 +1848,12 @@ function bindEvents() {
   btnStaffModalClose?.addEventListener('click', () => closeModal(staffModal));
   btnTrabajoModalClose?.addEventListener('click', () => closeModal(trabajoModal));
   btnServicioModalClose?.addEventListener('click', () => closeModal(servicioModal));
+  btnCalendarDayModalClose?.addEventListener('click', () => closeModal(calendarDayModal));
+
+  btnToggleCitaManual?.addEventListener('click', () => {
+    const isOpen = !citaManualContainer?.classList.contains('hidden');
+    setManualCitaExpanded(!isOpen);
+  });
 
   document.addEventListener('click', (event) => {
     const closer = event.target.closest('[data-close-modal]');
@@ -1677,6 +1862,7 @@ function bindEvents() {
     if (modalType === 'staff') closeModal(staffModal);
     if (modalType === 'trabajo') closeModal(trabajoModal);
     if (modalType === 'servicio') closeModal(servicioModal);
+    if (modalType === 'calendar-day') closeModal(calendarDayModal);
   });
 
   document.addEventListener('keydown', (event) => {
@@ -1684,6 +1870,7 @@ function bindEvents() {
     closeModal(staffModal);
     closeModal(trabajoModal);
     closeModal(servicioModal);
+    closeModal(calendarDayModal);
   });
 
   btnStaffNuevo?.addEventListener('click', () => {
@@ -1997,8 +2184,13 @@ function bindEvents() {
     const selectedDate = cleanText(button.getAttribute('data-date'));
     if (!selectedDate) return;
 
-    calendarSelectedDay = selectedDate === calendarSelectedDay ? '' : selectedDate;
+    calendarSelectedDay = selectedDate;
     applyCitasViewFilter();
+
+    const total = Number(button.getAttribute('data-total') || 0);
+    if (total > 0) {
+      openCalendarDayModal(selectedDate);
+    }
   });
 
   citaManualForm?.addEventListener('submit', async (event) => {
@@ -2034,9 +2226,18 @@ function bindEvents() {
       showGlobalFeedback(error.message || 'No se pudieron cargar notificaciones.', 'error');
     }
   });
+
+  notificacionesFiltersEl?.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-filter]');
+    if (!button) return;
+    const nextFilter = cleanText(button.getAttribute('data-filter')) || 'all';
+    notificacionesFilter = nextFilter;
+    renderNotificacionesList();
+  });
 }
 
 async function init() {
+  configurePageByMode();
   renderAgendaRows();
   resetAgendaInputs();
   clearStaffForm();
@@ -2044,6 +2245,7 @@ async function init() {
   renderStaffModalTrabajos();
   clearTrabajoForm();
   clearServicioForm();
+  setManualCitaExpanded(false);
   setDefaultDateFilters();
   bindEvents();
 
@@ -2066,10 +2268,13 @@ async function init() {
       servicioStaffSelect.value = String(staffList[0].id);
     }
 
-    await loadTrabajos();
-    await loadServicios();
-    await loadCitas();
-    await loadNotificaciones();
+    if (pageMode === 'staff') {
+      await loadTrabajos();
+      await loadServicios();
+    } else {
+      await loadCitas();
+      await loadNotificaciones();
+    }
   } catch (error) {
     console.error('Error inicializando Staff/Citas:', error);
     showGlobalFeedback(error.message || 'No se pudo inicializar el módulo de Staff/Citas.', 'error');

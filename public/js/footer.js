@@ -32,6 +32,111 @@ const iconBase = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/pub
 
 const defaultCuentaImg = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoPerfil.png';
 const defaultCuentaTexto = t('footer.cuenta');
+let footerMensajesRealtimeChannels = [];
+let footerMensajesRefreshTimer = null;
+
+function setFooterMensajesBadge(count = 0) {
+  const badge = document.getElementById('footerMensajesBadge');
+  if (!badge) return;
+
+  const total = Number(count || 0);
+  if (!Number.isFinite(total) || total <= 0) {
+    badge.textContent = '0';
+    badge.classList.add('hidden');
+    return;
+  }
+
+  badge.textContent = total > 99 ? '99+' : String(total);
+  badge.classList.remove('hidden');
+}
+
+async function obtenerConteoMensajesPendientes({ userId, email }) {
+  const uid = String(userId || '').trim();
+  const userEmail = String(email || '').trim().toLowerCase();
+  if (!uid && !userEmail) return 0;
+
+  const orParts = [];
+  if (uid) orParts.push(`destino_usuario.eq.${uid}`);
+  if (userEmail) orParts.push(`destino_email.eq.${userEmail}`);
+  if (!orParts.length) return 0;
+
+  const { count, error } = await supabase
+    .from('Mensajes')
+    .select('id', { head: true, count: 'exact' })
+    .eq('estado', 'pendiente')
+    .not('tipo', 'ilike', 'invitacion%')
+    .or(orParts.join(','));
+
+  if (error) throw error;
+  return Number(count || 0);
+}
+
+function clearFooterMensajesRealtime() {
+  if (footerMensajesRefreshTimer) {
+    clearTimeout(footerMensajesRefreshTimer);
+    footerMensajesRefreshTimer = null;
+  }
+  footerMensajesRealtimeChannels.forEach((channel) => {
+    try {
+      supabase.removeChannel(channel);
+    } catch (error) {
+      console.warn('No se pudo limpiar canal realtime del footer:', error?.message || error);
+    }
+  });
+  footerMensajesRealtimeChannels = [];
+}
+
+function scheduleFooterMensajesRefresh({ userId, email }) {
+  if (footerMensajesRefreshTimer) clearTimeout(footerMensajesRefreshTimer);
+  footerMensajesRefreshTimer = setTimeout(async () => {
+    try {
+      const totalPendientes = await obtenerConteoMensajesPendientes({ userId, email });
+      setFooterMensajesBadge(totalPendientes);
+    } catch (error) {
+      console.warn('No se pudo refrescar badge realtime del footer:', error?.message || error);
+    }
+  }, 250);
+}
+
+function setupFooterMensajesRealtime({ userId, email }) {
+  clearFooterMensajesRealtime();
+  const uid = String(userId || '').trim();
+  const userEmail = String(email || '').trim().toLowerCase();
+  if (!uid && !userEmail) return;
+
+  const onChange = () => scheduleFooterMensajesRefresh({ userId: uid, email: userEmail });
+  const channels = [];
+
+  if (uid) {
+    channels.push(
+      supabase
+        .channel(`footer-mensajes-user-${uid}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'Mensajes',
+          filter: `destino_usuario=eq.${uid}`,
+        }, onChange)
+        .subscribe()
+    );
+  }
+
+  if (userEmail) {
+    channels.push(
+      supabase
+        .channel(`footer-mensajes-email-${uid || 'anon'}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'Mensajes',
+          filter: `destino_email=eq.${userEmail}`,
+        }, onChange)
+        .subscribe()
+    );
+  }
+
+  footerMensajesRealtimeChannels = channels;
+}
 
 function renderFooter() {
   if (!container) return;
@@ -62,11 +167,17 @@ function renderFooter() {
           <span>Lo de Hoy</span>
         </a>
         <a id="enlaceMiCuenta" href="${loginPath}" class="flex flex-col items-center text-sm font-extralight w-1/4">
-          <img 
-            id="footerImagen"
-            src="${defaultCuentaImg}"
-            class="w-8 h-8 mb-1"
-            alt="Cuenta">
+          <span class="relative inline-flex mb-1">
+            <img 
+              id="footerImagen"
+              src="${defaultCuentaImg}"
+              class="w-8 h-8"
+              alt="Cuenta">
+            <span
+              id="footerMensajesBadge"
+              class="hidden absolute -top-1 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[16px] font-semibold text-center"
+            >0</span>
+          </span>
           <span id="footerTexto" data-i18n="footer.cuenta">${defaultCuentaTexto}</span>
         </a>
       </nav>
@@ -104,6 +215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const enlaceMiCuenta = document.getElementById('enlaceMiCuenta');
   const cuentaImagen = document.getElementById('footerImagen');
   const cuentaTexto = document.getElementById('footerTexto');
+  setFooterMensajesBadge(0);
 
   if (!enlaceMiCuenta) return;
 
@@ -130,15 +242,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         cuentaTexto.textContent = user.email.split('@')[0];
       }
+
+      const totalPendientes = await obtenerConteoMensajesPendientes({
+        userId: user.id,
+        email: user.email,
+      });
+      setFooterMensajesBadge(totalPendientes);
+      setupFooterMensajesRealtime({ userId: user.id, email: user.email });
     } else {
       cuentaImagen.src = defaultCuentaImg;
       cuentaTexto.textContent = defaultCuentaTexto;
       enlaceMiCuenta.href = loginPath;
+      setFooterMensajesBadge(0);
+      clearFooterMensajesRealtime();
     }
   } catch (error) {
     console.error('Error verificando sesión:', error);
     cuentaImagen.src = defaultCuentaImg;
     cuentaTexto.textContent = defaultCuentaTexto;
     enlaceMiCuenta.href = loginPath;
+    setFooterMensajesBadge(0);
+    clearFooterMensajesRealtime();
   }
+});
+
+window.addEventListener('beforeunload', () => {
+  clearFooterMensajesRealtime();
 });

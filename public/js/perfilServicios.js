@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { triggerDispatchNotifications } from '../shared/dispatchNotifications.js';
 
 const CATEGORIAS_SERVICIOS_FALLBACK = new Set([
   'salon de belleza',
@@ -1693,6 +1694,11 @@ function bindEvents() {
         console.error('Error creando cita:', error);
         return;
       }
+
+      void triggerDispatchNotifications({
+        reason: `cita_create_public_comercio_${Number(state.idComercio) || 0}`,
+        timeoutMs: 2000,
+      });
 
       setFeedback('success', 'Cita reservada. Recibiras notificacion cuando el comercio la confirme.');
       if (inputNotas) inputNotas.value = '';

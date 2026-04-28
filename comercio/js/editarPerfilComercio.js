@@ -1191,7 +1191,7 @@ async function cargarDatos() {
   renderQuickOverview(comercioActual || {}, horariosActuales);
 
   // links
-  if (btnStaffServicios) btnStaffServicios.href = `./staffServicios.html?id=${idComercio}`;
+  if (btnStaffServicios) btnStaffServicios.href = `./staff.html?id=${idComercio}`;
   if (btnAdministrarEspeciales) btnAdministrarEspeciales.href = `./especiales/adminEspeciales.html?id=${idComercio}`;
 }
 

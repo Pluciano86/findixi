@@ -389,7 +389,7 @@ async function resolvePrimaryCta({ idComercio = 0, basePath = '.' } = {}) {
     return {
       profileType,
       label,
-      href: withBasePath(basePath, 'staffServicios.html', id),
+      href: withBasePath(basePath, 'staff.html', id),
       ...categorySignals,
     };
   }
@@ -427,7 +427,7 @@ function buildNavItems({ idComercio = 0, basePath = '.', primaryCta, active = ''
         : String(primaryCta?.label || DEFAULT_PRIMARY.label);
   const primaryHref =
     profileType === 'servicios'
-      ? `${withBasePath(basePath, 'staffServicios.html', idComercio)}#staff`
+      ? withBasePath(basePath, 'staff.html', idComercio)
       : profileType === 'tienda'
         ? withBasePath(basePath, 'editarPerfilComercio.html', idComercio)
         : String(primaryCta?.href || withBasePath(basePath, 'adminMenuComercio.html', idComercio));

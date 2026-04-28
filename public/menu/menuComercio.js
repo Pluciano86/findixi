@@ -5,6 +5,7 @@ import { mountLangSelector } from '../shared/langSelector.js';
 import { getLang } from '../js/i18n.js';
 import { resolverPlanComercio } from '../shared/planes.js';
 import { bindTrackedAnchor, trackAnalyticsEvent } from '../shared/analyticsTracker.js';
+import { triggerDispatchNotifications } from '../shared/dispatchNotifications.js';
 
 const params = new URLSearchParams(window.location.search);
 const idComercio = params.get('idComercio') || params.get('id');
@@ -2452,6 +2453,11 @@ async function submitOrder() {
         },
       });
     }
+
+    void triggerDispatchNotifications({
+      reason: `orden_create_menu_comercio_${Number(idComercio) || 0}_orden_${Number(orderId) || 0}`,
+      timeoutMs: 1800,
+    });
 
     if (orderMode === 'pickup') {
       const url = json?.checkout_url || json?.order?.checkout_url;

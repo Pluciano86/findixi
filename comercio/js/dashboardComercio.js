@@ -6,6 +6,9 @@ const userNombre = document.getElementById('userNombre');
 const userEmail = document.getElementById('userEmail');
 const userAvatar = document.getElementById('userAvatar');
 const userRol = document.getElementById('userRol');
+const notificacionesComercioLista = document.getElementById('notificacionesComercioLista');
+const notificacionesComercioVacio = document.getElementById('notificacionesComercioVacio');
+const btnVerMasNotificacionesComercio = document.getElementById('btnVerMasNotificacionesComercio');
 const comerciosLista = document.getElementById('comerciosLista');
 const comerciosVacio = document.getElementById('comerciosVacio');
 const modalColab = document.getElementById('modalColab');
@@ -19,6 +22,10 @@ const modalRolTexto = document.getElementById('modalRolTexto');
 const inputColabEmail = document.getElementById('inputColabEmail');
 const colabSuggestions = document.getElementById('colabSuggestions');
 let colabSearchTimer;
+let dashboardComercios = [];
+let dashboardNotificacionesRealtimeChannels = [];
+let dashboardNotificacionesRefreshTimer = null;
+let dashboardNotificacionesLoading = false;
 const COMERCIOS_SELECT_BASE =
   'id, nombre, logo, plan_id, plan_nivel, plan_nombre, permite_menu, permite_especiales, permite_ordenes, estado_propiedad, estado_verificacion, propietario_verificado, logo_aprobado, portada_aprobada';
 
@@ -168,6 +175,236 @@ async function fetchFavoritosByComercioIds(ids = []) {
   return map;
 }
 
+function parseMensajePayload(rawPayload) {
+  if (!rawPayload) return {};
+  if (typeof rawPayload === 'object') return rawPayload;
+  if (typeof rawPayload !== 'string') return {};
+  try {
+    const parsed = JSON.parse(rawPayload);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (_error) {
+    return {};
+  }
+}
+
+function formatMensajeTipo(tipo = '') {
+  const normalized = String(tipo || '').toLowerCase();
+  if (normalized === 'notificacion_cita') return 'Cita';
+  if (normalized === 'notificacion_orden') return 'Orden';
+  if (normalized === 'notificacion_sistema') return 'Sistema';
+  if (normalized.startsWith('invitacion')) return 'Invitacion';
+  return 'Notificacion';
+}
+
+function formatMensajeFecha(fechaRaw) {
+  if (!fechaRaw) return '';
+  const fecha = new Date(fechaRaw);
+  if (Number.isNaN(fecha.getTime())) return '';
+  return fecha.toLocaleString('es-PR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function getMensajeTexto(mensaje = {}) {
+  const payload = parseMensajePayload(mensaje.payload);
+  const payloadMessage = String(payload?.message || payload?.mensaje || '').trim();
+  const directMessage = String(mensaje?.message || '').trim();
+  if (payloadMessage) return payloadMessage;
+  if (directMessage) return directMessage;
+  return `Nueva notificacion de ${formatMensajeTipo(mensaje?.tipo)}.`;
+}
+
+function resolveMensajeDestino(mensaje = {}) {
+  const payload = parseMensajePayload(mensaje.payload);
+  const comercioId = getIdComercio(mensaje);
+  const actionPath = String(payload?.action_path || payload?.target_path || '').trim();
+  const actionUrl = String(payload?.action_url || payload?.url || '').trim();
+  if (actionPath) {
+    if (actionPath.startsWith('http://') || actionPath.startsWith('https://')) return actionPath;
+    if (actionPath.startsWith('/')) return actionPath;
+    return actionPath.startsWith('./') ? actionPath : `./${actionPath}`;
+  }
+  if (actionUrl) return actionUrl;
+
+  const tipo = String(mensaje?.tipo || '').toLowerCase();
+  if (tipo === 'notificacion_cita' && Number.isFinite(comercioId)) return `./staff.html?id=${comercioId}`;
+  if (tipo === 'notificacion_orden' && Number.isFinite(comercioId)) return `./ordenesPickup.html?id=${comercioId}`;
+  if (Number.isFinite(comercioId)) return `./editarPerfilComercio.html?id=${comercioId}`;
+  return '';
+}
+
+async function fetchNotificacionesComercio({ comercioIds = [], limit = 10 } = {}) {
+  if (!Array.isArray(comercioIds) || !comercioIds.length) return [];
+
+  const { data, error } = await supabase
+    .from('Mensajes')
+    .select('*')
+    .in('id_comercio', comercioIds)
+    .not('tipo', 'ilike', 'invitacion%')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.warn('No se pudieron cargar notificaciones de comercio:', error.message || error);
+    return [];
+  }
+
+  return Array.isArray(data) ? data : [];
+}
+
+async function eliminarNotificacionComercio(mensajeId) {
+  const id = Number(mensajeId);
+  if (!Number.isFinite(id)) return false;
+  const { error } = await supabase.from('Mensajes').delete().eq('id', id);
+  if (error) {
+    alert('No se pudo eliminar la notificacion.');
+    console.warn('Error eliminando notificacion de comercio:', error.message || error);
+    return false;
+  }
+  return true;
+}
+
+function clearDashboardNotificacionesRealtime() {
+  if (dashboardNotificacionesRefreshTimer) {
+    clearTimeout(dashboardNotificacionesRefreshTimer);
+    dashboardNotificacionesRefreshTimer = null;
+  }
+  dashboardNotificacionesRealtimeChannels.forEach((channel) => {
+    try {
+      supabase.removeChannel(channel);
+    } catch (error) {
+      console.warn('No se pudo limpiar canal realtime de notificaciones del dashboard:', error?.message || error);
+    }
+  });
+  dashboardNotificacionesRealtimeChannels = [];
+}
+
+function scheduleDashboardNotificacionesRefresh() {
+  if (dashboardNotificacionesRefreshTimer) clearTimeout(dashboardNotificacionesRefreshTimer);
+  dashboardNotificacionesRefreshTimer = setTimeout(async () => {
+    if (dashboardNotificacionesLoading) {
+      scheduleDashboardNotificacionesRefresh();
+      return;
+    }
+    await cargarNotificacionesDashboard();
+  }, 300);
+}
+
+function setupDashboardNotificacionesRealtime(comercioIds = []) {
+  clearDashboardNotificacionesRealtime();
+  const ids = [...new Set((Array.isArray(comercioIds) ? comercioIds : []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))];
+  if (!ids.length) return;
+
+  const channels = ids.map((id) =>
+    supabase
+      .channel(`dashboard-comercio-notificaciones-${id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'Mensajes',
+        filter: `id_comercio=eq.${id}`,
+      }, () => {
+        scheduleDashboardNotificacionesRefresh();
+      })
+      .subscribe()
+  );
+
+  dashboardNotificacionesRealtimeChannels = channels;
+}
+
+function renderNotificacionesComercio(lista = [], comercioMap = new Map()) {
+  if (!notificacionesComercioLista) return;
+  notificacionesComercioLista.innerHTML = '';
+  if (!Array.isArray(lista) || !lista.length) {
+    notificacionesComercioVacio?.classList.remove('hidden');
+    return;
+  }
+
+  notificacionesComercioVacio?.classList.add('hidden');
+
+  lista.forEach((mensaje) => {
+    const comercioId = getIdComercio(mensaje);
+    const comercioNombre =
+      comercioMap.get(comercioId)?.nombre ||
+      (Number.isFinite(comercioId) ? `Comercio ${comercioId}` : 'Comercio');
+    const texto = getMensajeTexto(mensaje);
+    const tipo = formatMensajeTipo(mensaje?.tipo);
+    const fecha = formatMensajeFecha(mensaje?.created_at);
+    const destino = resolveMensajeDestino(mensaje);
+
+    const item = document.createElement('article');
+    item.className = 'rounded-xl border border-slate-200 p-3 sm:p-4 bg-slate-50 space-y-3';
+
+    const top = document.createElement('div');
+    top.className = 'flex items-start justify-between gap-3';
+    top.innerHTML = `
+      <div class="min-w-0">
+        <h4 class="text-sm font-semibold text-slate-900 truncate">${comercioNombre}</h4>
+        <p class="text-xs text-slate-500">${tipo}${fecha ? ` · ${fecha}` : ''}</p>
+      </div>
+    `;
+
+    const msg = document.createElement('p');
+    msg.className = 'text-sm text-slate-700';
+    msg.textContent = texto;
+
+    const actions = document.createElement('div');
+    actions.className = 'flex items-center justify-end gap-2';
+
+    const btnIr = document.createElement('button');
+    btnIr.type = 'button';
+    btnIr.className = 'inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed';
+    btnIr.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square text-xs"></i> Ir';
+    if (!destino) btnIr.disabled = true;
+    btnIr.addEventListener('click', () => {
+      if (!destino) return;
+      window.location.href = destino;
+    });
+
+    const btnEliminar = document.createElement('button');
+    btnEliminar.type = 'button';
+    btnEliminar.className = 'inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 text-sm font-semibold';
+    btnEliminar.innerHTML = '<i class="fa-solid fa-trash text-xs"></i> Eliminar';
+    btnEliminar.addEventListener('click', async () => {
+      const ok = await eliminarNotificacionComercio(mensaje.id);
+      if (!ok) return;
+      item.remove();
+      if (!notificacionesComercioLista.children.length) {
+        notificacionesComercioVacio?.classList.remove('hidden');
+      }
+    });
+
+    actions.appendChild(btnIr);
+    actions.appendChild(btnEliminar);
+
+    item.appendChild(top);
+    item.appendChild(msg);
+    item.appendChild(actions);
+    notificacionesComercioLista.appendChild(item);
+  });
+}
+
+async function cargarNotificacionesDashboard() {
+  if (dashboardNotificacionesLoading) return;
+  dashboardNotificacionesLoading = true;
+  try {
+    const ids = dashboardComercios.map((c) => c.id).filter((id) => Number.isFinite(id));
+    if (!ids.length) {
+      renderNotificacionesComercio([], new Map());
+      return;
+    }
+    const comercioMap = new Map(dashboardComercios.map((c) => [Number(c.id), c]));
+    const notificaciones = await fetchNotificacionesComercio({ comercioIds: ids, limit: 10 });
+    renderNotificacionesComercio(notificaciones, comercioMap);
+  } finally {
+    dashboardNotificacionesLoading = false;
+  }
+}
+
 async function getUser() {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data?.user) {
@@ -218,6 +455,7 @@ async function cargarComercios(user) {
   if (!comerciosLista) return;
   comerciosLista.innerHTML = '';
   comerciosVacio?.classList.add('hidden');
+  dashboardComercios = [];
 
   let relacionesLista = [];
   try {
@@ -256,6 +494,7 @@ async function cargarComercios(user) {
   const ids = [...idsRelacionados];
   if (!ids.length) {
     comerciosVacio?.classList.remove('hidden');
+    dashboardComercios = [];
     return;
   }
 
@@ -267,8 +506,10 @@ async function cargarComercios(user) {
 
   if (errCom || !comercios?.length) {
     comerciosVacio?.classList.remove('hidden');
+    dashboardComercios = [];
     return;
   }
+  dashboardComercios = comercios;
 
   const metricasIntentoMap = {};
   const fecha30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -526,7 +767,12 @@ document.addEventListener('click', (e) => {
   limpiarSugerencias();
 });
 
+btnVerMasNotificacionesComercio?.addEventListener('click', () => {
+  window.location.href = './notificaciones.html';
+});
+
 btnLogout?.addEventListener('click', async () => {
+  clearDashboardNotificacionesRealtime();
   await supabase.auth.signOut();
   window.location.href = './login.html';
 });
@@ -536,7 +782,13 @@ async function initDashboardComercio() {
   if (!user) return;
   await cargarPerfil(user);
   await cargarComercios(user);
+  setupDashboardNotificacionesRealtime(dashboardComercios.map((c) => c.id));
+  await cargarNotificacionesDashboard();
 }
+
+window.addEventListener('beforeunload', () => {
+  clearDashboardNotificacionesRealtime();
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {

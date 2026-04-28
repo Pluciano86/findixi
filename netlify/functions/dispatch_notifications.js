@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createOtpProvider } from './otpProvider.js';
 
 const MAX_BATCH = Number(process.env.NOTIFICATIONS_BATCH_SIZE || 50);
+const TEST_DESTINATION_PHONE = String(process.env.NOTIFICATIONS_TEST_PHONE || '').trim();
 
 function json(statusCode, payload) {
   return {
@@ -23,6 +24,8 @@ function getHeader(event, key) {
 
 function isAuthorized(event) {
   const secret = String(process.env.NOTIFICATIONS_CRON_SECRET || '').trim();
+  const isNetlifyScheduled = String(getHeader(event, 'x-nf-event') || '').toLowerCase() === 'schedule';
+  if (isNetlifyScheduled) return true;
   if (!secret) return true;
   const incoming = String(getHeader(event, 'x-cron-secret') || '').trim();
   return incoming && incoming === secret;
@@ -30,6 +33,11 @@ function isAuthorized(event) {
 
 function safeText(value) {
   return String(value || '').trim();
+}
+
+function resolveDestination(phoneRaw) {
+  if (TEST_DESTINATION_PHONE) return TEST_DESTINATION_PHONE;
+  return safeText(phoneRaw);
 }
 
 async function sendWithFallback({ provider, channel, phone, message }) {
@@ -114,7 +122,7 @@ async function processCitaNotifications({ supabase, provider, nowIso }) {
   let failed = 0;
 
   for (const row of data || []) {
-    const destination = safeText(row?.destino);
+    const destination = resolveDestination(row?.destino);
     const payload = row?.payload && typeof row.payload === 'object' ? row.payload : {};
     const message = safeText(payload?.message || payload?.subject || '');
 
@@ -195,7 +203,7 @@ async function processOrderNotifications({ supabase, provider, nowIso }) {
   let failed = 0;
 
   for (const row of data || []) {
-    const destination = safeText(row?.destino);
+    const destination = resolveDestination(row?.destino);
     const message = safeText(row?.message);
     const payload = row?.payload && typeof row.payload === 'object' ? row.payload : {};
 

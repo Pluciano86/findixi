@@ -110,6 +110,7 @@ const inputTelefono = document.getElementById('inputTelefono');
 const inputMunicipio = document.getElementById('inputMunicipio');
 
 const btnPedidos = document.getElementById('btnPedidos');
+const btnCitas = document.getElementById('btnCitas');
 const btnFavoritos = document.getElementById('btnFavoritos');
 const btnCerrarFavoritos = document.getElementById('btnCerrarFavoritos');
 const modalFavoritos = document.getElementById('modalFavoritos');
@@ -162,6 +163,7 @@ const modalCuponQrDescripcion = document.getElementById('modalCuponQrDescripcion
 
 const btnLogout = document.getElementById('btnLogout');
 const btnMensajes = document.getElementById('btnMensajes');
+const mensajesBadge = document.getElementById('mensajesBadge');
 const modalMensajes = document.getElementById('modalMensajes');
 const modalMensajesCerrar = document.getElementById('modalMensajesCerrar');
 const mensajesLista = document.getElementById('mensajesLista');
@@ -169,6 +171,8 @@ const mensajesVacio = document.getElementById('mensajesVacio');
 let mensajesUsuario = [];
 let mapaUsuariosMsg = {};
 let mapaComerciosMsg = {};
+let mensajesRealtimeChannels = [];
+let mensajesRealtimeRefreshTimer = null;
 
 const mapRolLegible = (rol) => {
   const r = (rol || '').toLowerCase();
@@ -176,6 +180,196 @@ const mapRolLegible = (rol) => {
   if (r === 'comercio_editor') return 'Editor';
   return 'Colaborador';
 };
+
+function isInvitationMessage(message) {
+  return String(message?.tipo || '').startsWith('invitacion');
+}
+
+function formatMensajeTipoLabel(tipo = '') {
+  const normalized = String(tipo || '').toLowerCase();
+  if (normalized.startsWith('invitacion')) return 'Invitación a colaborar';
+  if (normalized === 'notificacion_cita') return 'Cita';
+  if (normalized === 'notificacion_orden') return 'Orden';
+  if (normalized === 'notificacion_sistema') return 'Sistema';
+  return tipo || 'Mensaje';
+}
+
+function getMensajePrincipal({ mensaje, payload, invitador, rolLegible, comercioNombre }) {
+  const tipo = String(mensaje?.tipo || '').toLowerCase();
+  if (tipo.startsWith('invitacion')) {
+    return `${invitador} te invitó a colaborar como ${rolLegible} en ${comercioNombre}.`;
+  }
+
+  const payloadMessage = payload?.message || payload?.mensaje || '';
+  if (payloadMessage) return String(payloadMessage);
+  if (mensaje?.message) return String(mensaje.message);
+  return 'Tienes una nueva notificación.';
+}
+
+function actualizarBadgeMensajes() {
+  const nuevos = mensajesUsuario.filter(
+    (item) => !isInvitationMessage(item) && String(item?.estado || '').trim().toLowerCase() === 'pendiente'
+  ).length;
+
+  if (mensajesBadge) {
+    if (!nuevos) {
+      mensajesBadge.classList.add('hidden');
+      mensajesBadge.textContent = '0';
+    } else {
+      mensajesBadge.textContent = nuevos > 99 ? '99+' : String(nuevos);
+      mensajesBadge.classList.remove('hidden');
+    }
+  }
+
+  const footerBadge = document.getElementById('footerMensajesBadge');
+  if (footerBadge) {
+    if (!nuevos) {
+      footerBadge.classList.add('hidden');
+      footerBadge.textContent = '0';
+    } else {
+      footerBadge.textContent = nuevos > 99 ? '99+' : String(nuevos);
+      footerBadge.classList.remove('hidden');
+    }
+  }
+}
+
+function isMensajesModalOpen() {
+  if (!modalMensajes) return false;
+  return !modalMensajes.classList.contains('hidden');
+}
+
+function clearMensajesRealtime() {
+  if (mensajesRealtimeRefreshTimer) {
+    clearTimeout(mensajesRealtimeRefreshTimer);
+    mensajesRealtimeRefreshTimer = null;
+  }
+  mensajesRealtimeChannels.forEach((channel) => {
+    try {
+      supabase.removeChannel(channel);
+    } catch (error) {
+      console.warn('No se pudo limpiar canal realtime de mensajes:', error?.message || error);
+    }
+  });
+  mensajesRealtimeChannels = [];
+}
+
+function scheduleMensajesRealtimeRefresh() {
+  if (mensajesRealtimeRefreshTimer) clearTimeout(mensajesRealtimeRefreshTimer);
+  mensajesRealtimeRefreshTimer = setTimeout(async () => {
+    await cargarMensajes({ render: isMensajesModalOpen() });
+  }, 250);
+}
+
+function setupMensajesRealtime({ userId, email }) {
+  clearMensajesRealtime();
+  const uid = String(userId || '').trim();
+  const userEmail = String(email || '').trim().toLowerCase();
+  if (!uid && !userEmail) return;
+
+  const onChange = () => {
+    scheduleMensajesRealtimeRefresh();
+  };
+  const channels = [];
+
+  if (uid) {
+    channels.push(
+      supabase
+        .channel(`cuenta-mensajes-user-${uid}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'Mensajes',
+          filter: `destino_usuario=eq.${uid}`,
+        }, onChange)
+        .subscribe()
+    );
+  }
+
+  if (userEmail) {
+    channels.push(
+      supabase
+        .channel(`cuenta-mensajes-email-${uid || 'anon'}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'Mensajes',
+          filter: `destino_email=eq.${userEmail}`,
+        }, onChange)
+        .subscribe()
+    );
+  }
+
+  mensajesRealtimeChannels = channels;
+}
+
+async function hasAnyOrdersForUser({ userId, email }) {
+  const normalizedUserId = String(userId || '').trim();
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+
+  try {
+    if (normalizedUserId) {
+      const { count, error } = await supabase
+        .from('ordenes')
+        .select('id', { head: true, count: 'exact' })
+        .eq('customer_user_id', normalizedUserId);
+      if (!error && Number(count || 0) > 0) return true;
+    }
+
+    if (normalizedEmail) {
+      const { count, error } = await supabase
+        .from('ordenes')
+        .select('id', { head: true, count: 'exact' })
+        .ilike('customer_email', normalizedEmail);
+      if (!error && Number(count || 0) > 0) return true;
+    }
+  } catch (error) {
+    console.warn('No se pudo validar historial de órdenes:', error?.message || error);
+  }
+
+  return false;
+}
+
+async function hasAnyCitasForUser({ userId }) {
+  const normalizedUserId = String(userId || '').trim();
+  if (!normalizedUserId) return false;
+
+  try {
+    const citasResp = await supabase
+      .from('ComercioCitas')
+      .select('id', { head: true, count: 'exact' })
+      .eq('id_usuario', normalizedUserId);
+    if (!citasResp.error && Number(citasResp.count || 0) > 0) return true;
+  } catch (error) {
+    console.warn('No se pudo validar historial de citas (tabla principal):', error?.message || error);
+  }
+
+  try {
+    const mensajesResp = await supabase
+      .from('Mensajes')
+      .select('id', { head: true, count: 'exact' })
+      .eq('tipo', 'notificacion_cita')
+      .eq('destino_usuario', normalizedUserId);
+    if (!mensajesResp.error && Number(mensajesResp.count || 0) > 0) return true;
+  } catch (error) {
+    console.warn('No se pudo validar historial de citas (mensajes):', error?.message || error);
+  }
+
+  return false;
+}
+
+async function actualizarVisibilidadAccesosUsuario(authUser) {
+  const userId = String(authUser?.id || '').trim();
+  const email = String(authUser?.email || '').trim();
+  if (!userId) return;
+
+  const [hasOrders, hasCitas] = await Promise.all([
+    hasAnyOrdersForUser({ userId, email }),
+    hasAnyCitasForUser({ userId }),
+  ]);
+
+  if (btnPedidos) btnPedidos.classList.toggle('hidden', !hasOrders);
+  if (btnCitas) btnCitas.classList.toggle('hidden', !hasCitas);
+}
 
 const PLACEHOLDER_FOTO = 'https://placehold.co/100x100?text=User';
 const PLACEHOLDER_LUGAR = 'https://placehold.co/120x80?text=Lugar';
@@ -2011,6 +2205,8 @@ async function init() {
 
   const authUser = session.user;
   usuarioId = authUser.id;
+  setupMensajesRealtime({ userId: authUser.id, email: authUser.email });
+  const mensajesPreload = cargarMensajes({ render: false });
 
   perfilOriginal = await crearPerfilSiNoExiste(authUser);
   if (!perfilOriginal) {
@@ -2066,7 +2262,8 @@ async function init() {
     }
   }
 
-  await cargarCuponesUsuario();
+  await actualizarVisibilidadAccesosUsuario(authUser);
+  await mensajesPreload;
 }
 
 btnFavoritos?.addEventListener('click', async () => {
@@ -2076,6 +2273,10 @@ btnFavoritos?.addEventListener('click', async () => {
 
 btnPedidos?.addEventListener('click', () => {
   window.location.href = `${basePath}/pedidos.html`;
+});
+
+btnCitas?.addEventListener('click', () => {
+  window.location.href = `${basePath}/citas.html`;
 });
 
 btnCerrarFavoritos?.addEventListener('click', () => modalFavoritos?.classList.add('hidden'));
@@ -2364,12 +2565,13 @@ formEditar?.addEventListener('submit', async (e) => {
 
 btnLogout?.addEventListener('click', async () => {
   if (!confirm('¿Deseas cerrar sesión?')) return;
+  clearMensajesRealtime();
   await supabase.auth.signOut();
   window.location.href = `${basePath}/index.html`;
 });
 
 btnMensajes?.addEventListener('click', async () => {
-  await cargarMensajes();
+  await cargarMensajes({ render: true });
   modalMensajes?.classList.remove('hidden');
   modalMensajes?.classList.add('flex');
 });
@@ -2386,7 +2588,7 @@ modalMensajes?.addEventListener('click', (e) => {
   }
 });
 
-async function cargarMensajes() {
+async function cargarMensajes({ render = false } = {}) {
   try {
     const { data: userData } = await supabase.auth.getUser();
     const user = userData?.user;
@@ -2403,7 +2605,7 @@ async function cargarMensajes() {
       .select('*')
       .or(orParts.join(','))
       .order('created_at', { ascending: false })
-      .limit(30);
+      .limit(80);
 
     console.log('AUTH UID:', uid, 'AUTH EMAIL:', email);
     console.log('MENSAJES QUERY RESULT data:', data, 'error:', error);
@@ -2414,10 +2616,12 @@ async function cargarMensajes() {
       mensajesUsuario = data; // fallback por si algún filtro vacía resultados
     }
     console.log('MENSAJES FILTRADOS:', mensajesUsuario);
+    actualizarBadgeMensajes();
     await enriquecerMensajes(mensajesUsuario);
-    renderMensajes();
+    if (render) renderMensajes();
   } catch (err) {
     console.error('Error cargando mensajes', err);
+    if (render) renderMensajes();
   }
 }
 
@@ -2456,6 +2660,7 @@ async function enriquecerMensajes(mensajes) {
 function renderMensajes() {
   if (!mensajesLista) return;
   mensajesLista.innerHTML = '';
+  actualizarBadgeMensajes();
   if (!mensajesUsuario.length) {
     mensajesVacio?.classList.remove('hidden');
     mensajesLista.appendChild(mensajesVacio);
@@ -2474,6 +2679,7 @@ function renderMensajes() {
     const comercioNombre =
       (payloadComercio && mapaComerciosMsg[payloadComercio]) ||
       (payloadComercio ? `Comercio ${payloadComercio}` : 'tu comercio');
+    const canal = payload?.canal || m.canal || '';
     const fechaEnvio = m.created_at || m.creado_en;
     const fechaTexto = fechaEnvio
       ? new Date(fechaEnvio).toLocaleString('es-ES', {
@@ -2490,13 +2696,16 @@ function renderMensajes() {
     item.className = 'border border-gray-200 rounded-lg p-3 flex flex-col gap-2';
     const title = document.createElement('p');
     title.className = 'font-semibold text-gray-900 text-sm';
-    title.textContent = m.tipo?.startsWith('invitacion') ? 'Invitación a colaborar' : (m.tipo || 'Mensaje');
+    title.textContent = formatMensajeTipoLabel(m.tipo);
     const body = document.createElement('p');
     body.className = 'text-sm text-gray-700 leading-snug';
-    const comercioTxt = payloadComercio ? `Comercio ID: ${payloadComercio}` : '';
-    body.textContent = m.tipo?.startsWith('invitacion')
-      ? `${invitador} te invitó a colaborar como ${rolLegible} en ${comercioNombre}.`
-      : `${payload?.mensaje || ''} ${payloadRol ? `Rol: ${payloadRol}.` : ''} ${comercioTxt}`;
+    body.textContent = getMensajePrincipal({
+      mensaje: m,
+      payload,
+      invitador,
+      rolLegible,
+      comercioNombre,
+    });
 
     if (fechaTexto) {
       const fechaEl = document.createElement('span');
@@ -2504,10 +2713,16 @@ function renderMensajes() {
       fechaEl.textContent = `Fecha: ${fechaTexto}`;
       item.appendChild(fechaEl);
     }
+    if (canal) {
+      const canalEl = document.createElement('span');
+      canalEl.className = 'text-xs text-gray-500';
+      canalEl.textContent = `Canal: ${String(canal).toUpperCase()}`;
+      item.appendChild(canalEl);
+    }
     item.appendChild(title);
     item.appendChild(body);
 
-    if (m.tipo?.startsWith('invitacion') && m.estado === 'pendiente') {
+    if (isInvitationMessage(m) && m.estado === 'pendiente') {
       const actions = document.createElement('div');
       actions.className = 'flex gap-2';
       const btnAceptar = document.createElement('button');
@@ -2579,7 +2794,7 @@ async function responderMensaje(mensaje, estado) {
       .eq('id', mensaje.id);
     if (error) throw error;
 
-    await cargarMensajes();
+    await cargarMensajes({ render: true });
     alert(`Invitación ${estadoValido}`);
   } catch (err) {
     console.error('Error actualizando mensaje', err);
@@ -2588,3 +2803,7 @@ async function responderMensaje(mensaje, estado) {
 }
 
 init();
+
+window.addEventListener('beforeunload', () => {
+  clearMensajesRealtime();
+});

@@ -177,7 +177,7 @@ export function resolverCtaPrincipalComercio(comercio = {}, options = {}) {
     return {
       profileType,
       label: 'Servicios',
-      href: `./staffServicios.html${suffix}`,
+      href: `./staff.html${suffix}`,
     };
   }
 
