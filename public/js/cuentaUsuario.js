@@ -22,6 +22,74 @@ async function verificarSesion() {
   return user;
 }
 
+function normalizePhoneForCompare(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+async function callUserPhoneOtpEndpoint(paths, payload, accessToken) {
+  const endpointList = Array.isArray(paths) ? paths : [paths];
+  let lastError = null;
+
+  for (const endpoint of endpointList) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify(payload || {}),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) return data;
+
+      const error = new Error(data?.error || `OTP endpoint error ${response.status}`);
+      error.status = response.status;
+      error.payload = data;
+      lastError = error;
+
+      if (response.status !== 404) throw error;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('No se pudo contactar endpoint OTP de teléfono.');
+}
+
+async function verifyUserPhoneWithPrompt({ phoneRaw, accessToken }) {
+  const phone = String(phoneRaw || '').trim();
+  if (!phone || !accessToken) return { ok: false, skipped: true };
+
+  const sendResponse = await callUserPhoneOtpEndpoint(
+    ['/.netlify/functions/send_user_phone_otp', '/.netlify/functions/user-phone-otp-send'],
+    {
+      phone,
+      channel_preference: 'auto',
+    },
+    accessToken
+  );
+
+  const challengeId = sendResponse?.challenge_id;
+  if (!challengeId) throw new Error('No se recibió challenge_id en envío OTP.');
+
+  const code = window.prompt('Ingresa el código que recibiste por WhatsApp/SMS para verificar tu teléfono:');
+  const normalized = String(code || '').replace(/\D/g, '').slice(0, 6);
+  if (normalized.length !== 6) return { ok: false, cancelled: true };
+
+  await callUserPhoneOtpEndpoint(
+    ['/.netlify/functions/verify_user_phone_otp', '/.netlify/functions/user-phone-otp-verify'],
+    {
+      challenge_id: challengeId,
+      code: normalized,
+    },
+    accessToken
+  );
+
+  return { ok: true };
+}
+
 const nombreUsuario = document.getElementById('nombreUsuario');
 const emailUsuario = document.getElementById('emailUsuario');
 const municipioUsuario = document.getElementById('municipioUsuario');
@@ -2205,6 +2273,9 @@ formEditar?.addEventListener('submit', async (e) => {
   const nuevoMunicipio = inputMunicipio?.value || null;
   const uid = usuarioId;
   let nuevaImagen = perfilOriginal.imagen;
+  const telefonoPrevio = normalizePhoneForCompare(perfilOriginal?.telefono);
+  const telefonoNuevo = normalizePhoneForCompare(nuevoTelefono);
+  const telefonoCambio = telefonoNuevo !== telefonoPrevio;
 
   if (nuevaFoto) {
     const extension = nuevaFoto.name.split('.').pop();
@@ -2244,6 +2315,10 @@ formEditar?.addEventListener('submit', async (e) => {
     municipio: nuevoMunicipio
   };
 
+  if (telefonoCambio) {
+    updatePayload.telefono_verificado = false;
+  }
+
   try {
     const user = await verificarSesion();
     console.log('🔎 UID auth:', uid, ' | ID perfilOriginal:', perfilOriginal.id);
@@ -2259,6 +2334,24 @@ formEditar?.addEventListener('submit', async (e) => {
       console.error('Error al actualizar perfil:', error);
       alert('Error al actualizar tu perfil.');
       return;
+    }
+
+    if (telefonoCambio && telefonoNuevo) {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token || '';
+        const verificationResult = await verifyUserPhoneWithPrompt({
+          phoneRaw: nuevoTelefono,
+          accessToken,
+        });
+
+        if (!verificationResult?.ok) {
+          alert('Perfil actualizado. Tu teléfono quedó pendiente de verificación.');
+        }
+      } catch (otpError) {
+        console.warn('No se pudo completar verificación OTP del nuevo teléfono:', otpError);
+        alert('Perfil actualizado. No se pudo completar la verificación de teléfono en este momento.');
+      }
     }
 
     alert('Perfil actualizado correctamente.');

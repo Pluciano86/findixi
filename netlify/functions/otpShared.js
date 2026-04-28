@@ -12,7 +12,7 @@ const OTP_LIMIT_IP_HOUR = 10;
 const OTP_LIMIT_USER_HOUR = 10;
 
 const VALID_PURPOSES = new Set(['owner_verification', 'phone_change', 'user_login']);
-const VALID_CHANNEL_PREFS = new Set(['auto', 'sms', 'voice']);
+const VALID_CHANNEL_PREFS = new Set(['auto', 'sms', 'voice', 'whatsapp']);
 
 export function buildHeaders(extra = {}) {
   return {
@@ -498,29 +498,37 @@ export async function issueOtpChallenge({
   let providerResult = null;
 
   if (channelPreference === 'auto') {
-    const smsResult = await provider.sendSMS({
-      phone: destinationPhone,
-      message: smsMessage,
-      code: otpCode,
-    });
-    channelUsed = 'sms';
-    providerResult = smsResult;
-
-    if (!smsResult?.ok) {
-      const voiceResult = await provider.sendVoiceOTP({
+    if (provider.name === 'twilio' && typeof provider.sendWhatsApp === 'function') {
+      const waResult = await provider.sendWhatsApp({
         phone: destinationPhone,
+        message: smsMessage,
         code: otpCode,
       });
-      channelUsed = 'voice';
-      if (voiceResult?.ok) {
-        providerResult = voiceResult;
-      } else {
-        providerResult = {
-          ...(voiceResult || {}),
-          fallback_error: smsResult?.error || null,
-          fallback_provider_response: smsResult?.provider_response || null,
-        };
+      channelUsed = 'whatsapp';
+      providerResult = waResult;
+
+      if (!waResult?.ok) {
+        const smsResult = await provider.sendSMS({
+          phone: destinationPhone,
+          message: smsMessage,
+          code: otpCode,
+        });
+        channelUsed = 'sms';
+        providerResult = smsResult?.ok
+          ? smsResult
+          : {
+              ...(smsResult || {}),
+              fallback_error: waResult?.error || null,
+              fallback_provider_response: waResult?.provider_response || null,
+            };
       }
+    } else {
+      providerResult = await provider.sendSMS({
+        phone: destinationPhone,
+        message: smsMessage,
+        code: otpCode,
+      });
+      channelUsed = 'sms';
     }
   } else if (channelPreference === 'sms') {
     providerResult = await provider.sendSMS({
@@ -529,6 +537,22 @@ export async function issueOtpChallenge({
       code: otpCode,
     });
     channelUsed = 'sms';
+  } else if (channelPreference === 'whatsapp') {
+    if (provider.name !== 'twilio' || typeof provider.sendWhatsApp !== 'function') {
+      return {
+        ok: false,
+        statusCode: 400,
+        error: 'Canal WhatsApp no disponible para el proveedor actual.',
+        code: 'channel_not_available',
+      };
+    }
+
+    providerResult = await provider.sendWhatsApp({
+      phone: destinationPhone,
+      message: smsMessage,
+      code: otpCode,
+    });
+    channelUsed = 'whatsapp';
   } else {
     providerResult = await provider.sendVoiceOTP({
       phone: destinationPhone,
@@ -537,16 +561,21 @@ export async function issueOtpChallenge({
     channelUsed = 'voice';
   }
 
+  // `otp_challenges.channel_used` puede estar en esquema legacy con enum sms/voice.
+  // Persistimos whatsapp como sms para mantener compatibilidad sin romper inserts.
+  const persistedChannel = channelUsed === 'whatsapp' ? 'sms' : channelUsed;
+
   if (!providerResult?.ok) {
     await supabaseAdmin
       .from('otp_challenges')
       .update({
         status: 'blocked',
         attempts_left: 0,
-        channel_used: channelUsed,
+        channel_used: persistedChannel,
         last_error: providerResult?.error || 'No se pudo enviar OTP',
         metadata: {
           send_error: providerResult?.provider_response || providerResult?.error || null,
+          delivery_channel: channelUsed,
           failed_at: nowIso(),
         },
       })
@@ -563,10 +592,11 @@ export async function issueOtpChallenge({
   await supabaseAdmin
     .from('otp_challenges')
     .update({
-      channel_used: channelUsed,
+      channel_used: persistedChannel,
       provider: provider.name,
       metadata: {
         sent_at: nowIso(),
+        delivery_channel: channelUsed,
         provider_result: providerResult?.provider_response || null,
       },
     })

@@ -53,23 +53,12 @@
   </style>
 </head>
 <body class="min-h-screen bg-gray-100 text-gray-900">
+  <div id="businessChromeHeader"></div>
   <script type="module">
     import { supabase } from "./shared/supabaseClient.js";
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) window.location.href = "/login.html";
   </script>
-
-  <header class="bg-[#023047] text-white shadow">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-      <a href="./index.html" class="inline-flex items-center gap-2 text-sm text-gray-200 hover:text-white">
-        <i class="fa-solid fa-arrow-left"></i> Panel
-      </a>
-      <div class="flex items-center gap-2">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/FindixiBusiness.png" alt="Findixi" class="h-8 w-auto">
-      </div>
-      <div class="w-14"></div>
-    </div>
-  </header>
 
   <main class="max-w-6xl mx-auto px-4 py-6 space-y-4">
     <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 sm:p-5">
@@ -121,6 +110,18 @@
     <section id="ordersContainer" class="space-y-3"></section>
   </main>
 
+  <div id="businessChromeFooter"></div>
+  <script type="module">
+    import { renderBusinessChrome } from "./shared/businessChrome.js";
+    const idComercio = Number(new URLSearchParams(window.location.search).get('id') || 0);
+    void renderBusinessChrome({
+      active: 'orders',
+      idComercio,
+      basePath: '.',
+      title: 'Ordenes PickUp',
+      showBack: true,
+    });
+  </script>
   <script type="module" src="./js/ordenesPickup.js"></script>
 </body>
 </html>

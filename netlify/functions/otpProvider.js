@@ -2,6 +2,12 @@ function sanitizeText(value) {
   return String(value || '').trim();
 }
 
+function formatWhatsAppAddress(phone) {
+  const raw = sanitizeText(phone);
+  if (!raw) return '';
+  return raw.toLowerCase().startsWith('whatsapp:') ? raw : `whatsapp:${raw}`;
+}
+
 function getProviderNameFromEnv() {
   return sanitizeText(
     process.env.OTP_PROVIDER ||
@@ -9,6 +15,18 @@ function getProviderNameFromEnv() {
       process.env.TWILIO_OR_TELNYX ||
       'mock'
   ).toLowerCase();
+}
+
+function getTwilioWhatsAppFrom() {
+  const explicit = sanitizeText(
+    process.env.TWILIO_WHATSAPP_FROM || process.env.TWILIO_WHATSAPP_NUMBER
+  );
+  if (explicit) return formatWhatsAppAddress(explicit);
+
+  const sandboxEnabled = sanitizeText(process.env.TWILIO_WHATSAPP_USE_SANDBOX).toLowerCase() === 'true';
+  if (sandboxEnabled) return 'whatsapp:+14155238886';
+
+  return '';
 }
 
 async function sendTwilioSMS({ phone, message }) {
@@ -43,6 +61,44 @@ async function sendTwilioSMS({ phone, message }) {
       error: json?.message || 'Twilio rechazó SMS.',
       provider_response: json,
       fallbackToVoice: true,
+    };
+  }
+
+  return { ok: true, message_id: json?.sid || null, provider_response: json };
+}
+
+async function sendTwilioWhatsApp({ phone, message }) {
+  const accountSid = sanitizeText(process.env.TWILIO_ACCOUNT_SID);
+  const authToken = sanitizeText(process.env.TWILIO_AUTH_TOKEN);
+  const fromAddress = getTwilioWhatsAppFrom();
+  if (!accountSid || !authToken || !fromAddress) {
+    return { ok: false, error: 'Twilio no configurado para WhatsApp.', fallbackToSMS: true };
+  }
+
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+  const body = new URLSearchParams({
+    From: fromAddress,
+    To: formatWhatsAppAddress(phone),
+    Body: message,
+  });
+  const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: body.toString(),
+  });
+
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return {
+      ok: false,
+      error: json?.message || 'Twilio rechazó WhatsApp.',
+      provider_response: json,
+      fallbackToSMS: true,
     };
   }
 
@@ -151,6 +207,7 @@ export function createOtpProvider() {
   if (provider === 'twilio') {
     return {
       name: 'twilio',
+      sendWhatsApp: ({ phone, message, code }) => sendTwilioWhatsApp({ phone, message, code }),
       sendSMS: ({ phone, message, code }) => sendTwilioSMS({ phone, message, code }),
       sendVoiceOTP: ({ phone, code }) => sendTwilioVoiceOTP({ phone, code }),
     };

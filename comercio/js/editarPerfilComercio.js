@@ -1,5 +1,6 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { formatoPrecio, obtenerPlanPorNivel, resolverPlanComercio } from '../shared/planes.js';
+import { resolverCtaPrincipalComercio } from '../shared/utils.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 
@@ -61,6 +62,14 @@ const firstPortadaUploadSection = document.getElementById('firstPortadaUploadSec
 const firstPortadaInput = document.getElementById('firstPortadaInput');
 const firstPortadaProcessBtn = document.getElementById('firstPortadaProcessBtn');
 const firstPortadaFeedback = document.getElementById('firstPortadaFeedback');
+const resumenPerfilEstado = document.getElementById('resumenPerfilEstado');
+const resumenPlanNombre = document.getElementById('resumenPlanNombre');
+const resumenPlanMeta = document.getElementById('resumenPlanMeta');
+const resumenTelefono = document.getElementById('resumenTelefono');
+const resumenDireccion = document.getElementById('resumenDireccion');
+const resumenHorarioHoy = document.getElementById('resumenHorarioHoy');
+const resumenStoreMode = document.getElementById('resumenStoreMode');
+const resumenDescripcion = document.getElementById('resumenDescripcion');
 
 const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 let comercioActual = null;
@@ -68,6 +77,7 @@ let firstLogoOffer = null;
 let firstLogoEditorState = null;
 let horariosActuales = [];
 let currentStoreMode = { tiendaFisica: true, tiendaOnline: false };
+let categoriaTipoPerfilPromise = null;
 const urlParams = new URLSearchParams(window.location.search);
 const onboardingFlow = ['1', 'true', 'yes'].includes(String(urlParams.get('onboarding') || '').toLowerCase()) ||
   ['1', 'true', 'yes'].includes(String(urlParams.get('nuevo') || '').toLowerCase());
@@ -141,6 +151,103 @@ function isMissingStoreColumnsError(error) {
   return hayCodigo === '42703' || hayCodigo.startsWith('pgrst') || hayCodigo === '' || hayCodigo === '400';
 }
 
+function isMissingColumnError(error) {
+  const msg = String(error?.message || '').toLowerCase();
+  return msg.includes('column') && msg.includes('does not exist');
+}
+
+function normalizarTextoPerfil(value) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function parseCategoryTokensPerfil(value) {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value.flatMap((item) => parseCategoryTokensPerfil(item));
+  if (typeof value === 'object') {
+    const idValue = Number(value?.id);
+    if (Number.isFinite(idValue) && idValue > 0) return [String(idValue)];
+    if (value?.nombre) return [String(value.nombre)];
+    return [];
+  }
+
+  const raw = String(value || '').trim();
+  if (!raw) return [];
+  return raw
+    .split(/[|,;/]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+async function fetchCategoriaTipoPerfilMap() {
+  if (!categoriaTipoPerfilPromise) {
+    categoriaTipoPerfilPromise = (async () => {
+      const byId = new Map();
+      const byName = new Map();
+      const attempts = [
+        { select: 'id, nombre, tipo_perfil', hasTipoPerfil: true },
+        { select: 'id, nombre', hasTipoPerfil: false },
+      ];
+
+      for (const attempt of attempts) {
+        const { data, error } = await supabase.from('Categorias').select(attempt.select);
+        if (error) {
+          if (isMissingColumnError(error)) continue;
+          return { byId, byName };
+        }
+
+        (Array.isArray(data) ? data : []).forEach((row) => {
+          const id = Number(row?.id);
+          const nombre = String(row?.nombre || '').trim();
+          const tipo = attempt.hasTipoPerfil ? normalizarTextoPerfil(row?.tipo_perfil) : '';
+          if (!['menu', 'servicios', 'tienda'].includes(tipo)) return;
+          if (Number.isFinite(id) && id > 0) byId.set(id, tipo);
+          if (nombre) byName.set(normalizarTextoPerfil(nombre), tipo);
+        });
+        return { byId, byName };
+      }
+
+      return { byId, byName };
+    })();
+  }
+  return categoriaTipoPerfilPromise;
+}
+
+function resolveCategoryProfileTypes(comercio = {}, categoriaTipoMap = { byId: new Map(), byName: new Map() }) {
+  const tokens = [
+    ...parseCategoryTokensPerfil(comercio?.idCategoria),
+    ...parseCategoryTokensPerfil(comercio?.idcategoria),
+    ...parseCategoryTokensPerfil(comercio?.categoria),
+    ...parseCategoryTokensPerfil(comercio?.categorias),
+    ...parseCategoryTokensPerfil(comercio?.subCategorias),
+  ];
+
+  const types = [];
+  tokens.forEach((token) => {
+    const asNumber = Number(token);
+    if (Number.isFinite(asNumber) && categoriaTipoMap.byId.has(asNumber)) {
+      types.push(categoriaTipoMap.byId.get(asNumber));
+      return;
+    }
+    const byName = categoriaTipoMap.byName.get(normalizarTextoPerfil(token));
+    if (byName) types.push(byName);
+  });
+
+  return Array.from(new Set(types.filter((item) => ['menu', 'servicios', 'tienda'].includes(item))));
+}
+
+async function resolvePrimaryActionCta(comercio = {}) {
+  const categoriaTipoMap = await fetchCategoriaTipoPerfilMap();
+  const categoryProfileTypes = resolveCategoryProfileTypes(comercio, categoriaTipoMap);
+  return resolverCtaPrincipalComercio(comercio, {
+    idComercio,
+    categoryProfileTypes,
+  });
+}
+
 function toFiniteNumber(value) {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
@@ -204,6 +311,66 @@ function getPaymentStatusLabel(comercio = {}, planInfo = resolverPlanComercio(co
 
 function getHorariosConfiguradosCount(horarios = []) {
   return new Set((horarios || []).map((row) => Number(row?.diaSemana)).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)).size;
+}
+
+function formatTime12h(value) {
+  const raw = String(value || '').trim();
+  const match = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!match) return raw || '—';
+  let hour = Number(match[1]);
+  const minute = match[2];
+  if (!Number.isFinite(hour)) return raw || '—';
+  const suffix = hour >= 12 ? 'PM' : 'AM';
+  hour %= 12;
+  if (hour === 0) hour = 12;
+  return `${hour}:${minute} ${suffix}`;
+}
+
+function getStoreModeLabel(mode = {}) {
+  if (mode.tiendaFisica && mode.tiendaOnline) return 'Tienda física + online';
+  if (mode.tiendaOnline) return 'Solo tienda online';
+  return 'Tienda física';
+}
+
+function getHorarioHoyResumen(horarios = []) {
+  const jsDay = new Date().getDay();
+  const diaSemana = jsDay === 0 ? 6 : jsDay - 1;
+  const dayLabel = dias[diaSemana] || 'Hoy';
+  const row = (horarios || []).find((item) => Number(item?.diaSemana) === diaSemana) || null;
+  if (!row) return `${dayLabel}: sin definir`;
+  if (row.cerrado) return `${dayLabel}: Cerrado`;
+  if (!row.apertura || !row.cierre) return `${dayLabel}: sin definir`;
+  return `${dayLabel}: ${formatTime12h(row.apertura)} - ${formatTime12h(row.cierre)}`;
+}
+
+function renderQuickOverview(comercio = null, horarios = []) {
+  const planInfo = resolverPlanComercio(comercio || {});
+  const mode = readStoreModeFromForm();
+  const telefonoText = String(telefono?.value || comercio?.telefono || '').trim() || 'No disponible';
+  const direccionText = String(direccion?.value || comercio?.direccion || '').trim() || 'No disponible';
+  const descripcionText = String(descripcion?.value || comercio?.descripcion || '').trim() || 'Sin descripción';
+  const estadoVerificado = isComercioVerificado(comercio || {});
+  const listing = String(comercio?.estado_listing || '').toLowerCase();
+  const activo = comercio?.activo === true || listing === 'publicado';
+
+  if (resumenPerfilEstado) {
+    resumenPerfilEstado.textContent = activo ? 'Activo' : estadoVerificado ? 'Verificado' : 'Pendiente';
+    resumenPerfilEstado.className = activo
+      ? 'text-xs font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700'
+      : estadoVerificado
+        ? 'text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-700'
+        : 'text-xs font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-700';
+  }
+
+  if (resumenPlanNombre) resumenPlanNombre.textContent = planInfo.nombre || 'Sin plan';
+  if (resumenPlanMeta) resumenPlanMeta.textContent = `${formatoPrecio(planInfo.precio)} · Nivel ${planInfo.nivel}`;
+  if (resumenTelefono) resumenTelefono.textContent = telefonoText;
+  if (resumenDireccion) resumenDireccion.textContent = direccionText;
+  if (resumenHorarioHoy) resumenHorarioHoy.textContent = getHorarioHoyResumen(horarios);
+  if (resumenStoreMode) resumenStoreMode.textContent = getStoreModeLabel(mode);
+  if (resumenDescripcion) {
+    resumenDescripcion.textContent = descripcionText.length > 180 ? `${descripcionText.slice(0, 177)}...` : descripcionText;
+  }
 }
 
 function readStoreModeFromComercio(comercio = {}) {
@@ -969,6 +1136,7 @@ async function cargarDatos() {
     const puedeRedes = planInfo.nivel >= 1;
     const puedeMenu = planInfo.permite_menu;
     const puedeEspeciales = planInfo.permite_especiales;
+    const ctaPrincipal = await resolvePrimaryActionCta(data);
 
     const bloquearInput = (el) => {
       if (!el) return;
@@ -990,15 +1158,23 @@ async function cargarDatos() {
       planCta.innerHTML = '';
     }
 
-    if (!puedeMenu && btnAdminMenu) {
+    if (btnAdminMenu) {
+      btnAdminMenu.classList.remove('opacity-60', 'pointer-events-none');
+      btnAdminMenu.textContent = ctaPrincipal?.label || 'Menu';
+      btnAdminMenu.href = ctaPrincipal?.href || `./adminMenuComercio.html?id=${idComercio}`;
+    }
+
+    if (ctaPrincipal?.profileType === 'menu' && !puedeMenu && btnAdminMenu) {
       btnAdminMenu.classList.add('opacity-60', 'pointer-events-none');
-      btnAdminMenu.textContent = 'Menú (Plus)';
+      btnAdminMenu.textContent = 'Menu (Plus)';
     }
 
     if (!puedeEspeciales && btnAdministrarEspeciales) {
       btnAdministrarEspeciales.classList.add('opacity-60', 'pointer-events-none');
       btnAdministrarEspeciales.textContent = 'Especiales (Plus)';
     }
+
+    renderQuickOverview(data, horariosActuales);
   }
 
   const { data: horarios, error: errHor } = await supabase
@@ -1012,11 +1188,11 @@ async function cargarDatos() {
     renderFeriados(feriados);
   }
   renderOnboardingGate(comercioActual || {}, resolverPlanComercio(comercioActual || {}), horariosActuales);
+  renderQuickOverview(comercioActual || {}, horariosActuales);
 
   // links
-  if (btnAdminMenu) btnAdminMenu.href = `./adminMenuComercio.html?id=${idComercio}`;
   if (btnStaffServicios) btnStaffServicios.href = `./staffServicios.html?id=${idComercio}`;
-  if (btnAdministrarEspeciales) btnAdministrarEspeciales.href = `./especiales/index.html?id=${idComercio}`;
+  if (btnAdministrarEspeciales) btnAdministrarEspeciales.href = `./especiales/adminEspeciales.html?id=${idComercio}`;
 }
 
 async function guardarPerfil() {
@@ -1279,6 +1455,7 @@ async function guardarHorarios({ silent = false } = {}) {
     return error;
   }
   horariosActuales = rows;
+  renderQuickOverview(comercioActual || {}, horariosActuales);
   return null;
 }
 
@@ -1327,6 +1504,7 @@ function handleStoreModeToggle(changedInput) {
   const nextMode = readStoreModeFromForm();
   applyStoreModeUI(nextMode);
   renderOnboardingGate(comercioActual || {}, resolverPlanComercio(comercioActual || {}), horariosActuales);
+  renderQuickOverview(comercioActual || {}, horariosActuales);
 }
 
 tiendaFisicaInput?.addEventListener('change', () => {
@@ -1334,6 +1512,11 @@ tiendaFisicaInput?.addEventListener('change', () => {
 });
 tiendaOnlineInput?.addEventListener('change', () => {
   handleStoreModeToggle(tiendaOnlineInput);
+});
+[telefono, direccion, descripcion].forEach((input) => {
+  input?.addEventListener('input', () => {
+    renderQuickOverview(comercioActual || {}, horariosActuales);
+  });
 });
 
 btnContinuarFormulario?.addEventListener('click', async (e) => {
@@ -1347,6 +1530,7 @@ btnContinuarFormulario?.addEventListener('click', async (e) => {
   fullFormUnlocked = true;
   persistOnboardingUnlockState(true);
   renderOnboardingGate(comercioActual, planInfo, horariosActuales);
+  renderQuickOverview(comercioActual || {}, horariosActuales);
 });
 firstLogoProcessBtn?.addEventListener('click', (e) => {
   e.preventDefault();

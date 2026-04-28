@@ -15,6 +15,7 @@
   </style>
 </head>
 <body class="text-gray-800 pb-20">
+  <div id="businessChromeHeader"></div>
   <header class="text-center pt-4">
     <div class="flex justify-center mb-2">
       <a id="linkPerfilDelLogo" href="#">
@@ -388,13 +389,19 @@
   <!-- Toast -->
   <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded shadow-lg text-white bg-black/80 hidden z-50"></div>
 
-  <footer class="fixed bottom-0 w-full bg-[#023047] text-white py-4 px-4 text-center text-sm">
-    <a id="linkPerfil" href="#" class="block">
-      <img id="footerLogo" src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/FindixiBusiness.png" alt="Logo" class="mx-auto h-5 mb-1" />
-      <p class="text-xs font-extralight opacity-80">Diseño y Creación por <a href="https://www.findixi.com">www.findixi.com</a><br>Copyright © 2026. Todos los derechos reservados.</p>
-    </a>
-  </footer>
+  <div id="businessChromeFooter"></div>
 
+  <script type="module">
+    import { renderBusinessChrome } from "./shared/businessChrome.js";
+    const idComercio = Number(new URLSearchParams(window.location.search).get('id') || 0);
+    void renderBusinessChrome({
+      active: 'primary',
+      idComercio,
+      basePath: '.',
+      title: 'Administrar Menu del Comercio',
+      showBack: true,
+    });
+  </script>
   <script type="module" src="../shared/supabaseClient.js"></script>
   <script type="module" src="./adminMenuComercio.js"></script>
 </body>

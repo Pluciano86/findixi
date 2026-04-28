@@ -34,16 +34,7 @@
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-  <header class="bg-[#023047] text-white shadow">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-      <a href="./index.html" class="inline-flex items-center gap-2 text-sm font-medium hover:text-cyan-200">
-        <i class="fa-solid fa-arrow-left"></i>
-        Volver al panel
-      </a>
-      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/FindixiBusiness.png" alt="Findixi" class="h-8 w-auto">
-      <span class="text-xs text-cyan-100 uppercase tracking-wide">Lo de Hoy</span>
-    </div>
-  </header>
+  <div id="businessChromeHeader"></div>
 
   <main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
     <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 space-y-2">
@@ -139,6 +130,18 @@
     </section>
   </main>
 
+  <div id="businessChromeFooter"></div>
+  <script type="module">
+    import { renderBusinessChrome } from "./shared/businessChrome.js";
+    const idComercio = Number(new URLSearchParams(window.location.search).get('id') || 0);
+    void renderBusinessChrome({
+      active: 'today',
+      idComercio,
+      basePath: '.',
+      title: 'Lo de Hoy',
+      showBack: true,
+    });
+  </script>
   <script type="module" src="./js/publicacionesHoy.js"></script>
 </body>
 </html>

@@ -13,19 +13,13 @@
   </style>
 </head>
 <body class="min-h-screen bg-gray-100 text-gray-900">
+  <div id="businessChromeHeader"></div>
 
   <script type="module">
     import { supabase } from "./shared/supabaseClient.js";
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) window.location.href = "/login.html";
   </script>
-
-  <!-- Header estilo admin (duplicado) -->
-  <header class="bg-[#023047] text-white shadow">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-center">
-      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/FindixiBusiness.png" alt="Findixi" class="h-8 w-auto">
-    </div>
-  </header>
 
   <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
     <!-- Perfil usuario estilo admin -->
@@ -88,6 +82,19 @@
     </div>
   </div>
 
+  <div id="businessChromeFooter"></div>
+  <script type="module">
+    import { renderBusinessChrome } from "./shared/businessChrome.js";
+    const idComercio = Number(new URLSearchParams(window.location.search).get('id') || 0);
+    void renderBusinessChrome({
+      active: 'dashboard',
+      idComercio,
+      basePath: '.',
+      title: 'Panel Comercio',
+      showBack: false,
+      showFooter: false,
+    });
+  </script>
   <script type="module" src="./shared/supabaseClient.js"></script>
   <script type="module" src="./js/dashboardComercio.js"></script>
 </body>

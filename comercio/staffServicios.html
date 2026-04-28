@@ -14,6 +14,7 @@
   </style>
 </head>
 <body class="bg-gray-50 text-gray-900 pb-24">
+  <div id="businessChromeHeader"></div>
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
     <header class="bg-white border border-gray-200 rounded-2xl shadow-sm px-5 py-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -37,7 +38,7 @@
       <p id="globalFeedback" class="hidden mt-3 text-sm rounded-lg px-3 py-2"></p>
     </header>
 
-    <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <section id="staff" class="scroll-mt-24 grid grid-cols-1 xl:grid-cols-2 gap-6">
       <article class="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 space-y-4">
         <div class="flex items-center justify-between gap-3">
           <h2 class="text-lg font-semibold">Profesionales del staff</h2>
@@ -65,7 +66,7 @@
       </article>
     </section>
 
-    <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 space-y-4">
+    <section id="citas" class="scroll-mt-24 bg-white border border-gray-200 rounded-2xl shadow-sm p-4 space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 class="text-lg font-semibold">Citas de clientes</h2>
         <button id="btnCitasRecargar" type="button" class="px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-sm font-semibold">Recargar</button>
@@ -443,6 +444,31 @@
     </div>
   </div>
 
+  <div id="businessChromeFooter"></div>
+  <script type="module">
+    import { renderBusinessChrome } from "./shared/businessChrome.js";
+    const idComercio = Number(new URLSearchParams(window.location.search).get('id') || 0);
+    function activeFromHash() {
+      const hash = String(window.location.hash || '').toLowerCase();
+      return hash === '#citas' ? 'orders' : 'primary';
+    }
+
+    async function mountChrome() {
+      await renderBusinessChrome({
+        active: activeFromHash(),
+        idComercio,
+        basePath: '.',
+        title: 'Staff y Citas',
+        showBack: true,
+      });
+    }
+
+    window.addEventListener('hashchange', () => {
+      void mountChrome();
+    });
+
+    void mountChrome();
+  </script>
   <script type="module" src="./shared/supabaseClient.js"></script>
   <script type="module" src="./js/staffServicios.js"></script>
 </body>

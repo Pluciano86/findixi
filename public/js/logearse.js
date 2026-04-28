@@ -61,6 +61,74 @@ async function actualizarPerfilUsuario(usuarioId, data) {
   return false;
 }
 
+async function callUserPhoneOtpEndpoint(paths, payload, accessToken) {
+  const endpointList = Array.isArray(paths) ? paths : [paths];
+  let lastError = null;
+
+  for (const endpoint of endpointList) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify(payload || {}),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) return data;
+
+      const error = new Error(data?.error || `OTP endpoint error ${response.status}`);
+      error.status = response.status;
+      error.payload = data;
+      lastError = error;
+
+      if (response.status !== 404) throw error;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('No se pudo contactar endpoint OTP de teléfono.');
+}
+
+async function verifyUserPhoneWithPrompt({ phoneRaw, accessToken }) {
+  const phone = String(phoneRaw || '').trim();
+  if (!phone || !accessToken) return { ok: false, skipped: true };
+
+  const sendResponse = await callUserPhoneOtpEndpoint(
+    ['/.netlify/functions/send_user_phone_otp', '/.netlify/functions/user-phone-otp-send'],
+    {
+      phone,
+      channel_preference: 'auto',
+    },
+    accessToken
+  );
+
+  const challengeId = sendResponse?.challenge_id;
+  if (!challengeId) {
+    throw new Error('No se recibió challenge_id en el envío OTP.');
+  }
+
+  const code = window.prompt('Ingresa el código que recibiste por WhatsApp/SMS para verificar tu teléfono:');
+  const normalized = String(code || '').replace(/\D/g, '').slice(0, 6);
+  if (normalized.length !== 6) {
+    return { ok: false, cancelled: true };
+  }
+
+  await callUserPhoneOtpEndpoint(
+    ['/.netlify/functions/verify_user_phone_otp', '/.netlify/functions/user-phone-otp-verify'],
+    {
+      challenge_id: challengeId,
+      code: normalized,
+    },
+    accessToken
+  );
+
+  return { ok: true };
+}
+
 async function init() {
   const btnMostrarLogin = document.getElementById('btnMostrarLogin');
   const formLogin = document.getElementById('formLogin');
@@ -366,8 +434,20 @@ async function init() {
         return;
       }
 
-      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
       if (!loginError) {
+        try {
+          if (telefonoDigits) {
+            const accessToken = loginData?.session?.access_token || '';
+            await verifyUserPhoneWithPrompt({
+              phoneRaw: telefonoDigits,
+              accessToken,
+            });
+          }
+        } catch (otpError) {
+          console.warn('No se pudo completar verificación OTP de teléfono en registro:', otpError);
+        }
+
         ocultarLoader();
         setTimeout(() => {
           window.location.href = redirectPath;

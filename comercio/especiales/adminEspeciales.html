@@ -11,6 +11,7 @@
   </style>
 </head>
 <body class="bg-gray-50">
+  <div id="businessChromeHeader"></div>
   <div class="max-w-5xl mx-auto px-4 py-6">
     <h1 class="text-2xl font-semibold text-center mb-4">Especiales del Comercio</h1>
     <div id="planInfoBar" class="mb-6 flex flex-wrap items-center justify-center gap-3">
@@ -100,6 +101,18 @@
     </form>
   </div>
 </div>
+  <div id="businessChromeFooter"></div>
+  <script type="module">
+    import { renderBusinessChrome } from "../shared/businessChrome.js";
+    const idComercio = Number(new URLSearchParams(window.location.search).get('id') || 0);
+    void renderBusinessChrome({
+      active: 'specials',
+      idComercio,
+      basePath: '..',
+      title: 'Administrar Especiales',
+      showBack: true,
+    });
+  </script>
   <script type="module" src="./adminEspeciales.js"></script>
 </body>
 </html>
