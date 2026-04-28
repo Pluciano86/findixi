@@ -498,7 +498,9 @@ export async function issueOtpChallenge({
   let providerResult = null;
 
   if (channelPreference === 'auto') {
-    if (provider.name === 'twilio' && typeof provider.sendWhatsApp === 'function') {
+    const shouldUseSmsVoiceFlow = purpose === 'owner_verification';
+
+    if (provider.name === 'twilio' && typeof provider.sendWhatsApp === 'function' && !shouldUseSmsVoiceFlow) {
       const waResult = await provider.sendWhatsApp({
         phone: destinationPhone,
         message: smsMessage,
@@ -523,12 +525,28 @@ export async function issueOtpChallenge({
             };
       }
     } else {
-      providerResult = await provider.sendSMS({
+      const smsResult = await provider.sendSMS({
         phone: destinationPhone,
         message: smsMessage,
         code: otpCode,
       });
+      providerResult = smsResult;
       channelUsed = 'sms';
+
+      if (shouldUseSmsVoiceFlow && !smsResult?.ok) {
+        const voiceResult = await provider.sendVoiceOTP({
+          phone: destinationPhone,
+          code: otpCode,
+        });
+        channelUsed = 'voice';
+        providerResult = voiceResult?.ok
+          ? voiceResult
+          : {
+              ...(voiceResult || {}),
+              fallback_error: smsResult?.error || null,
+              fallback_provider_response: smsResult?.provider_response || null,
+            };
+      }
     }
   } else if (channelPreference === 'sms') {
     providerResult = await provider.sendSMS({

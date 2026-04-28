@@ -60,12 +60,26 @@ async function sendWithFallback({ provider, channel, phone, message }) {
   }
 
   if (normalizedChannel === 'sms') {
+    if (provider.name === 'twilio' && typeof provider.sendWhatsApp === 'function') {
+      const waResult = await provider.sendWhatsApp({ phone, message });
+      if (waResult?.ok) return { ok: true, channelUsed: 'whatsapp', result: waResult };
+
+      const smsResult = await provider.sendSMS({ phone, message });
+      if (smsResult?.ok) return { ok: true, channelUsed: 'sms', result: smsResult };
+
+      return {
+        ok: false,
+        channelUsed: 'sms',
+        result: {
+          ...(smsResult || {}),
+          fallback_error: waResult?.error || null,
+          fallback_provider_response: waResult?.provider_response || null,
+        },
+      };
+    }
+
     const smsResult = await provider.sendSMS({ phone, message });
-    return {
-      ok: !!smsResult?.ok,
-      channelUsed: 'sms',
-      result: smsResult,
-    };
+    return { ok: !!smsResult?.ok, channelUsed: 'sms', result: smsResult };
   }
 
   if (normalizedChannel === 'voice') {

@@ -6,6 +6,10 @@
 3. Citas: confirmación, recordatorio y cambios de estado para cliente.
 4. Reclamo de comercio: OTP por mensaje/call (ya existente) con Twilio.
 
+## Regla de canal activa
+- Regla general: WhatsApp primero y SMS como fallback.
+- Excepción: reclamo de comercio desde `registroComercio.html` (`purpose=owner_verification`) usa SMS primero y fallback a llamada de voz.
+
 ## Variables de entorno necesarias (Netlify Functions)
 - `OTP_PROVIDER=twilio`
 - `TWILIO_ACCOUNT_SID`
@@ -38,6 +42,7 @@
 ## Migración requerida
 Aplicar:
 - `supabase/migrations/20260428173000_messaging_notifications_and_user_phone_otp.sql`
+- `supabase/migrations/20260428191000_citas_whatsapp_first.sql`
 
 Esta migración crea:
 - `user_phone_otp_challenges`
