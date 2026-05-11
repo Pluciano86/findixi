@@ -27,6 +27,34 @@
       font-size: 0.9rem;
       line-height: 1.05;
     }
+    .search-products-title {
+      font-size: 1.03rem;
+      color: #424242;
+      font-weight: 600;
+      line-height: 1.15;
+    }
+    .search-product-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 5px 14px rgba(17, 24, 39, 0.06);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      display: block;
+    }
+    .search-product-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px rgba(17, 24, 39, 0.12);
+    }
+    .search-product-store-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 9999px;
+      object-fit: contain;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      flex-shrink: 0;
+    }
   </style>
 
 
@@ -113,6 +141,10 @@
     </section>
 
     <div id="filtros-activos" class="flex items-center gap-2 flex-wrap text-[15px] px-2 py-2"></div>
+    <section id="searchProductsSection" class="hidden px-4 pb-2">
+      <h3 id="searchProductsTitle" class="search-products-title mb-2"></h3>
+      <div id="searchProductsGrid" class="grid grid-cols-2 gap-3"></div>
+    </section>
     <div id="resultadosWrap" class="flex items-center justify-center gap-3 mt-6 mb-3 px-4">
       <div id="textoResultadosListado" class="text-gray-800 text-[15px] font-medium text-center"></div>
       <div id="chipMunicipioWrap"></div>

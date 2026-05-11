@@ -1,6 +1,6 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { getLang, t, interpolate } from './i18n.js';
-import { calcularTiempoEnVehiculo } from '../shared/utils.js';
+import { calcularTiempoEnVehiculo, getPublicBase } from '../shared/utils.js';
 import { getDrivingDistance } from '../shared/osrmClient.js';
 import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
@@ -35,6 +35,10 @@ const EMOJIS_CATEGORIA = {
 const LIMITE_POR_PAGINA = 25;
 const RADIO_DEFAULT_KM = 50;
 const COORDS_FALLBACK = { lat: 18.2208, lon: -66.5901 };
+const PRODUCTOS_GRID_MAX = 12;
+const PRODUCT_PLACEHOLDER_URL = 'https://placehold.co/480x480?text=Producto';
+const DEFAULT_LOGO_URL = getPublicBase('findixi/iconoPerfil.png');
+const productSearchCache = new Map();
 const distanciasRealesCache = new Map();
 let refinamientoEnCurso = false;
 let sugerenciasMostradas = false;
@@ -51,65 +55,207 @@ function debounce(fn, delay = 300) {
   };
 }
 
-async function obtenerIdsComerciosPorProductos(textoRaw) {
-  const termino = typeof textoRaw === 'string' ? textoRaw.trim() : '';
-  if (termino.length < 3) return [];
+function resolveAppBase() {
+  const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+  return isLocal ? '/public/' : '/';
+}
 
-  try {
-    const { data: productos, error } = await supabase
-      .from('productos')
-      .select('idMenu')
-      .ilike('nombre', `%${termino}%`);
-    if (error) {
-      console.error('Error buscando productos por texto:', error);
-      return [];
-    }
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
-    const idMenus = Array.isArray(productos)
-      ? [...new Set(productos.map((p) => p?.idMenu).filter((id) => id != null))]
-      : [];
-    if (idMenus.length === 0) return [];
+function isMissingColumnErrorLite(error, expectedColumn = '') {
+  if (!error) return false;
+  const code = String(error.code || '').toLowerCase();
+  const detail = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`.toLowerCase();
+  if (expectedColumn && !detail.includes(expectedColumn.toLowerCase())) return false;
+  return code === '42703' || code.startsWith('pgrst') || detail.includes('does not exist');
+}
 
-    const { data: menus, error: errMenus } = await supabase
-      .from('menus')
-      .select('idComercio')
-      .in('id', idMenus);
-    if (errMenus) {
-      console.error('Error buscando menús relacionados:', errMenus);
-      return [];
-    }
+const TOKEN_FIXUPS = {
+  balnco: 'blanco',
+  blnco: 'blanco',
+  blaco: 'blanco',
+  vestdo: 'vestido',
+  trage: 'traje',
+  whte: 'white',
+  drss: 'dress',
+  skrt: 'skirt',
+};
 
-    const idsComercios = Array.isArray(menus)
-      ? menus
-          .map((m) => (m?.idComercio != null ? Number(m.idComercio) : null))
-          .filter((id) => Number.isFinite(id))
-      : [];
-    return [...new Set(idsComercios)];
-  } catch (error) {
-    console.error('Error obteniendo comercios por productos:', error);
-    return [];
+const TOKEN_ALIAS_GROUPS = [
+  ['dress', 'vestido', 'traje', 'gown'],
+  ['short', 'corto', 'mini'],
+  ['long', 'largo', 'maxi'],
+  ['shirt', 'camisa', 'blusa', 'top'],
+  ['pants', 'pantalon', 'jeans'],
+  ['skirt', 'falda'],
+  ['jacket', 'chaqueta', 'abrigo'],
+  ['black', 'negro'],
+  ['white', 'blanco', 'ivory'],
+  ['cream', 'crema', 'offwhite', 'off-white'],
+  ['blue', 'azul', 'navy'],
+  ['red', 'rojo', 'wine', 'burgundy'],
+  ['green', 'verde', 'olive'],
+  ['pink', 'rosa'],
+  ['beige', 'khaki', 'camel'],
+  ['heels', 'tacones', 'heels'],
+  ['shoes', 'zapatos', 'tenis', 'sneakers'],
+  ['bag', 'cartera', 'bolso', 'purse'],
+  ['set', 'conjunto', 'matching'],
+];
+
+function expandSearchTerms(rawText = '') {
+  const normalizedQuery = normalizarTexto(rawText || '');
+  const baseTokens = normalizedQuery
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+
+  const corrected = baseTokens.map((token) => TOKEN_FIXUPS[token] || token);
+  const out = new Set(corrected);
+
+  corrected.forEach((token) => {
+    TOKEN_ALIAS_GROUPS.forEach((group) => {
+      if (group.includes(token)) {
+        group.forEach((value) => out.add(value));
+      }
+    });
+  });
+
+  return Array.from(out).slice(0, 8);
+}
+
+function buildMandatoryTokenGroups(rawText = '') {
+  const normalizedQuery = normalizarTexto(rawText || '');
+  const baseTokens = normalizedQuery
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+
+  const correctedTokens = baseTokens.map((token) => TOKEN_FIXUPS[token] || token);
+  return correctedTokens.map((token) => {
+    const group = TOKEN_ALIAS_GROUPS.find((entry) => entry.includes(token));
+    return group ? Array.from(new Set(group)) : [token];
+  });
+}
+
+function parseProductImageSource(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.flatMap(parseProductImageSource);
+  if (typeof value === 'object') {
+    const src = value.src || value.url || value.path || value.publicUrl || value.imagen;
+    return src ? [String(src).trim()] : [];
   }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      return parseProductImageSource(parsed);
+    } catch (_) {
+      return [trimmed];
+    }
+  }
+  return [];
+}
+
+function resolveProductImages(product = {}) {
+  const candidates = [
+    product?.imagenes,
+    product?.images,
+    product?.galeria,
+    product?.shopify_images,
+    product?.featured_image,
+    product?.imagen,
+    product?.image,
+  ];
+  const list = candidates
+    .flatMap(parseProductImageSource)
+    .map((src) => String(src || '').trim())
+    .filter(Boolean);
+  return Array.from(new Set(list));
+}
+
+function parseMoney(value) {
+  const n = Number.parseFloat(String(value ?? '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatMoney(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '';
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(n);
+  } catch (_) {
+    return `$${n.toFixed(2)}`;
+  }
+}
+
+function resolveProductPriceLabel(product = {}) {
+  const textPrice = String(product?.precio_texto || '').trim();
+  if (textPrice) return textPrice;
+  const numberPrice = parseMoney(product?.precio);
+  if (numberPrice !== null) return formatMoney(numberPrice);
+  return '';
+}
+
+function resolveLogoUrl(logoValue = '') {
+  const raw = String(logoValue || '').trim();
+  if (!raw) return DEFAULT_LOGO_URL;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return getPublicBase(`galeriacomercios/${raw.replace(/^\/+/, '')}`);
+}
+
+function buildTextSearchExpression(searchTerms = []) {
+  const terms = (searchTerms || []).map((term) => String(term || '').trim()).filter(Boolean);
+  if (!terms.length) return '';
+  const clauses = [];
+  terms.forEach((term) => {
+    clauses.push(`nombre.ilike.%${term}%`);
+    clauses.push(`descripcion.ilike.%${term}%`);
+  });
+  return clauses.join(',');
 }
 
 async function obtenerIdsComerciosPorMenus(textoRaw) {
   const termino = typeof textoRaw === 'string' ? textoRaw.trim() : '';
   if (termino.length < 3) return [];
 
+  const terms = expandSearchTerms(termino);
+  const effectiveTerms = terms.length ? terms : [normalizarTexto(termino)];
+  const orExpression = effectiveTerms.map((term) => `titulo.ilike.%${term}%`).join(',');
+
   try {
-    const { data, error } = await supabase
-      .from('menus')
-      .select('idComercio')
-      .ilike('titulo', `%${termino}%`);
-    if (error) {
-      console.error('Error buscando menús por texto:', error);
-      return [];
+    const idColumns = ['idComercio', 'idcomercio'];
+    for (const idColumn of idColumns) {
+      const { data, error } = await supabase
+        .from('menus')
+        .select(idColumn)
+        .or(orExpression);
+      if (error) {
+        if (isMissingColumnErrorLite(error, idColumn)) continue;
+        console.error('Error buscando menús por texto:', error);
+        return [];
+      }
+      const ids = Array.isArray(data)
+        ? data
+            .map((item) => (item?.[idColumn] != null ? Number(item[idColumn]) : null))
+            .filter((id) => Number.isFinite(id))
+        : [];
+      return [...new Set(ids)];
     }
-    const ids = Array.isArray(data)
-      ? data
-          .map((item) => (item?.idComercio != null ? Number(item.idComercio) : null))
-          .filter((id) => Number.isFinite(id))
-      : [];
-    return [...new Set(ids)];
+    return [];
   } catch (error) {
     console.error('Error obteniendo comercios por menús:', error);
     return [];
@@ -180,6 +326,7 @@ const estado = {
     destacadosPrimero: true,
     comerciosPorPlato: [],
     comerciosPorMenus: [],
+    productosRelacionados: [],
   },
   coordsUsuario: null,
   tienePermisoUbicacion: false,
@@ -249,9 +396,403 @@ let filtrosDiv = null;
 let bannerFinalContainer = null;
 let verMasContainer = null;
 let mensajesContainer = null;
+let searchProductsSection = null;
+let searchProductsTitle = null;
+let searchProductsGrid = null;
 
 function getElement(id) {
   return document.getElementById(id);
+}
+
+function resolveSearchText(key) {
+  const lang = getLang();
+  const dict = {
+    es: {
+      title: 'Productos relacionados',
+      subtitle: 'coincidencias',
+      view: 'Ver tienda',
+      noPrice: 'Ver detalles',
+    },
+    en: {
+      title: 'Related products',
+      subtitle: 'matches',
+      view: 'View store',
+      noPrice: 'View details',
+    },
+  };
+  const pack = dict[lang] || dict.es;
+  return pack[key] || dict.es[key] || '';
+}
+
+function ensureSearchProductsDom() {
+  if (!searchProductsSection) searchProductsSection = getElement('searchProductsSection');
+  if (!searchProductsTitle) searchProductsTitle = getElement('searchProductsTitle');
+  if (!searchProductsGrid) searchProductsGrid = getElement('searchProductsGrid');
+}
+
+function hideSearchProductsGrid() {
+  ensureSearchProductsDom();
+  if (!searchProductsSection || !searchProductsGrid) return;
+  searchProductsGrid.innerHTML = '';
+  if (searchProductsTitle) searchProductsTitle.textContent = '';
+  searchProductsSection.classList.add('hidden');
+}
+
+function toProductImageUrl(raw = '') {
+  const src = String(raw || '').trim();
+  if (!src) return PRODUCT_PLACEHOLDER_URL;
+  if (/^https?:\/\//i.test(src)) return src;
+  return getPublicBase(`galeriacomercios/${src.replace(/^\/+/, '')}`);
+}
+
+function buildComercioLookup() {
+  const map = new Map();
+  const source = [
+    ...(Array.isArray(estado.comerciosFiltrados) ? estado.comerciosFiltrados : []),
+    ...(Array.isArray(estado.lista) ? estado.lista : []),
+    ...(Array.isArray(estado.comerciosBase) ? estado.comerciosBase : []),
+  ];
+
+  source.forEach((comercio) => {
+    const id = Number(comercio?.id);
+    if (!Number.isFinite(id)) return;
+    if (map.has(id)) return;
+    map.set(id, {
+      id,
+      nombre: String(comercio?.nombre || 'Comercio').trim() || 'Comercio',
+      logo: resolveLogoUrl(comercio?.logo || comercio?.logo_url || ''),
+    });
+  });
+
+  return map;
+}
+
+function scoreProductMatch(product = {}, searchQuery = '', searchTerms = []) {
+  const name = normalizarTexto(product?.nombre || product?.title || '');
+  const desc = normalizarTexto(product?.descripcion || product?.description || '');
+  const full = `${name} ${desc}`.trim();
+  const phrase = normalizarTexto(searchQuery);
+  if (!full || !phrase) return 0;
+
+  let score = 0;
+  if (name.includes(phrase)) score += 55;
+  else if (full.includes(phrase)) score += 28;
+
+  searchTerms.forEach((term) => {
+    if (!term || term.length < 2) return;
+    if (name.includes(term)) score += 14;
+    else if (desc.includes(term)) score += 7;
+    else if (full.includes(term)) score += 4;
+  });
+
+  const tokens = phrase.split(/\s+/).filter(Boolean);
+  if (tokens.length && name.startsWith(tokens[0])) score += 8;
+  return score;
+}
+
+function matchesMandatoryGroups(product = {}, mandatoryGroups = []) {
+  if (!Array.isArray(mandatoryGroups) || !mandatoryGroups.length) return true;
+  const name = normalizarTexto(product?.nombre || product?.title || '');
+  const desc = normalizarTexto(product?.descripcion || product?.description || '');
+  const full = `${name} ${desc}`.trim();
+  if (!full) return false;
+
+  return mandatoryGroups.every((group) => {
+    if (!Array.isArray(group) || !group.length) return true;
+    return group.some((alias) => alias && full.includes(alias));
+  });
+}
+
+async function fetchMenusByCommerceIds(comercioIds = []) {
+  const ids = Array.from(new Set((comercioIds || [])
+    .map((id) => Number(id))
+    .filter((id) => Number.isFinite(id) && id > 0))).slice(0, 450);
+  if (!ids.length) return [];
+
+  const idColumns = ['idComercio', 'idcomercio'];
+  for (const column of idColumns) {
+    const result = await supabase
+      .from('menus')
+      .select(`id,${column}`)
+      .in(column, ids);
+
+    if (!result.error) {
+      return Array.isArray(result.data) ? result.data : [];
+    }
+    if (!isMissingColumnErrorLite(result.error, column)) {
+      console.warn('Error cargando menús por comercio en búsqueda de productos:', result.error);
+      return [];
+    }
+  }
+
+  return [];
+}
+
+async function queryProductosPorColumna({
+  column,
+  ids = [],
+  orExpression = '',
+  nameOnlyExpression = '',
+} = {}) {
+  if (!column || !ids.length || !orExpression) return [];
+
+  let result = await supabase
+    .from('productos')
+    .select('*')
+    .in(column, ids)
+    .or(orExpression)
+    .order('id', { ascending: false })
+    .limit(220);
+
+  if (!result.error) {
+    return Array.isArray(result.data) ? result.data : [];
+  }
+
+  const errorText = String(result.error?.message || result.error?.details || '').toLowerCase();
+  if (errorText.includes('descripcion') && nameOnlyExpression) {
+    result = await supabase
+      .from('productos')
+      .select('*')
+      .in(column, ids)
+      .or(nameOnlyExpression)
+      .order('id', { ascending: false })
+      .limit(220);
+    if (!result.error) return Array.isArray(result.data) ? result.data : [];
+  }
+
+  if (!isMissingColumnErrorLite(result.error, column)) {
+    console.warn('Error buscando productos por columna', column, result.error);
+  }
+  return [];
+}
+
+async function buscarProductosRelacionados(searchQuery = '') {
+  const raw = String(searchQuery || '').trim();
+  if (raw.length < 3) return [];
+
+  const normalized = normalizarTexto(raw);
+  if (!normalized) return [];
+  if (productSearchCache.has(normalized)) return productSearchCache.get(normalized);
+
+  const searchTerms = expandSearchTerms(normalized);
+  const mandatoryGroups = buildMandatoryTokenGroups(normalized);
+  const effectiveTerms = searchTerms.length ? searchTerms : [normalized];
+  const nameOnlyExpression = effectiveTerms.map((term) => `nombre.ilike.%${term}%`).join(',');
+  const orExpression = buildTextSearchExpression(effectiveTerms) || nameOnlyExpression;
+
+  const contextComercioIds = Array.from(new Set((estado.comerciosBase || [])
+    .map((c) => Number(c?.id))
+    .filter((id) => Number.isFinite(id) && id > 0)));
+  const menus = await fetchMenusByCommerceIds(contextComercioIds);
+  const menuIdToComercio = new Map();
+  const menuIds = [];
+  menus.forEach((menu) => {
+    const menuId = Number(menu?.id);
+    const comercioId = Number(menu?.idComercio ?? menu?.idcomercio);
+    if (!Number.isFinite(menuId)) return;
+    menuIds.push(menuId);
+    if (Number.isFinite(comercioId)) {
+      menuIdToComercio.set(menuId, comercioId);
+    }
+  });
+
+  const rows = [];
+  const seenRowIds = new Set();
+
+  const pushRows = (list = []) => {
+    list.forEach((row) => {
+      const rowId = row?.id ?? `${row?.nombre || ''}-${row?.idMenu || row?.idmenu || ''}`;
+      const key = String(rowId);
+      if (seenRowIds.has(key)) return;
+      seenRowIds.add(key);
+      rows.push(row);
+    });
+  };
+
+  if (menuIds.length) {
+    const listByMenu = await queryProductosPorColumna({
+      column: 'idMenu',
+      ids: menuIds,
+      orExpression,
+      nameOnlyExpression,
+    });
+    pushRows(listByMenu);
+
+    const listByMenuFallback = await queryProductosPorColumna({
+      column: 'idmenu',
+      ids: menuIds,
+      orExpression,
+      nameOnlyExpression,
+    });
+    pushRows(listByMenuFallback);
+  }
+
+  if (contextComercioIds.length) {
+    const listByComercio = await queryProductosPorColumna({
+      column: 'idComercio',
+      ids: contextComercioIds,
+      orExpression,
+      nameOnlyExpression,
+    });
+    pushRows(listByComercio);
+
+    const listByComercioFallback = await queryProductosPorColumna({
+      column: 'idcomercio',
+      ids: contextComercioIds,
+      orExpression,
+      nameOnlyExpression,
+    });
+    pushRows(listByComercioFallback);
+  }
+
+  if (!rows.length) {
+    let globalLookup = await supabase
+      .from('productos')
+      .select('*')
+      .or(orExpression)
+      .order('id', { ascending: false })
+      .limit(180);
+
+    if (globalLookup.error) {
+      const errText = String(globalLookup.error?.message || globalLookup.error?.details || '').toLowerCase();
+      if (errText.includes('descripcion')) {
+        globalLookup = await supabase
+          .from('productos')
+          .select('*')
+          .or(nameOnlyExpression)
+          .order('id', { ascending: false })
+          .limit(180);
+      }
+    }
+
+    if (!globalLookup.error) {
+      pushRows(Array.isArray(globalLookup.data) ? globalLookup.data : []);
+    }
+  }
+
+  const missingMenuIds = Array.from(new Set(rows
+    .map((row) => Number(row?.idMenu ?? row?.idmenu))
+    .filter((id) => Number.isFinite(id) && !menuIdToComercio.has(id)))).slice(0, 400);
+
+  if (missingMenuIds.length) {
+    const menuCommerceCols = ['idComercio', 'idcomercio'];
+    for (const commerceCol of menuCommerceCols) {
+      const menusLookup = await supabase
+        .from('menus')
+        .select(`id,${commerceCol}`)
+        .in('id', missingMenuIds);
+      if (menusLookup.error) {
+        if (isMissingColumnErrorLite(menusLookup.error, commerceCol)) continue;
+        break;
+      }
+      (Array.isArray(menusLookup.data) ? menusLookup.data : []).forEach((menu) => {
+        const menuId = Number(menu?.id);
+        const commerceId = Number(menu?.[commerceCol]);
+        if (Number.isFinite(menuId) && Number.isFinite(commerceId)) {
+          menuIdToComercio.set(menuId, commerceId);
+        }
+      });
+      break;
+    }
+  }
+
+  const normalizedProducts = rows
+    .map((product) => {
+      const directId = Number(product?.idComercio ?? product?.idcomercio);
+      const menuId = Number(product?.idMenu ?? product?.idmenu);
+      const idComercio = Number.isFinite(directId)
+        ? directId
+        : (Number.isFinite(menuId) ? menuIdToComercio.get(menuId) : null);
+
+      if (!Number.isFinite(idComercio)) return null;
+      if (product?.activo === false) return null;
+      if (!matchesMandatoryGroups(product, mandatoryGroups)) return null;
+
+      const score = scoreProductMatch(product, normalized, effectiveTerms);
+      if (score <= 0) return null;
+
+      const images = resolveProductImages(product);
+      return {
+        ...product,
+        idComercio,
+        score,
+        image: toProductImageUrl(images[0] || ''),
+        priceLabel: resolveProductPriceLabel(product),
+        name: String(product?.nombre || product?.title || 'Producto').trim() || 'Producto',
+        description: String(product?.descripcion || product?.description || '').trim(),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return Number(b.id || 0) - Number(a.id || 0);
+    });
+
+  const top = normalizedProducts.slice(0, 40);
+  productSearchCache.set(normalized, top);
+  return top;
+}
+
+function renderProductosRelacionados() {
+  ensureSearchProductsDom();
+  if (!searchProductsSection || !searchProductsGrid) return;
+
+  const textoBusqueda = String(estado.filtros.textoBusqueda || '').trim();
+  const products = Array.isArray(estado.filtros.productosRelacionados)
+    ? estado.filtros.productosRelacionados
+    : [];
+
+  if (textoBusqueda.length < 3 || !products.length) {
+    hideSearchProductsGrid();
+    return;
+  }
+
+  const comercioLookup = buildComercioLookup();
+  const visibleProducts = products
+    .map((product) => {
+      const idComercio = Number(product?.idComercio);
+      if (!Number.isFinite(idComercio)) return null;
+      const comercio = comercioLookup.get(idComercio);
+      if (!comercio) return null;
+      return { product, comercio };
+    })
+    .filter(Boolean)
+    .slice(0, PRODUCTOS_GRID_MAX);
+
+  if (!visibleProducts.length) {
+    hideSearchProductsGrid();
+    return;
+  }
+
+  const title = `${resolveSearchText('title')} (${visibleProducts.length} ${resolveSearchText('subtitle')})`;
+  if (searchProductsTitle) searchProductsTitle.textContent = title;
+
+  searchProductsGrid.innerHTML = visibleProducts.map(({ product, comercio }) => {
+    const productId = encodeURIComponent(String(product?.id ?? ''));
+    const href = `${resolveAppBase()}tienda/tiendaComercio.html?idComercio=${encodeURIComponent(comercio.id)}&source=app&producto=${productId}`;
+    const price = escapeHtml(product.priceLabel || resolveSearchText('noPrice'));
+    return `
+      <a href="${href}" class="search-product-card">
+        <div class="w-full aspect-square bg-gray-100">
+          <img src="${escapeHtml(product.image || PRODUCT_PLACEHOLDER_URL)}" alt="${escapeHtml(product.name)}" class="w-full h-full object-cover" loading="lazy" />
+        </div>
+        <div class="px-2.5 py-2.5">
+          <p class="text-[18px] leading-tight font-semibold text-[#424242] min-h-[2.8rem]" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+            ${escapeHtml(product.name)}
+          </p>
+          <div class="flex items-center gap-2 mt-1">
+            <img src="${escapeHtml(comercio.logo)}" alt="Logo ${escapeHtml(comercio.nombre)}" class="search-product-store-logo" loading="lazy" />
+            <p class="text-[12px] text-gray-500 leading-tight" style="display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;">
+              ${escapeHtml(comercio.nombre)}
+            </p>
+          </div>
+          <p class="text-[36px] leading-none text-[#f97316] font-bold mt-2">${price}</p>
+        </div>
+      </a>
+    `;
+  }).join('');
+
+  searchProductsSection.classList.remove('hidden');
 }
 
 async function actualizarBusquedaPorTexto(texto) {
@@ -261,16 +802,22 @@ async function actualizarBusquedaPorTexto(texto) {
   if (termino.length < 3) {
     estado.filtros.comerciosPorPlato = [];
     estado.filtros.comerciosPorMenus = [];
+    estado.filtros.productosRelacionados = [];
     return;
   }
 
-  const [idsPorProductos, idsPorMenus] = await Promise.all([
-    obtenerIdsComerciosPorProductos(termino),
+  const [productosRelacionados, idsPorMenus] = await Promise.all([
+    buscarProductosRelacionados(termino),
     obtenerIdsComerciosPorMenus(termino),
   ]);
 
+  const idsPorProductos = Array.from(new Set((productosRelacionados || [])
+    .map((product) => Number(product?.idComercio))
+    .filter((id) => Number.isFinite(id))));
+
   estado.filtros.comerciosPorPlato = idsPorProductos;
   estado.filtros.comerciosPorMenus = idsPorMenus;
+  estado.filtros.productosRelacionados = productosRelacionados;
 }
 
 function cleanupCarousels(container) {
@@ -847,6 +1394,7 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false, s
   }
 
   estado.comerciosFiltrados = filtrados;
+  renderProductosRelacionados();
   const categoriaNombre = getCategoriaLabelPorIdioma() || t('listado.titulo');
   estado.categoria = categoriaNombre;
   const total = filtrados.length;
@@ -1500,6 +2048,9 @@ function registrarEventos() {
 export async function iniciarBusquedaComercios() {
   contenedorListado = getElement('app');
   filtrosDiv = getElement('filtros-activos');
+  searchProductsSection = getElement('searchProductsSection');
+  searchProductsTitle = getElement('searchProductsTitle');
+  searchProductsGrid = getElement('searchProductsGrid');
 
   if (!contenedorListado) {
     console.error('⚠️ No se encontró el contenedor principal del listado.');
@@ -1509,6 +2060,8 @@ export async function iniciarBusquedaComercios() {
   if (!contenedorListado.dataset.layoutOriginal) {
     contenedorListado.dataset.layoutOriginal = contenedorListado.className;
   }
+
+  hideSearchProductsGrid();
 
   await cargarNombreCategoria();
   await cargarMunicipios();

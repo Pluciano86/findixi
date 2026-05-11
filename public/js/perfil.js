@@ -556,7 +556,7 @@ function renderStoreProductsGrid(products = [], comercio = {}) {
         </div>
         <div class="px-1.5 py-1.5 text-center">
           <p class="text-[11px] leading-tight text-[#424242] font-medium min-h-[1.8rem]" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(name)}</p>
-          <p class="text-[11px] leading-tight text-[#fb8500] font-semibold mt-0.5">${escapeHtml(price)}</p>
+          <p class="text-[14px] leading-tight text-[#fb8500] font-semibold mt-0.5">${escapeHtml(price)}</p>
         </div>
       </a>
     `;

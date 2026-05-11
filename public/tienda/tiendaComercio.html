@@ -166,6 +166,37 @@
       max-height: min(90vh, 780px);
     }
 
+    .tienda-modal-close-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(17, 24, 39, 0.78);
+      color: #ffffff;
+      font-size: 24px;
+      line-height: 1;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: background-color 0.16s ease, transform 0.16s ease;
+    }
+
+    .tienda-modal-close-btn:hover {
+      background: rgba(17, 24, 39, 0.92);
+      transform: scale(1.03);
+    }
+
+    .tienda-image-viewer-backdrop {
+      background: rgba(0, 0, 0, 0.82);
+    }
+
+    .tienda-image-viewer-img {
+      max-width: min(96vw, 980px);
+      max-height: 90vh;
+      object-fit: contain;
+    }
+
     .tienda-galeria-track {
       scroll-snap-type: x mandatory;
     }
@@ -233,11 +264,13 @@
 
     <div class="relative h-full w-full flex items-center justify-center p-3">
       <article id="modalProductoPanel" class="tienda-modal-panel relative w-full max-w-md overflow-y-auto bg-white rounded-2xl shadow-2xl">
-        <button id="modalCerrar" class="absolute top-2 right-3 z-10 text-2xl text-gray-600" aria-label="Cerrar">&times;</button>
+        <button id="modalCerrar" type="button" class="tienda-modal-close-btn absolute top-3 right-3 z-10" aria-label="Cerrar modal">&times;</button>
 
         <section class="p-4">
           <div class="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-            <img id="modalImagenPrincipal" src="" alt="Producto" class="w-full h-64 object-cover" />
+            <button id="modalImagenLink" type="button" class="block w-full cursor-zoom-in" aria-label="Ver imagen completa del producto">
+              <img id="modalImagenPrincipal" src="" alt="Producto" class="w-full h-64 object-cover" />
+            </button>
 
             <button id="modalPrevImagen" class="absolute top-1/2 -translate-y-1/2 left-2 hidden w-9 h-9 rounded-full bg-black/50 text-white" aria-label="Anterior">
               <i class="fas fa-chevron-left text-xs"></i>
@@ -274,6 +307,14 @@
           </a>
         </section>
       </article>
+    </div>
+  </div>
+
+  <div id="modalImagenExpandida" class="fixed inset-0 z-[110000] hidden">
+    <div id="modalImagenExpandidaBackdrop" class="absolute inset-0 tienda-image-viewer-backdrop"></div>
+    <div id="modalImagenExpandidaWrap" class="relative w-full h-full flex items-center justify-center p-3">
+      <button id="modalImagenExpandidaCerrar" type="button" class="tienda-modal-close-btn absolute top-3 right-3 z-10" aria-label="Cerrar imagen">&times;</button>
+      <img id="modalImagenExpandidaSrc" src="" alt="Imagen de producto ampliada" class="tienda-image-viewer-img rounded-lg shadow-2xl" />
     </div>
   </div>
 

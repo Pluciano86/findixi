@@ -8,6 +8,8 @@ import {
 
 const SHOPIFY_LIMIT = 250;
 const SHOPIFY_MAX_PAGES = 30;
+const SHOPIFY_SCHEDULE_CRON = '0 11 * * *'; // 11:00 UTC = 7:00 AM Puerto Rico (AST, UTC-4)
+const SHOPIFY_SCHEDULE_MAX_COMERCIOS = 120;
 const ALLOWED_APP_ADMIN_ROLES = new Set(['admin', 'superadmin', 'app_admin', 'app_superadmin', 'owner', 'app_owner']);
 
 function normalizeText(value) {
@@ -58,6 +60,35 @@ function parseMissingColumn(error) {
 
 function toRoleText(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function getHeader(event, key) {
+  const headers = event?.headers || {};
+  return headers[key] || headers[key?.toLowerCase?.()] || headers[key?.toUpperCase?.()] || '';
+}
+
+function isScheduledInvocation(event) {
+  return String(getHeader(event, 'x-nf-event') || '').trim().toLowerCase() === 'schedule';
+}
+
+function parseIdList(value) {
+  return Array.from(
+    new Set(
+      String(value || '')
+        .split(/[,\s;]+/)
+        .map((entry) => Number(entry))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )
+  );
+}
+
+function parseOptionalBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (!normalized) return null;
+  if (['true', '1', 'yes', 'si', 'on'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+  return null;
 }
 
 function isMissingColumnError(error) {
@@ -375,6 +406,143 @@ async function canManageCommerce(supabaseAdmin, { idComercio, user }) {
   return { ok: true, comercio };
 }
 
+async function fetchComerciosForScheduledSync(supabaseAdmin, forcedIds = []) {
+  const ids = Array.isArray(forcedIds) ? forcedIds : [];
+  const hasForcedIds = ids.length > 0;
+  const selectCandidates = [
+    'id,nombre,webpage,tiendaOnline',
+    'id,nombre,webpage',
+  ];
+  let rows = [];
+  let selectedWithOnlineFlag = false;
+
+  for (const selectColumns of selectCandidates) {
+    const lookup = supabaseAdmin
+      .from('Comercios')
+      .select(selectColumns)
+      .order('id', { ascending: true })
+      .limit(SHOPIFY_SCHEDULE_MAX_COMERCIOS);
+
+    const filtered = hasForcedIds ? lookup.in('id', ids) : lookup;
+    const result = await filtered;
+
+    if (!result.error) {
+      rows = Array.isArray(result.data) ? result.data : [];
+      selectedWithOnlineFlag = selectColumns.includes('tiendaOnline');
+      break;
+    }
+
+    if (!isMissingColumnError(result.error)) {
+      throw result.error;
+    }
+  }
+
+  if (!rows.length) return [];
+
+  return rows
+    .map((row) => {
+      const id = Number(row?.id);
+      const onlineFlag = parseOptionalBoolean(row?.tiendaOnline);
+      const webpage = normalizeShopBaseUrl(row?.webpage || '');
+      return {
+        id,
+        nombre: String(row?.nombre || '').trim(),
+        webpage,
+        tiendaOnline: onlineFlag,
+      };
+    })
+    .filter((row) => Number.isFinite(row.id) && row.id > 0)
+    .filter((row) => {
+      if (selectedWithOnlineFlag && row.tiendaOnline === false) return false;
+      return Boolean(row.webpage);
+    });
+}
+
+async function runScheduledSync({ supabaseAdmin, body = {} }) {
+  const envIds = parseIdList(process.env.SHOPIFY_SYNC_COMERCIO_IDS || '');
+  const bodyIds = parseIdList(body?.idComercios || body?.id_comercios || body?.ids || '');
+  const bodySingleId = Number(body?.idComercio || body?.id_comercio || 0);
+  const forcedIds = Array.from(
+    new Set([
+      ...envIds,
+      ...bodyIds,
+      ...(Number.isFinite(bodySingleId) && bodySingleId > 0 ? [bodySingleId] : []),
+    ])
+  );
+
+  const comercios = await fetchComerciosForScheduledSync(supabaseAdmin, forcedIds);
+  if (!comercios.length) {
+    return {
+      ok: true,
+      scheduled: true,
+      schedule: SHOPIFY_SCHEDULE_CRON,
+      ranAt: new Date().toISOString(),
+      totalComercios: 0,
+      synced: 0,
+      failed: 0,
+      skipped: 0,
+      results: [],
+    };
+  }
+
+  const globalFallbackUrl = normalizeShopBaseUrl(process.env.SHOPIFY_SYNC_STORE_URL || '');
+  const results = [];
+  let synced = 0;
+  let failed = 0;
+  let skipped = 0;
+
+  for (const comercio of comercios) {
+    const shopBaseUrl = comercio.webpage || globalFallbackUrl;
+    if (!shopBaseUrl) {
+      skipped += 1;
+      results.push({
+        idComercio: comercio.id,
+        ok: false,
+        skipped: true,
+        reason: 'Sin URL Shopify válida.',
+      });
+      continue;
+    }
+
+    try {
+      const stats = await syncShopifyStore({
+        supabaseAdmin,
+        idComercio: comercio.id,
+        shopBaseUrl,
+      });
+      synced += 1;
+      results.push({
+        idComercio: comercio.id,
+        nombre: comercio.nombre || null,
+        ok: true,
+        shopBaseUrl,
+        ...stats,
+      });
+    } catch (error) {
+      failed += 1;
+      results.push({
+        idComercio: comercio.id,
+        nombre: comercio.nombre || null,
+        ok: false,
+        shopBaseUrl,
+        error: error?.message || String(error),
+      });
+    }
+  }
+
+  return {
+    ok: failed === 0,
+    scheduled: true,
+    schedule: SHOPIFY_SCHEDULE_CRON,
+    ranAt: new Date().toISOString(),
+    totalComercios: comercios.length,
+    synced,
+    failed,
+    skipped,
+    results,
+  };
+}
+
 async function syncShopifyStore({ supabaseAdmin, idComercio, shopBaseUrl }) {
   const collections = await fetchShopifyPages({
     baseUrl: shopBaseUrl,
@@ -549,15 +717,35 @@ async function syncShopifyStore({ supabaseAdmin, idComercio, shopBaseUrl }) {
 }
 
 export const handler = async (event) => {
+  const scheduled = isScheduledInvocation(event);
+  const method = String(event?.httpMethod || 'POST').toUpperCase();
+
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: buildHeaders(), body: '' };
   }
-  if (event.httpMethod !== 'POST') {
+  if (method !== 'POST' && !scheduled) {
     return jsonResponse(405, { error: 'Método no permitido. Usa POST.' });
   }
 
   const body = parseBody(event);
   if (body === null) return jsonResponse(400, { error: 'Body inválido.' });
+
+  if (scheduled) {
+    try {
+      const supabaseAdmin = createSupabaseAdmin();
+      const summary = await runScheduledSync({ supabaseAdmin, body });
+      return jsonResponse(200, summary);
+    } catch (error) {
+      console.error('[shopify-sync-store][scheduled] error', error);
+      return jsonResponse(500, {
+        ok: false,
+        scheduled: true,
+        schedule: SHOPIFY_SCHEDULE_CRON,
+        error: 'No se pudo ejecutar la sincronización programada de Shopify.',
+        detalle: error?.message || String(error),
+      });
+    }
+  }
 
   const idComercio = Number(body?.idComercio || body?.id_comercio || 0);
   if (!Number.isFinite(idComercio) || idComercio <= 0) {
@@ -606,4 +794,8 @@ export const handler = async (event) => {
       detalle: error?.message || String(error),
     });
   }
+};
+
+export const config = {
+  schedule: SHOPIFY_SCHEDULE_CRON,
 };

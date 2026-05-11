@@ -2,6 +2,8 @@ import { supabase } from '../shared/supabaseClient.js';
 
 const params = new URLSearchParams(window.location.search);
 const idComercio = Number(params.get('idComercio') || params.get('id'));
+const navSource = String(params.get('source') || '').trim().toLowerCase();
+const requestedProductId = String(params.get('producto') || '').trim();
 
 const heroBannerImg = document.getElementById('heroBannerImg');
 const heroOverlay = document.getElementById('heroOverlay');
@@ -21,6 +23,7 @@ const modalProducto = document.getElementById('modalProducto');
 const modalProductoBackdrop = document.getElementById('modalProductoBackdrop');
 const modalProductoPanel = document.getElementById('modalProductoPanel');
 const modalCerrar = document.getElementById('modalCerrar');
+const modalImagenLink = document.getElementById('modalImagenLink');
 const modalImagenPrincipal = document.getElementById('modalImagenPrincipal');
 const modalPrevImagen = document.getElementById('modalPrevImagen');
 const modalNextImagen = document.getElementById('modalNextImagen');
@@ -35,6 +38,11 @@ const modalTallas = document.getElementById('modalTallas');
 const modalVariantesSection = document.getElementById('modalVariantesSection');
 const modalVariantes = document.getElementById('modalVariantes');
 const modalComprarBtn = document.getElementById('modalComprarBtn');
+const modalImagenExpandida = document.getElementById('modalImagenExpandida');
+const modalImagenExpandidaBackdrop = document.getElementById('modalImagenExpandidaBackdrop');
+const modalImagenExpandidaWrap = document.getElementById('modalImagenExpandidaWrap');
+const modalImagenExpandidaCerrar = document.getElementById('modalImagenExpandidaCerrar');
+const modalImagenExpandidaSrc = document.getElementById('modalImagenExpandidaSrc');
 
 const DEFAULT_THEME = {
   colorboton: '#fb8500',
@@ -1096,6 +1104,7 @@ function updateModalImage() {
   state.modalImageIndex = index;
 
   modalImagenPrincipal.src = images[index];
+  if (modalImagenLink) modalImagenLink.dataset.imageSrc = images[index];
   modalPrevImagen.classList.toggle('hidden', images.length <= 1);
   modalNextImagen.classList.toggle('hidden', images.length <= 1);
 
@@ -1119,6 +1128,19 @@ function updateModalImage() {
     modalThumbs.classList.add('hidden');
     modalThumbs.classList.remove('flex');
   }
+}
+
+function openExpandedImageModal(imageSrc = '', imageAlt = 'Imagen de producto') {
+  if (!modalImagenExpandida || !modalImagenExpandidaSrc || !imageSrc) return;
+  modalImagenExpandidaSrc.src = imageSrc;
+  modalImagenExpandidaSrc.alt = imageAlt || 'Imagen de producto';
+  modalImagenExpandida.classList.remove('hidden');
+}
+
+function closeExpandedImageModal() {
+  if (!modalImagenExpandida || !modalImagenExpandidaSrc) return;
+  modalImagenExpandida.classList.add('hidden');
+  modalImagenExpandidaSrc.src = '';
 }
 
 function renderVariantOptions(options = []) {
@@ -1392,6 +1414,7 @@ function openProductModal(productId) {
 }
 
 function closeProductModal() {
+  closeExpandedImageModal();
   modalProducto.classList.add('hidden');
   document.body.classList.remove('overflow-hidden');
   state.modalProductId = null;
@@ -1423,8 +1446,24 @@ function mountModalEvents() {
     updateModalImage();
   });
 
+  modalImagenLink?.addEventListener('click', () => {
+    const src = modalImagenLink.dataset.imageSrc || modalImagenPrincipal?.src || '';
+    if (!src) return;
+    openExpandedImageModal(src, modalImagenPrincipal?.alt || 'Imagen de producto');
+  });
+  modalImagenExpandidaCerrar?.addEventListener('click', closeExpandedImageModal);
+  modalImagenExpandidaBackdrop?.addEventListener('click', closeExpandedImageModal);
+  modalImagenExpandidaWrap?.addEventListener('click', (event) => {
+    if (event.target === modalImagenExpandidaWrap) closeExpandedImageModal();
+  });
+
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !modalProducto.classList.contains('hidden')) {
+    if (event.key !== 'Escape') return;
+    if (modalImagenExpandida && !modalImagenExpandida.classList.contains('hidden')) {
+      closeExpandedImageModal();
+      return;
+    }
+    if (!modalProducto.classList.contains('hidden')) {
       closeProductModal();
     }
   });
@@ -1438,7 +1477,47 @@ function mountModalEvents() {
 
 function bindBackLink() {
   if (!btnVolverPerfil) return;
-  btnVolverPerfil.href = `../perfilComercio.html?id=${idComercio}`;
+  const fallbackHref = `../perfilComercio.html?id=${idComercio}`;
+  btnVolverPerfil.href = fallbackHref;
+
+  btnVolverPerfil.addEventListener('click', (event) => {
+    const hasHistory = window.history.length > 1;
+    let cameFromPerfil = false;
+
+    try {
+      if (document.referrer) {
+        const refUrl = new URL(document.referrer);
+        cameFromPerfil = refUrl.origin === window.location.origin
+          && /\/perfilComercio\.html$/i.test(refUrl.pathname);
+      }
+    } catch (_) {
+      cameFromPerfil = false;
+    }
+
+    // Si vino del perfil, volver en historial evita crear una nueva entrada de perfil.
+    if (navSource === 'perfil' && hasHistory && cameFromPerfil) {
+      event.preventDefault();
+      window.history.back();
+    }
+  });
+}
+
+function openRequestedProductModalIfAny() {
+  if (!requestedProductId || !Array.isArray(state.products) || !state.products.length) return;
+
+  const requestedNorm = String(requestedProductId).trim();
+  const byExact = state.products.find((product) => String(product?.id || '').trim() === requestedNorm);
+  if (byExact?.id) {
+    openProductModal(byExact.id);
+    return;
+  }
+
+  const requestedNum = Number(requestedNorm);
+  if (!Number.isFinite(requestedNum)) return;
+  const byNumeric = state.products.find((product) => Number(product?.id) === requestedNum);
+  if (byNumeric?.id) {
+    openProductModal(byNumeric.id);
+  }
 }
 
 async function loadStoreData() {
@@ -1491,6 +1570,7 @@ async function init() {
     applyTheme();
     renderCategories();
     renderProducts();
+    openRequestedProductModalIfAny();
 
     if (!state.products.length) {
       const noShopifyMsg = !state.storeMode.tiendaOnline
