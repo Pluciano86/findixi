@@ -109,6 +109,13 @@ const TOKEN_ALIAS_GROUPS = [
   ['bag', 'cartera', 'bolso', 'purse'],
   ['set', 'conjunto', 'matching'],
 ];
+const ROPA_ACCESORIOS_NOMBRES = new Set([
+  'ropa y accesorios',
+  'ropa & accesorios',
+  'tienda de ropa y accesorios',
+  'clothing and accessories',
+  'clothing & accessories',
+]);
 
 function expandSearchTerms(rawText = '') {
   const normalizedQuery = normalizarTexto(rawText || '');
@@ -143,6 +150,26 @@ function buildMandatoryTokenGroups(rawText = '') {
     const group = TOKEN_ALIAS_GROUPS.find((entry) => entry.includes(token));
     return group ? Array.from(new Set(group)) : [token];
   });
+}
+
+function isRopaAccesoriosCategory(slug = '', nombreCategoria = '') {
+  const normalizedSlug = normalizarTexto(String(slug || '').replace(/[_-]+/g, ' '));
+  const normalizedName = normalizarTexto(nombreCategoria || '');
+  const slugMatch =
+    normalizedSlug.includes('ropa') && normalizedSlug.includes('accesor');
+  const nameMatch =
+    ROPA_ACCESORIOS_NOMBRES.has(normalizedName) ||
+    (normalizedName.includes('ropa') && normalizedName.includes('accesor')) ||
+    (normalizedName.includes('clothing') && normalizedName.includes('accessor'));
+  return slugMatch || nameMatch;
+}
+
+function getCategoriaLabelParaResumen(total = 0) {
+  const categoriaLabel = estado.categoria || t('listado.titulo');
+  if (!isRopaAccesoriosCategory(estado.categoriaSlug, categoriaLabel)) return categoriaLabel;
+  const lang = String(getLang() || '').toLowerCase();
+  if (lang.startsWith('en')) return total === 1 ? 'Store' : 'Stores';
+  return total === 1 ? 'Tienda' : 'Tiendas';
 }
 
 function parseProductImageSource(value) {
@@ -1432,7 +1459,7 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false, s
     municipioActivo.toLowerCase() === municipioUsuario.toLowerCase();
 
   const textoResultados = (() => {
-    const categoriaLabel = estado.categoria || t('listado.titulo');
+    const categoriaLabel = getCategoriaLabelParaResumen(total);
     return interpolate(t('listado.resultadosSinMunicipio'), {
       n: total,
       categoria: categoriaLabel,
