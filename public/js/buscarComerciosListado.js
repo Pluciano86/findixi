@@ -776,17 +776,17 @@ function renderProductosRelacionados() {
         <div class="w-full aspect-square bg-gray-100">
           <img src="${escapeHtml(product.image || PRODUCT_PLACEHOLDER_URL)}" alt="${escapeHtml(product.name)}" class="w-full h-full object-cover" loading="lazy" />
         </div>
-        <div class="px-2.5 py-2.5">
-          <p class="text-[18px] leading-tight font-semibold text-[#424242] min-h-[2.8rem]" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
-            ${escapeHtml(product.name)}
-          </p>
-          <div class="flex items-center gap-2 mt-1">
+        <div class="px-1.5 py-1.5 text-center">
+          <div class="flex items-center justify-center gap-1.5 mb-1">
             <img src="${escapeHtml(comercio.logo)}" alt="Logo ${escapeHtml(comercio.nombre)}" class="search-product-store-logo" loading="lazy" />
-            <p class="text-[12px] text-gray-500 leading-tight" style="display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;">
+            <p class="text-[11px] leading-tight text-gray-500 font-medium" style="display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;">
               ${escapeHtml(comercio.nombre)}
             </p>
           </div>
-          <p class="text-[36px] leading-none text-[#f97316] font-bold mt-2">${price}</p>
+          <p class="text-[11px] leading-tight text-[#424242] font-medium min-h-[1.8rem]" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+            ${escapeHtml(product.name)}
+          </p>
+          <p class="text-[14px] leading-tight text-[#fb8500] font-semibold mt-0.5">${price}</p>
         </div>
       </a>
     `;
