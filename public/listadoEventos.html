@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <style>
     body { font-family: 'Kanit', sans-serif; }
-    #modalEvento > div { margin-top: auto; margin-bottom: auto; }
   </style>
   <script type="module" src="./js/i18n.js"></script>
 </head>
@@ -121,37 +120,6 @@
   </main>
 
   <br><br><br>
-
-  <!-- Modal -->
-<div id="modalEvento" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[9999] hidden px-4 py-6">
-  <div class="bg-white rounded-lg shadow-lg w-[95%] h-[85vh] 
-              overflow-y-auto relative">
-    <!-- header -->
-    <div class="flex items-center justify-between px-4 py-2 bg-[#231F20] text-white rounded-t-lg sticky top-0 z-50">
-  <h2 id="modalTitulo" class="flex-1 text-center text-2xl font-medium"></h2>
-  <button id="cerrarModal" 
-          class="text-white hover:text-gray-300 text-5xl font-extralight leading-none ml-2">&times;</button>
-</div>
-    
-    <!-- contenido -->
-    <div class="flex-1 overflow-y-auto px-4 pb-6 pt-4 space-y-2 text-center">
-      <!-- imagen -->
-      <div class="w-full overflow-hidden rounded-lg bg-gray-200 aspect-[7/5]">
-        <img id="modalImagen" src="" alt="Imagen evento" class="w-full h-full object-contain" data-i18n-alt="eventos.imagenAlt" />
-      </div>
-      
-      <p id="modalDescripcion" class="text-sm text-justify text-gray-700 whitespace-pre-line"></p>
-      <div id="modalFechaPrincipal" class="text-2xl text-red-600 font-semibold leading-5 space-y-1"></div>
-      <div id="modalHoraPrincipal" class="text-2xl text-gray-600 font-medium"></div>
-      <button id="modalVerFechas" type="button" class="text-gray-500 text-base font-medium underline hidden"></button>
-      <div id="modalFechasListado" class="hidden text-base text-gray-600 space-y-1"></div>
-      <div id="modalLugar" class="text-2xl font-semibold text-gray-700"></div>
-      <div id="modalDireccion" class="text-medium space-y-0 text-gray-500"></div>
-      <div id="modalCosto" class="text-3xl font-medium text-green-600"></div>
-      <a id="modalBoletos" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-full" data-i18n="evento.comprarBoletos">Comprar boletos</a>
-    </div>
-  </div>
-</div>
 
   <!-- Footer -->
   <div id="footerContainer"></div>

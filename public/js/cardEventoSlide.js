@@ -1,5 +1,4 @@
 import { t } from "./i18n.js";
-import { abrirModal } from "./modalEventos.js";
 import { toHorizontalEventImage } from "../shared/eventoImage.js";
 
 const localeMap = {
@@ -139,26 +138,7 @@ export function cardEventoSlide(evento) {
   `;
 
   card.addEventListener("click", () => {
-    if (document.getElementById("modalEvento")) {
-      const eventoPayload = evento.eventoFechas
-        ? evento
-        : {
-            ...evento,
-            enlaceboletos: evento.enlaceboletos || "",
-            boletos_por_localidad: Boolean(evento.boletos_por_localidad),
-            eventoFechas: evento.fecha
-              ? [{
-                  fecha: evento.fecha,
-                  horainicio: evento.horainicio || evento.hora || "",
-                  lugar: evento.lugar || "",
-                  municipioNombre: municipioNombre || "",
-                }]
-              : []
-          };
-      abrirModal(eventoPayload);
-    } else {
-      window.location.href = `perfilEvento.html?id=${id}`;
-    }
+    window.location.href = `perfilEvento.html?id=${encodeURIComponent(id)}`;
   });
 
   return card;

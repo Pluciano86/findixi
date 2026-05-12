@@ -3,7 +3,6 @@ import { supabase } from '../shared/supabaseClient.js';
 import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
 import { t, getLang } from './i18n.js';
-import { abrirModal } from './modalEventos.js';
 import { toHorizontalEventImage, withVersion } from '../shared/eventoImage.js';
 import { EVENT_IMAGE_FOCUS_OVERRIDES } from '../shared/eventoImageFocusOverrides.js';
 
@@ -904,7 +903,9 @@ async function renderizarEventos() {
       </div>
     `;
     aplicarEstiloImagenTarjeta(div, imagenEvento, evento);
-    div.addEventListener('click', () => abrirModal(evento));
+    div.addEventListener('click', () => {
+      window.location.href = `perfilEvento.html?id=${encodeURIComponent(evento.id)}`;
+    });
     fragment.appendChild(div);
     cartasEnFila += 1;
 

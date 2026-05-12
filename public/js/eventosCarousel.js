@@ -1,5 +1,4 @@
 import { supabase } from "../shared/supabaseClient.js";
-import { abrirModal } from "./modalEventos.js";
 import { t } from "./i18n.js";
 import { toHorizontalEventImage } from "../shared/eventoImage.js";
 import {
@@ -272,12 +271,12 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
       watchSlidesProgress: true,
     });
 
-    // 🔹 Click → abrir modal
+    // 🔹 Click → página de evento
     container.querySelectorAll(".swiper-slide").forEach((slide) => {
       slide.addEventListener("click", () => {
         const id = slide.getAttribute("data-id");
-        const evento = eventos.find((e) => e.id == id);
-        if (evento) abrirModal(evento);
+        if (!id) return;
+        window.location.href = `perfilEvento.html?id=${encodeURIComponent(id)}`;
       });
     });
 
