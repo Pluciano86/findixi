@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Sincroniza export CSV de PRticket hacia Supabase.
+Sincroniza export CSV de Ticketera hacia Supabase.
 
 Flujo:
-1) Lee CSVs en exports/prticket/
+1) Lee CSVs en exports/ticketera/
 2) Upsert de eventos (sin borrar todo)
 3) Reemplaza sedes/fechas para eventos sincronizados
-4) Actualiza boleterías (source=prticket)
+4) Actualiza boleterías (source=ticketera)
 """
 
 from __future__ import annotations
@@ -15,18 +15,19 @@ import csv
 import json
 import os
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 
-SOURCE_NAME = "prticket"
-EXPORT_DIR = Path("exports/prticket")
-EVENTOS_CSV = EXPORT_DIR / "eventos_prticket.csv"
-SEDES_CSV = EXPORT_DIR / "eventos_municipios_prticket.csv"
-FECHAS_CSV = EXPORT_DIR / "eventoFechas_prticket.csv"
-BOLETERIAS_CSV = EXPORT_DIR / "eventos_boleterias_prticket.csv"
+SOURCE_NAME = "ticketera"
+EXPORT_DIR = Path("exports/ticketera")
+EVENTOS_CSV = EXPORT_DIR / "eventos_ticketera.csv"
+SEDES_CSV = EXPORT_DIR / "eventos_municipios_ticketera.csv"
+FECHAS_CSV = EXPORT_DIR / "eventoFechas_ticketera.csv"
+BOLETERIAS_CSV = EXPORT_DIR / "eventos_boleterias_ticketera.csv"
 
 
 def load_env_file(path: Path) -> Dict[str, str]:
@@ -103,11 +104,15 @@ class SupabaseRest:
             data = json.dumps(payload).encode("utf-8")
 
         req = urllib.request.Request(endpoint, data=data, headers=headers, method=method)
-        with urllib.request.urlopen(req, timeout=60) as response:
-            raw = response.read().decode("utf-8", errors="replace")
-            if not raw:
-                return None
-            return json.loads(raw)
+        try:
+            with urllib.request.urlopen(req, timeout=60) as response:
+                raw = response.read().decode("utf-8", errors="replace")
+                if not raw:
+                    return None
+                return json.loads(raw)
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace") if hasattr(exc, "read") else ""
+            raise RuntimeError(f"Supabase HTTP {exc.code} {exc.reason} on {table} ({method}) | query={query} | body={body}") from exc
 
     def select(self, table: str, query: Dict[str, str]) -> List[dict]:
         result = self._request("GET", table, query=query)
@@ -177,7 +182,22 @@ def sync() -> int:
 
     sb = SupabaseRest(supabase_url, service_role)
 
-    # Mapa de evento existente por URL (source prticket)
+    categorias_rows = sb.select(
+        "categoriaEventos",
+        {"select": "id,nombre", "limit": "2000"},
+    )
+    valid_categoria_ids = {to_int(r.get("id")) for r in categorias_rows if to_int(r.get("id")) > 0}
+    categoria_otros_id = next(
+        (
+            to_int(r.get("id"))
+            for r in categorias_rows
+            if clean(r.get("nombre")).strip().lower() in {"otros", "otro", "other", "others"}
+            and to_int(r.get("id")) > 0
+        ),
+        None,
+    )
+
+    # Mapa de evento existente por URL (source ticketera)
     existing_boleterias = sb.select(
         "eventos_boleterias",
         {
@@ -187,6 +207,7 @@ def sync() -> int:
         },
     )
     existing_by_url = {clean(r.get("url_evento")).lower(): to_int(r.get("evento_id")) for r in existing_boleterias if clean(r.get("url_evento"))}
+    existing_by_source_event_id: Dict[str, int] = {}
 
     temp_to_real_event_id: Dict[int, int] = {}
 
@@ -197,8 +218,9 @@ def sync() -> int:
         if not temp_event_id or not url_evento:
             continue
         url_key = url_evento.lower()
+        source_event_id = clean(row.get("source_event_id"))
         payload = {
-            "source_event_id": clean(row.get("source_event_id")) or None,
+            "source_event_id": source_event_id or None,
             "nombre": clean(row.get("nombre")),
             "descripcion": clean(row.get("descripcion")),
             "costo": clean(row.get("costo")),
@@ -206,7 +228,11 @@ def sync() -> int:
             "lugar": clean(row.get("lugar")),
             "direccion": clean(row.get("direccion")),
             "municipio_id": to_int(row.get("municipio_id")) or None,
-            "categoria": to_int(row.get("categoria")) or None,
+            "categoria": (
+                to_int(row.get("categoria"))
+                if to_int(row.get("categoria")) in valid_categoria_ids
+                else categoria_otros_id
+            ),
             "enlaceboletos": url_evento,
             "boletos_por_localidad": to_bool(row.get("boletos_por_localidad")),
             "imagen": clean(row.get("imagen")),
@@ -232,6 +258,43 @@ def sync() -> int:
             payload["image_focus_source"] = focus_source
 
         existing_event_id = existing_by_url.get(url_key)
+        if not existing_event_id and source_event_id:
+            sid_key = source_event_id.lower()
+            if sid_key not in existing_by_source_event_id:
+                lookup_rows = sb.select(
+                    "eventos",
+                    {
+                        "select": "id,enlaceboletos",
+                        "source_event_id": f"eq.{source_event_id}",
+                        "limit": "5",
+                    },
+                )
+                best_id = 0
+                target_netloc = urllib.parse.urlparse(url_evento).netloc.lower()
+                for lookup in lookup_rows:
+                    lookup_id = to_int(lookup.get("id"))
+                    lookup_link = clean(lookup.get("enlaceboletos"))
+                    if not lookup_id:
+                        continue
+                    lookup_netloc = urllib.parse.urlparse(lookup_link).netloc.lower()
+                    if lookup_netloc and target_netloc and lookup_netloc == target_netloc:
+                        best_id = lookup_id
+                        break
+                    if not best_id:
+                        best_id = lookup_id
+                existing_by_source_event_id[sid_key] = best_id
+            existing_event_id = existing_by_source_event_id.get(sid_key) or None
+        if not existing_event_id:
+            lookup_by_link = sb.select(
+                "eventos",
+                {
+                    "select": "id",
+                    "enlaceboletos": f"eq.{url_evento}",
+                    "limit": "1",
+                },
+            )
+            if lookup_by_link:
+                existing_event_id = to_int(lookup_by_link[0].get("id"))
         if existing_event_id:
             updated = sb.patch("eventos", {"id": f"eq.{existing_event_id}"}, payload)
             if not updated:
@@ -246,6 +309,9 @@ def sync() -> int:
         if not real_event_id:
             raise RuntimeError(f"Evento sin id retornado para url={url_evento}")
         temp_to_real_event_id[temp_event_id] = real_event_id
+        existing_by_url[url_key] = real_event_id
+        if source_event_id:
+            existing_by_source_event_id[source_event_id.lower()] = real_event_id
 
     real_event_ids = sorted({v for v in temp_to_real_event_id.values() if v > 0})
     if not real_event_ids:
@@ -287,7 +353,7 @@ def sync() -> int:
             "nombre": lugar,
             "municipio_id": municipio_id,
             "direccion_formateada": direccion or None,
-            "fuente_geocoding": "sync_prticket",
+            "fuente_geocoding": "sync_ticketera",
             "estado_geocoding": "pendiente",
             "metadata": {"source": SOURCE_NAME},
         }
@@ -340,7 +406,7 @@ def sync() -> int:
     if fechas_payload:
         sb.insert("eventoFechas", fechas_payload, returning=False)
 
-    # 5) Reemplazar boleterías PRticket para estos eventos
+    # 5) Reemplazar boleterías Ticketera para estos eventos
     sb.delete(
         "eventos_boleterias",
         {
@@ -362,7 +428,7 @@ def sync() -> int:
             {
                 "evento_id": real_event_id,
                 "source": SOURCE_NAME,
-                "source_display": "PRticket",
+                "source_display": "Ticketera",
                 "logo_key": SOURCE_NAME,
                 "url_evento": url_evento,
                 "prioridad": to_int(row.get("prioridad"), 10),
@@ -373,10 +439,10 @@ def sync() -> int:
     if boleterias_payload:
         sb.insert("eventos_boleterias", boleterias_payload, returning=False)
 
-    print(f"[sync_prticket] eventos_upsert: {len(temp_to_real_event_id)}")
-    print(f"[sync_prticket] sedes_insertadas: {len(temp_sede_to_real_sede)}")
-    print(f"[sync_prticket] fechas_insertadas: {len(fechas_payload)}")
-    print(f"[sync_prticket] boleterias_insertadas: {len(boleterias_payload)}")
+    print(f"[sync_ticketera] eventos_upsert: {len(temp_to_real_event_id)}")
+    print(f"[sync_ticketera] sedes_insertadas: {len(temp_sede_to_real_sede)}")
+    print(f"[sync_ticketera] fechas_insertadas: {len(fechas_payload)}")
+    print(f"[sync_ticketera] boleterias_insertadas: {len(boleterias_payload)}")
     return 0
 
 

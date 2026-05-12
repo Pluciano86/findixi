@@ -6,7 +6,13 @@
     "test:projections": "node --test shared/projectionsCalculator.test.js",
     "sync:eventos:prticket:scrape": "python3 tools/scrapers/prticket/scrape_prticket.py",
     "sync:eventos:prticket:import": "python3 tools/scrapers/prticket/sync_prticket_to_supabase.py",
-    "sync:eventos:prticket": "python3 tools/scrapers/prticket/scrape_prticket.py && python3 tools/scrapers/prticket/sync_prticket_to_supabase.py"
+    "sync:eventos:prticket": "python3 tools/scrapers/prticket/scrape_prticket.py && python3 tools/scrapers/prticket/sync_prticket_to_supabase.py",
+    "sync:eventos:pietix:scrape": "python3 tools/scrapers/pietix/scrape_pietix.py",
+    "sync:eventos:pietix:import": "python3 tools/scrapers/pietix/sync_pietix_to_supabase.py",
+    "sync:eventos:pietix": "python3 tools/scrapers/pietix/scrape_pietix.py && python3 tools/scrapers/pietix/sync_pietix_to_supabase.py",
+    "sync:eventos:ticketera:scrape": "python3 tools/scrapers/ticketera/scrape_ticketera.py",
+    "sync:eventos:ticketera:import": "python3 tools/scrapers/ticketera/sync_ticketera_to_supabase.py",
+    "sync:eventos:ticketera": "python3 tools/scrapers/ticketera/scrape_ticketera.py && python3 tools/scrapers/ticketera/sync_ticketera_to_supabase.py"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.0",

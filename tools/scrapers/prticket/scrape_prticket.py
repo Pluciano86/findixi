@@ -40,6 +40,7 @@ EVENTO_FECHAS_CSV = "eventoFechas_prticket.csv"
 EVENTOS_BOLETERIAS_CSV = "eventos_boleterias_prticket.csv"
 NO_DATED_CSV = "no_dated_items_prticket.csv"
 CATEGORIAS_SQL = "categoriaEventos_nuevas_insert.sql"
+AUDITORIA_CSV = "auditoria_eventos_prticket.csv"
 
 RESERVED_SLUGS = {
     "frontpage",
@@ -100,6 +101,15 @@ MONTHS_EN = {
     "dec": 12,
 }
 
+# Ajustes automáticos de encuadre para artes de PRticket en cards horizontales.
+# Valores: x/y en 0..1, zoom en 1..1.4
+PRTICKET_IMAGE_PRESENTATION_OVERRIDES = {
+    "asalto": {"x": 0.50, "y": 0.22, "zoom": 1.07},
+    "cumbredeexportacionesparapymes": {"x": 0.43, "y": 0.32, "zoom": 1.05},
+    "best-jevas": {"x": 0.50, "y": 0.20, "zoom": 1.08},
+    "reynoldalexanderquematoarenemonclova": {"x": 0.52, "y": 0.27, "zoom": 1.06},
+}
+
 
 @dataclass
 class Venue:
@@ -126,6 +136,7 @@ class EventScraped:
     source_event_id: str
     nombre: str
     descripcion: str
+    categoria_origen: str
     costo: str
     categoria_raw: str
     imagen: str
@@ -252,6 +263,35 @@ class SupabaseRest:
             return 0
         return safe_int(str(rows[0].get("id", 0)), 0)
 
+    def insert_rows(
+        self,
+        table: str,
+        rows: List[dict],
+        *,
+        returning: bool = True,
+        on_conflict: str = "",
+    ) -> List[dict]:
+        if not rows:
+            return []
+        query = f"on_conflict={urllib.parse.quote(on_conflict)}" if on_conflict else ""
+        endpoint = f"{self.url}/rest/v1/{table}"
+        if query:
+            endpoint = f"{endpoint}?{query}"
+        headers = dict(self.headers)
+        headers["Content-Type"] = "application/json"
+        headers["Prefer"] = "return=representation" if returning else "return=minimal"
+        req = urllib.request.Request(
+            url=endpoint,
+            data=json.dumps(rows).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+        with self.http.opener.open(req, timeout=REQUEST_TIMEOUT) as response:
+            raw = response.read().decode("utf-8", errors="replace")
+            if not raw:
+                return []
+            return json.loads(raw)
+
 
 def extract_frontpage_event_urls(frontpage_html: str) -> List[str]:
     hrefs = re.findall(r"""href=["']([^"']+)["']""", frontpage_html, flags=re.I)
@@ -319,6 +359,57 @@ def extract_title(page_html: str, description_html: str) -> str:
     return ""
 
 
+def clean_event_title(raw_title: str, municipios: List[Tuple[int, str, str]]) -> str:
+    title = clean_spaces(raw_title or "")
+    if not title:
+        return ""
+
+    # Caso común: "Evento @ Lugar"
+    if " @ " in title:
+        title = clean_spaces(title.split(" @ ", 1)[0])
+
+    venue_tokens = (
+        "teatro",
+        "arena",
+        "coliseo",
+        "estadio",
+        "cancha",
+        "cafe",
+        "café",
+        "centro",
+        "sala",
+        "club",
+    )
+    separators = (" | ", " - ", " – ", " — ")
+    for sep in separators:
+        if sep not in title:
+            continue
+        left, right = title.split(sep, 1)
+        left = clean_spaces(left)
+        right = clean_spaces(right)
+        if not left or not right:
+            continue
+        right_norm = normalize_text(right)
+        is_multiple_locations = (
+            "multiple location" in right_norm
+            or "multiple locations" in right_norm
+            or "varias localidades" in right_norm
+            or "varias locaciones" in right_norm
+            or "multiples localidades" in right_norm
+        )
+        has_municipio = any(f" {mn} " in f" {right_norm} " for _, _, mn in municipios)
+        has_venue_word = any(token in right_norm for token in venue_tokens)
+        is_matchup = bool(re.search(r"\bvs\.?\b|\bv\.\b", right_norm, flags=re.I))
+        if is_multiple_locations:
+            title = left
+            break
+        if not is_matchup and len(right) <= 55 and (has_municipio or has_venue_word):
+            title = left
+            break
+
+    return clean_spaces(title)
+
+
 def extract_data_layer(page_html: str) -> dict:
     m = re.search(r"(?is)var\s+dataLayerP4\s*=\s*(\{.*?\});", page_html)
     if not m:
@@ -349,6 +440,68 @@ def extract_category_raw(page_html: str, data_layer: dict) -> str:
         if val:
             return val
     return "Otro"
+
+
+def infer_category_label(raw_category: str, nombre: str, descripcion: str) -> str:
+    raw = clean_spaces(raw_category)
+    raw_norm = normalize_text(raw)
+    generic = {"otro", "otros", "otra", "otras", "other", "others", "general", "n/a", "na"}
+    broad_labels = {
+        "artes escenicas",
+        "artes escénicas",
+        "cultura",
+        "cultura / teatro",
+        "culture",
+        "theater",
+        "theatre",
+        "show",
+        "evento",
+        "events",
+    }
+    comedy_keywords = [
+        "comedia",
+        "comedy",
+        "standup",
+        "stand up",
+        "stand-up",
+        "humor",
+        "impro",
+        "improv",
+        "monologo",
+        "monólogo",
+        "comediante",
+        "risas",
+        "parodia",
+        "sketch",
+    ]
+    if raw and raw_norm not in generic:
+        text_with_raw = normalize_text(" ".join([nombre or "", descripcion or "", raw or ""]))
+        # Regla de negocio: si es claramente comedia, priorizar Comedia
+        # por encima de etiquetas amplias como Artes Escénicas/Cultura.
+        if any(normalize_text(k) in text_with_raw for k in comedy_keywords):
+            if raw_norm in broad_labels:
+                return "Comedia"
+        return raw
+
+    text = normalize_text(" ".join([nombre or "", descripcion or "", raw or ""]))
+    if not text:
+        return "Otros"
+
+    keyword_to_label = [
+        (["gaming", "esport", "videojuego", "video juego", "game jam", "torneo gamer"], "Gaming"),
+        (["fair", "feria", "expo", "convencion", "convención", "comic con"], "Ferias"),
+        (["comedy", "comedia", "standup", "stand up"], "Comedia"),
+        (["sports", "deporte", "deportivo", "bsn", "baloncesto", "basket", "futbol", "fútbol", "baseball"], "Deportes"),
+        (["concert", "concierto", "musica", "música", "music"], "Conciertos"),
+        (["culture", "cultura", "theater", "theatre", "teatro", "musical", "artes escenicas"], "Cultura / Teatro"),
+        (["food", "gastronomic", "gastronomico", "gastronomico", "culinary", "brunch"], "Gastronomía"),
+        (["horror", "terror"], "Terror"),
+        (["family", "familiar", "kids", "ninos", "niños"], "Familiar"),
+    ]
+    for keywords, label in keyword_to_label:
+        if any(normalize_text(k) in text for k in keywords):
+            return label
+    return "Otros"
 
 
 def extract_image_url(page_html: str, page_url: str) -> str:
@@ -453,6 +606,60 @@ def detect_image_orientation(image_url: str) -> str:
     if any(marker in text for marker in vertical_markers):
         return "vertical"
     return "unknown"
+
+
+def infer_prticket_image_presentation(
+    source_event_id: str,
+    event_name: str,
+    image_url: str,
+    orientation: str,
+) -> Dict[str, object]:
+    source_key = clean_spaces(source_event_id).lower()
+    image_lower = (image_url or "").lower()
+    event_norm = normalize_text(event_name or "")
+
+    presentation: Dict[str, object] = {
+        "image_crop_mode": "cover",
+        "image_focus_x": 0.50,
+        "image_focus_y": 0.26,
+        "image_zoom": 1.08,
+        "image_focus_confidence": 72,
+        "image_focus_source": "prticket_auto_v1",
+    }
+
+    # Si no parece banner horizontal, evitar recortes agresivos.
+    if orientation in {"vertical", "unknown"} and "banner" not in image_lower:
+        presentation.update(
+            {
+                "image_crop_mode": "contain_blur",
+                "image_focus_x": 0.50,
+                "image_focus_y": 0.50,
+                "image_zoom": 1.00,
+                "image_focus_confidence": 88,
+                "image_focus_source": "prticket_auto_v1_contain",
+            }
+        )
+
+    # Reglas por patrones de nombre para proteger texto principal superior.
+    if any(token in event_norm for token in ("jevas", "comedia", "teatro breve", "impro")):
+        presentation["image_focus_y"] = min(float(presentation["image_focus_y"]), 0.24)
+        presentation["image_zoom"] = max(float(presentation["image_zoom"]), 1.08)
+
+    # Overrides específicos por source_event_id.
+    override = PRTICKET_IMAGE_PRESENTATION_OVERRIDES.get(source_key)
+    if override:
+        presentation.update(
+            {
+                "image_crop_mode": "cover",
+                "image_focus_x": float(override["x"]),
+                "image_focus_y": float(override["y"]),
+                "image_zoom": float(override["zoom"]),
+                "image_focus_confidence": 96,
+                "image_focus_source": "prticket_override_v1",
+            }
+        )
+
+    return presentation
 
 
 def parse_date_candidates(text: str) -> List[str]:
@@ -586,6 +793,9 @@ def extract_sessions_from_purchase_page(
     buy_venue = clean_spaces(str(buy_data_layer.get("venue", ""))) if isinstance(buy_data_layer, dict) else ""
     buy_city = clean_spaces(str(buy_data_layer.get("venueCity", ""))) if isinstance(buy_data_layer, dict) else ""
     buy_state = clean_spaces(str(buy_data_layer.get("venueState", ""))) if isinstance(buy_data_layer, dict) else ""
+    buy_context = " | ".join([buy_venue, buy_city, buy_state, direccion_recinto])
+    if has_explicit_non_pr_marker(buy_context):
+        return []
 
     occurrences: List[SessionOccurrence] = []
     for item in sessions if isinstance(sessions, list) else []:
@@ -605,10 +815,22 @@ def extract_sessions_from_purchase_page(
         lit_sesion = clean_spaces(str(item.get("litSesion", "")))
         lit_sala = clean_spaces(str(item.get("litSala", "")))
         promo = clean_spaces(str(item.get("promotionalSessionLabel", ""))).lstrip("@").strip()
-        search_text_primary = " | ".join(part for part in [lit_sesion, promo, lit_sala] if part)
+
+        lit_sesion_norm = normalize_text(lit_sesion)
+        lit_sesion_usable = lit_sesion
+        # Evitar falsos positivos en deportes: "Cangrejeros vs Piratas" no indica municipio real.
+        if re.search(r"\bvs\.?\b|\bv\.\b", lit_sesion_norm, flags=re.I):
+            if "@" not in lit_sesion and "-" not in lit_sesion and "," not in lit_sesion:
+                lit_sesion_usable = ""
+
+        search_text_primary = " | ".join(part for part in [promo, lit_sala, lit_sesion_usable] if part)
+        if has_explicit_non_pr_marker(search_text_primary):
+            continue
         municipio_id, municipio_nombre = detect_municipio_id(search_text_primary, municipios)
         if not municipio_id:
             search_text_fallback = " | ".join(part for part in [direccion_recinto, buy_city, buy_state, buy_venue] if part)
+            if has_explicit_non_pr_marker(search_text_fallback):
+                continue
             municipio_id, municipio_nombre = detect_municipio_id(search_text_fallback, municipios)
 
         lugar = promo or buy_venue or lit_sala
@@ -710,6 +932,38 @@ def detect_municipio_id(text: str, municipios: List[Tuple[int, str, str]]) -> Tu
     return None, ""
 
 
+def has_explicit_non_pr_marker(text: str) -> bool:
+    norm = f" {normalize_text(text)} "
+    if not norm.strip():
+        return False
+    if " puerto rico " in norm:
+        return False
+    non_pr_markers = (
+        " mexico ",
+        " cdmx ",
+        " ciudad de mexico ",
+        " monterrey ",
+        " guadalajara ",
+        " republica dominicana ",
+        " dominican republic ",
+        " santo domingo ",
+        " miami ",
+        " orlando ",
+        " new york ",
+        " los angeles ",
+        " bogota ",
+        " medellin ",
+        " lima ",
+        " madrid ",
+        " buenos aires ",
+        " chile ",
+        " argentina ",
+        " colombia ",
+        " peru ",
+    )
+    return any(marker in norm for marker in non_pr_markers)
+
+
 def infer_venues(
     lines: List[str],
     data_layer: dict,
@@ -792,6 +1046,8 @@ def infer_venues(
 
     venues: List[Venue] = []
     for cand in unique_candidates:
+        if has_explicit_non_pr_marker(cand):
+            continue
         municipio_id, municipio_nombre = detect_municipio_id(cand, municipios)
         stripped = re.sub(r"^[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]+", "", cand).strip()
         lugar = clean_spaces(stripped.split(",")[0] if "," in stripped else stripped)
@@ -822,6 +1078,8 @@ def infer_venues(
         state = clean_spaces(str(data_layer.get("venueState", "")))
         fallback_text = clean_spaces(", ".join([p for p in [venue, city, state] if p]))
         if fallback_text:
+            if has_explicit_non_pr_marker(fallback_text):
+                return []
             municipio_id, municipio_nombre = detect_municipio_id(fallback_text, municipios)
             if municipio_id:
                 return [
@@ -838,6 +1096,8 @@ def infer_venues(
 
 def map_category_id(
     raw_category: str,
+    nombre_evento: str,
+    descripcion_evento: str,
     categories_existing: List[dict],
     new_categories: Dict[str, int],
     next_category_id: int,
@@ -855,6 +1115,7 @@ def map_category_id(
         (8, ["food", "gastronomic", "gastronomico", "gastronómico", "rum", "culinary"]),
         (10, ["comedy", "comedia", "standup", "stand up"]),
         (12, ["horror", "terror"]),
+        (0, ["gaming", "gamer", "esport", "e-sport"]),
         (9, ["other", "otro"]),
     ]
 
@@ -867,42 +1128,47 @@ def map_category_id(
         and row.get("id") is not None
     ]
 
-    raw = normalize_text(raw_category)
-    if not raw:
-        if existing_other_ids:
-            return existing_other_ids[0], next_category_id
-        if 9 in valid_existing_ids:
-            return 9, next_category_id
-        raw = "otro"
+    inferred_label = infer_category_label(raw_category, nombre_evento, descripcion_evento)
+    candidates: List[str] = []
+    for value in [clean_spaces(raw_category), inferred_label, "Otros"]:
+        if value and value not in candidates:
+            candidates.append(value)
 
-    if raw in existing_by_norm:
-        return existing_by_norm[raw], next_category_id
+    for label in candidates:
+        raw = normalize_text(label)
+        if not raw:
+            continue
 
-    for category_id, keywords in mapping_keywords:
-        if any(keyword in raw for keyword in keywords):
-            if category_id in valid_existing_ids:
-                return category_id, next_category_id
-            # Fallback por nombre en DB
-            for norm_name, db_id in existing_by_norm.items():
-                if any(keyword in norm_name for keyword in keywords):
-                    return db_id, next_category_id
+        if raw in existing_by_norm:
+            return existing_by_norm[raw], next_category_id
 
-    # Fallback defensivo a "Otro" para evitar categorías duplicadas/no confiables.
+        for category_id, keywords in mapping_keywords:
+            if any(normalize_text(keyword) in raw for keyword in keywords):
+                if category_id and category_id in valid_existing_ids:
+                    return category_id, next_category_id
+                # Fallback por nombre en DB
+                for norm_name, db_id in existing_by_norm.items():
+                    if any(normalize_text(keyword) in norm_name for keyword in keywords):
+                        return db_id, next_category_id
+
+        if raw in new_categories:
+            return new_categories[raw], next_category_id
+
+        # Crear categoría nueva si no existe (excepto "otros"/"other")
+        if raw not in {"otro", "otros", "other", "others"}:
+            assigned = next_category_id
+            new_categories[raw] = assigned
+            return assigned, assigned + 1
+
     if existing_other_ids:
         return existing_other_ids[0], next_category_id
     if 9 in valid_existing_ids:
         return 9, next_category_id
 
-    new_key = clean_spaces(raw_category or "Otros")
-    new_key_norm = normalize_text(new_key)
-    if new_key_norm in existing_by_norm:
-        return existing_by_norm[new_key_norm], next_category_id
-
-    if new_key_norm in new_categories:
-        return new_categories[new_key_norm], next_category_id
-
+    if "otros" in new_categories:
+        return new_categories["otros"], next_category_id
     assigned = next_category_id
-    new_categories[new_key_norm] = assigned
+    new_categories["otros"] = assigned
     return assigned, assigned + 1
 
 
@@ -926,8 +1192,15 @@ def scrape_event(
         nombre = clean_spaces(str(data_layer.get("eventName", "")))
     if not nombre:
         nombre = slug
+    nombre = clean_event_title(nombre, municipios) or nombre
+    if isinstance(data_layer, dict):
+        dl_name = clean_event_title(clean_spaces(str(data_layer.get("eventName", ""))), municipios)
+        # Si el H1 quedó vacío/ruidoso, usar eventName limpio de dataLayer.
+        if dl_name and (not nombre or len(nombre) < 3):
+            nombre = dl_name
 
-    categoria_raw = extract_category_raw(page_html, data_layer)
+    categoria_origen = extract_category_raw(page_html, data_layer)
+    categoria_raw = infer_category_label(categoria_origen, nombre, description_text)
     imagen = extract_image_url(page_html, event_url)
     costo = summarize_price(description_text, page_html)
     event_id = extract_event_id(data_layer)
@@ -990,6 +1263,7 @@ def scrape_event(
             source_event_id=source_event_id,
             nombre=nombre,
             descripcion=description_text,
+            categoria_origen=categoria_origen,
             costo=costo,
             categoria_raw=categoria_raw,
             imagen=imagen,
@@ -1005,6 +1279,7 @@ def scrape_event(
         source_event_id=source_event_id,
         nombre=nombre,
         descripcion=description_text,
+        categoria_origen=categoria_origen,
         costo=costo,
         categoria_raw=categoria_raw,
         imagen=imagen,
@@ -1023,6 +1298,30 @@ def write_csv(path: Path, headers: List[str], rows: List[dict]) -> None:
             writer.writerow({key: row.get(key, "") for key in headers})
 
 
+def display_name_from_norm(norm_name: str) -> str:
+    if not norm_name:
+        return "Otros"
+    parts = [word.capitalize() for word in norm_name.split()]
+    return " ".join(parts)
+
+
+def resolve_category_name(
+    category_id: int,
+    categories_existing: List[dict],
+    new_categories: Dict[str, int],
+) -> str:
+    if not category_id:
+        return ""
+    for row in categories_existing:
+        rid = safe_int(str(row.get("id", 0)), 0)
+        if rid == int(category_id):
+            return clean_spaces(str(row.get("nombre", "")))
+    for norm_name, cid in new_categories.items():
+        if int(cid) == int(category_id):
+            return display_name_from_norm(norm_name)
+    return ""
+
+
 def write_category_sql(path: Path, categories_new: Dict[str, int]) -> int:
     # categories_new: normalized_name -> id
     if not categories_new:
@@ -1033,13 +1332,30 @@ def write_category_sql(path: Path, categories_new: Dict[str, int]) -> int:
     lines = []
     for cid, norm_name in reverse:
         # Reconstrucción presentable del nombre.
-        readable_name = " ".join(word.capitalize() for word in norm_name.split())
+        readable_name = display_name_from_norm(norm_name)
         readable_name = readable_name.replace(" / ", " / ")
         lines.append(
             f'insert into public."categoriaEventos" (id, nombre) values ({cid}, {json.dumps(readable_name)});'
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return len(reverse)
+
+
+def insert_new_categories_direct(
+    supabase: SupabaseRest,
+    categories_new: Dict[str, int],
+) -> int:
+    if not categories_new:
+        return 0
+    rows: List[dict] = []
+    for norm_name, cid in sorted(categories_new.items(), key=lambda item: item[1]):
+        rows.append({"id": int(cid), "nombre": display_name_from_norm(norm_name)})
+    try:
+        supabase.insert_rows("categoriaEventos", rows, returning=False)
+        return len(rows)
+    except Exception as exc:
+        print(f"[WARN] No se pudieron crear categorías nuevas automáticamente: {exc}", file=sys.stderr)
+        return 0
 
 
 def find_repo_root(start: Path) -> Path:
@@ -1098,6 +1414,7 @@ def main() -> int:
     evento_fechas_rows: List[dict] = []
     eventos_boleterias_rows: List[dict] = []
     no_dated_rows: List[dict] = []
+    auditoria_rows: List[dict] = []
 
     event_id_seq = max_event_id
     evento_municipio_id_seq = max_evento_municipio_id
@@ -1147,13 +1464,22 @@ def main() -> int:
 
         category_id, next_new_category_id = map_category_id(
             raw_category=scraped.categoria_raw,
+            nombre_evento=scraped.nombre,
+            descripcion_evento=scraped.descripcion,
             categories_existing=categorias_existing,
             new_categories=categories_new,
             next_category_id=next_new_category_id,
         )
+        category_name = resolve_category_name(category_id, categorias_existing, categories_new)
 
         venue_primary = scraped.venues[0]
         image_orientation = detect_image_orientation(scraped.imagen)
+        presentation = infer_prticket_image_presentation(
+            source_event_id=scraped.source_event_id,
+            event_name=scraped.nombre,
+            image_url=scraped.imagen,
+            orientation=image_orientation,
+        )
         event_id_seq += 1
         eventos_rows.append(
             {
@@ -1172,6 +1498,12 @@ def main() -> int:
                 "boletos_por_localidad": "false",
                 "imagen": scraped.imagen,
                 "imagen_orientacion": image_orientation,
+                "image_crop_mode": presentation.get("image_crop_mode", "cover"),
+                "image_focus_x": presentation.get("image_focus_x", 0.5),
+                "image_focus_y": presentation.get("image_focus_y", 0.26),
+                "image_zoom": presentation.get("image_zoom", 1.08),
+                "image_focus_confidence": presentation.get("image_focus_confidence", 70),
+                "image_focus_source": presentation.get("image_focus_source", "prticket_auto_v1"),
                 "activo": "true",
             }
         )
@@ -1184,6 +1516,45 @@ def main() -> int:
                 "logo_key": SOURCE_NAME,
                 "prioridad": "10",
                 "activo": "true",
+            }
+        )
+
+        municipios_venues = sorted(
+            {
+                int(v.municipio_id)
+                for v in scraped.venues
+                if v.municipio_id
+            }
+        )
+        municipios_sesiones = sorted(
+            {
+                int(s.municipio_id)
+                for s in scraped.session_occurrences
+                if s.municipio_id
+            }
+        )
+        auditoria_rows.append(
+            {
+                "evento_id_temp": event_id_seq,
+                "source_event_id": scraped.source_event_id,
+                "url": scraped.url,
+                "nombre_final": scraped.nombre,
+                "categoria_origen_boleteria": scraped.categoria_origen,
+                "categoria_inferida_script": scraped.categoria_raw,
+                "categoria_final_id": category_id,
+                "categoria_final_nombre": category_name,
+                "usa_sesiones_compra": "true" if bool(scraped.session_occurrences) else "false",
+                "total_sesiones_detectadas": len(scraped.session_occurrences),
+                "total_venues_detectadas": len(scraped.venues),
+                "municipio_principal_id": venue_primary.municipio_id or "",
+                "municipio_principal_nombre": venue_primary.municipio_nombre or "",
+                "municipios_detectados_en_venues": "|".join(str(mid) for mid in municipios_venues),
+                "municipios_detectados_en_sesiones": "|".join(str(mid) for mid in municipios_sesiones),
+                "lugar_principal": venue_primary.lugar,
+                "direccion_principal": venue_primary.direccion,
+                "total_fechas_finales": len(scraped.datetimes),
+                "primera_fecha": scraped.datetimes[0][0] if scraped.datetimes else "",
+                "ultima_fecha": scraped.datetimes[-1][0] if scraped.datetimes else "",
             }
         )
 
@@ -1304,6 +1675,12 @@ def main() -> int:
         "boletos_por_localidad",
         "imagen",
         "imagen_orientacion",
+        "image_crop_mode",
+        "image_focus_x",
+        "image_focus_y",
+        "image_zoom",
+        "image_focus_confidence",
+        "image_focus_source",
         "activo",
     ]
     eventos_municipios_headers = [
@@ -1328,12 +1705,36 @@ def main() -> int:
         "activo",
     ]
     no_dated_headers = ["url", "nombre", "categoria_raw", "motivo", "descripcion_preview"]
+    auditoria_headers = [
+        "evento_id_temp",
+        "source_event_id",
+        "url",
+        "nombre_final",
+        "categoria_origen_boleteria",
+        "categoria_inferida_script",
+        "categoria_final_id",
+        "categoria_final_nombre",
+        "usa_sesiones_compra",
+        "total_sesiones_detectadas",
+        "total_venues_detectadas",
+        "municipio_principal_id",
+        "municipio_principal_nombre",
+        "municipios_detectados_en_venues",
+        "municipios_detectados_en_sesiones",
+        "lugar_principal",
+        "direccion_principal",
+        "total_fechas_finales",
+        "primera_fecha",
+        "ultima_fecha",
+    ]
 
     write_csv(export_dir / EVENTOS_CSV, eventos_headers, eventos_rows)
     write_csv(export_dir / EVENTOS_MUNICIPIOS_CSV, eventos_municipios_headers, eventos_municipios_rows)
     write_csv(export_dir / EVENTO_FECHAS_CSV, evento_fechas_headers, evento_fechas_rows)
     write_csv(export_dir / EVENTOS_BOLETERIAS_CSV, eventos_boleterias_headers, eventos_boleterias_rows)
     write_csv(export_dir / NO_DATED_CSV, no_dated_headers, no_dated_rows)
+    write_csv(export_dir / AUDITORIA_CSV, auditoria_headers, auditoria_rows)
+    total_new_categories_inserted = insert_new_categories_direct(supabase, categories_new)
     total_new_categories = write_category_sql(export_dir / CATEGORIAS_SQL, categories_new)
 
     # Confirmación final requerida.
@@ -1343,7 +1744,9 @@ def main() -> int:
     print(f"Filas {EVENTO_FECHAS_CSV}: {len(evento_fechas_rows)}")
     print(f"Filas {EVENTOS_BOLETERIAS_CSV}: {len(eventos_boleterias_rows)}")
     print(f"Filas {NO_DATED_CSV}: {len(no_dated_rows)}")
+    print(f"Filas {AUDITORIA_CSV}: {len(auditoria_rows)}")
     print(f"Filas {CATEGORIAS_SQL} (categorías nuevas): {total_new_categories}")
+    print(f"Categorías creadas automáticamente en DB: {total_new_categories_inserted}")
 
     print("\nResumen:")
     print(f"Total eventos exportados: {len(eventos_rows)}")
@@ -1352,6 +1755,7 @@ def main() -> int:
     print(f"Total links de boletería: {len(eventos_boleterias_rows)}")
     print(f"Total items sin fecha: {len(no_dated_rows)}")
     print(f"Total categorías nuevas detectadas: {total_new_categories}")
+    print(f"Total categorías nuevas insertadas en DB: {total_new_categories_inserted}")
 
     return 0
 

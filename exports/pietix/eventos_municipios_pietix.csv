@@ -1,0 +1,102 @@
+id,event_id,source,source_event_id,municipio_id,lugar,localidad_key,direccion,enlaceboletos
+424,67,pietix,men-city-padre-soltero,65,Centro de Bellas Artes de Santurce,65|centro de bellas artes de santurce,"Centro de Bellas Artes de Santurce, San Juan, Puerto Rico",https://pietix.com/men-city-padre-soltero
+425,68,pietix,sidepiece2,26,El Patio Fusion Lounge,26|el patio fusion lounge,"El Patio Fusion Lounge, Dorado, Puerto Rico",https://pietix.com/sidepiece2
+426,68,pietix,sidepiece2,26,"Payment Plan disponible con pagos desde $5 semanales, según el boleto",26|payment plan disponible con pagos desde 5 semanales segun el boleto,"Payment Plan disponible con pagos desde $5 semanales, según el boleto, Dorado, Puerto Rico",https://pietix.com/sidepiece2
+427,69,pietix,improjangueo,65,IMPRO Galería,65|impro galeria,"IMPRO Galería, San Juan, Puerto Rico",https://pietix.com/improjangueo
+428,70,pietix,elcaco-y-elrockero,65,PuntoFijo,65|puntofijo,"PuntoFijo, San Juan, Puerto Rico",https://pietix.com/elcaco-y-elrockero
+429,71,pietix,serenata-a-las-reinas,65,PuntoFijo,65|puntofijo,"PuntoFijo, San Juan, Puerto Rico",https://pietix.com/serenata-a-las-reinas
+430,72,pietix,tombola-estelar-corozal,24,Cine Teatro Manuel Nieves Quintero,24|cine teatro manuel nieves quintero,"Cine Teatro Manuel Nieves Quintero, Corozal, Puerto Rico",https://pietix.com/tombola-estelar-corozal
+431,73,pietix,el-boricua-es-otra-cosa-gira,28,Tampa Scottish Rite Masonic Center,28|tampa scottish rite masonic center,"Tampa Scottish Rite Masonic Center, Tampa, Florida",https://pietix.com/el-boricua-es-otra-cosa-gira
+432,73,pietix,el-boricua-es-otra-cosa-gira,28,Duncan Theatre,28|duncan theatre,"Duncan Theatre, Lake Worth Beach, Florida",https://pietix.com/el-boricua-es-otra-cosa-gira
+433,73,pietix,el-boricua-es-otra-cosa-gira,28,Ocala Civic Theater,28|ocala civic theater,"Ocala Civic Theater, Ocala, Florida",https://pietix.com/el-boricua-es-otra-cosa-gira
+434,73,pietix,el-boricua-es-otra-cosa-gira,16,SHU Community Theatre,16|shu community theatre,"SHU Community Theatre, Fairfield, Connecticut",https://pietix.com/el-boricua-es-otra-cosa-gira
+435,73,pietix,el-boricua-es-otra-cosa-gira,28,Dimension Event Center,28|dimension event center,"Dimension Event Center, Naples, Florida",https://pietix.com/el-boricua-es-otra-cosa-gira
+436,73,pietix,el-boricua-es-otra-cosa-gira,16,The Asher Theatre,16|the asher theatre,"The Asher Theatre, Myrtle Beach, South Carolina",https://pietix.com/el-boricua-es-otra-cosa-gira
+437,73,pietix,el-boricua-es-otra-cosa-gira,16,Garner Performing Arts Center,16|garner performing arts center,"Garner Performing Arts Center, Garner, North Carolina",https://pietix.com/el-boricua-es-otra-cosa-gira
+438,73,pietix,el-boricua-es-otra-cosa-gira,16,The Salvation Army Kroc Corps Community Center,16|the salvation army kroc corps community center,"The Salvation Army Kroc Corps Community Center, Phoenix, Arizona",https://pietix.com/el-boricua-es-otra-cosa-gira
+439,73,pietix,el-boricua-es-otra-cosa-gira,16,Miller Center for the Arts,16|miller center for the arts,"Miller Center for the Arts, Reading, Pennsylvania",https://pietix.com/el-boricua-es-otra-cosa-gira
+440,74,pietix,genock-imagen,11,Comunidad Aliento,11|comunidad aliento,"Comunidad Aliento, Bayamón, Puerto Rico",https://pietix.com/genock-imagen
+441,75,pietix,la-mudanza-puntofijo,65,PuntoFijo,65|puntofijo,"PuntoFijo, San Juan, Puerto Rico",https://pietix.com/la-mudanza-puntofijo
+442,76,pietix,que-madre,2,La Foresta Bar y Tapas,2|la foresta bar y tapas,"La Foresta Bar y Tapas, Aguada, Puerto Rico",https://pietix.com/que-madre
+443,76,pietix,que-madre,30,Studio 58 Café Teatro,30|studio 58 cafe teatro,"Studio 58 Café Teatro, Guayama, Puerto Rico",https://pietix.com/que-madre
+444,77,pietix,y-que-se-joda,28,Sun On the Beach,28|sun on the beach,"Sun On the Beach, Kissimmee, Florida",https://pietix.com/y-que-se-joda
+445,77,pietix,y-que-se-joda,28,Casa 21 Restaurant,28|casa 21 restaurant,"Casa 21 Restaurant, Tampa, Florida",https://pietix.com/y-que-se-joda
+446,78,pietix,mas-turbado-que-tu,30,Studio 58 Café Teatro,30|studio 58 cafe teatro,"Studio 58 Café Teatro, Guayama, Puerto Rico",https://pietix.com/mas-turbado-que-tu
+447,78,pietix,mas-turbado-que-tu,28,Tower Theater,28|tower theater,"Tower Theater, Miami, Florida",https://pietix.com/mas-turbado-que-tu
+448,78,pietix,mas-turbado-que-tu,28,Sun On the Beach,28|sun on the beach,"Sun On the Beach, Kissimmee, Florida",https://pietix.com/mas-turbado-que-tu
+449,78,pietix,mas-turbado-que-tu,28,Casa 21 Restaurant,28|casa 21 restaurant,"Casa 21 Restaurant, Tampa, Florida",https://pietix.com/mas-turbado-que-tu
+450,78,pietix,mas-turbado-que-tu,28,Killeen Arts and Activities Center,28|killeen arts and activities center,"Killeen Arts and Activities Center, Killeen, Texas",https://pietix.com/mas-turbado-que-tu
+451,78,pietix,mas-turbado-que-tu,2,Bambalinas Café Teatro &amp; Música,2|bambalinas cafe teatro amp musica,"Bambalinas Café Teatro &amp; Música, Aguada, Puerto Rico",https://pietix.com/mas-turbado-que-tu
+452,78,pietix,mas-turbado-que-tu,58,Studio 58 Comedy Club,58|studio 58 comedy club,"Studio 58 Comedy Club, Ponce, Puerto Rico",https://pietix.com/mas-turbado-que-tu
+453,79,pietix,marine-expo-2026,65,Puerto Rico Convention Center,65|puerto rico convention center,"Puerto Rico Convention Center, San Juan, Puerto Rico",https://pietix.com/marine-expo-2026
+454,80,pietix,tombola-estelar,11,Teatro Braulio Castillo,11|teatro braulio castillo,"Teatro Braulio Castillo, Bayamón, Puerto Rico",https://pietix.com/tombola-estelar
+455,81,pietix,soy-menopausica,28,Sun On the Beach,28|sun on the beach,"Sun On the Beach, Kissimmee, Florida",https://pietix.com/soy-menopausica
+456,81,pietix,soy-menopausica,28,Southbank Hotel,28|southbank hotel,"Southbank Hotel, Jacksonville, Florida",https://pietix.com/soy-menopausica
+457,81,pietix,soy-menopausica,28,Casa 21 Restaurant,28|casa 21 restaurant,"Casa 21 Restaurant, Tampa, Florida",https://pietix.com/soy-menopausica
+458,82,pietix,pr-100x35-expo,7,Arecibo Motorsport,7|arecibo motorsport,"Arecibo Motorsport, Arecibo, Puerto Rico",https://pietix.com/pr-100x35-expo
+459,83,pietix,relacion-es-caguas,13,Bellas Artes de Caguas,13|bellas artes de caguas,"Bellas Artes de Caguas, Caguas, Puerto Rico",https://pietix.com/relacion-es-caguas
+460,84,pietix,dato-curioso,70,Aqua by Dreams Hotel &amp; Bar &amp; Grill,70|aqua by dreams hotel amp bar amp grill,"Aqua by Dreams Hotel &amp; Bar &amp; Grill, Toa Baja, Puerto Rico",https://pietix.com/dato-curioso
+461,85,pietix,payaso-flacumbo-studio58,58,Studio 58 Comedy Club,58|studio 58 comedy club,"Studio 58 Comedy Club, Ponce, Puerto Rico",https://pietix.com/payaso-flacumbo-studio58
+462,86,pietix,en-blanco-y-negro,65,Abracadabra,65|abracadabra,"Abracadabra, San Juan, Puerto Rico",https://pietix.com/en-blanco-y-negro
+463,87,pietix,kikoblade-penetrado-corozal,24,Cine Teatro Manuel Nieves Quintero,24|cine teatro manuel nieves quintero,"Cine Teatro Manuel Nieves Quintero, Corozal, Puerto Rico",https://pietix.com/kikoblade-penetrado-corozal
+464,88,pietix,tributo-al-divo-juangabriel,30,Studio 58 Café Teatro,30|studio 58 cafe teatro,"Studio 58 Café Teatro, Guayama, Puerto Rico",https://pietix.com/tributo-al-divo-juangabriel
+465,89,pietix,manolo-in-caguas,13,La Mordida Taqueria Mexicana,13|la mordida taqueria mexicana,"La Mordida Taqueria Mexicana, Caguas, Puerto Rico",https://pietix.com/manolo-in-caguas
+466,90,pietix,sesion-inedita,65,IMPRO Galería,65|impro galeria,"IMPRO Galería, San Juan, Puerto Rico",https://pietix.com/sesion-inedita
+467,91,pietix,julio-elcaco,30,Studio 58 Café Teatro,30|studio 58 cafe teatro,"Studio 58 Café Teatro, Guayama, Puerto Rico",https://pietix.com/julio-elcaco
+468,92,pietix,mejor-sola-studio58,58,Studio 58 Comedy Club,58|studio 58 comedy club,"Studio 58 Comedy Club, Ponce, Puerto Rico",https://pietix.com/mejor-sola-studio58
+469,93,pietix,un-abrazo-cultural-2026,65,Museo de Arte de Puerto Rico (MAPR),65|museo de arte de puerto rico mapr,"Museo de Arte de Puerto Rico (MAPR), San Juan, Puerto Rico",https://pietix.com/un-abrazo-cultural-2026
+470,94,pietix,samuel-rivera-intimo,65,PuntoFijo,65|puntofijo,"PuntoFijo, San Juan, Puerto Rico",https://pietix.com/samuel-rivera-intimo
+471,95,pietix,solo,30,Studio 58 Café Teatro,30|studio 58 cafe teatro,"Studio 58 Café Teatro, Guayama, Puerto Rico",https://pietix.com/solo
+472,95,pietix,solo,65,PuntoFijo,65|puntofijo,"PuntoFijo, San Juan, Puerto Rico",https://pietix.com/solo
+473,95,pietix,solo,58,Studio 58 Comedy Club,58|studio 58 comedy club,"Studio 58 Comedy Club, Ponce, Puerto Rico",https://pietix.com/solo
+474,96,pietix,pa-que-te-rias,27,Teatro José M. Lugo Emanuelli,27|teatro jose m lugo emanuelli,"Teatro José M. Lugo Emanuelli, Fajardo, Puerto Rico",https://pietix.com/pa-que-te-rias
+475,97,pietix,josue-comedy-madre-latina-tour,28,Miami Theater Center,28|miami theater center,"Miami Theater Center, Miami, Florida",https://pietix.com/josue-comedy-madre-latina-tour
+476,97,pietix,josue-comedy-madre-latina-tour,28,Ocala Civic Theater,28|ocala civic theater,"Ocala Civic Theater, Ocala, Florida",https://pietix.com/josue-comedy-madre-latina-tour
+477,97,pietix,josue-comedy-madre-latina-tour,28,TIR Center,28|tir center,"TIR Center, Levittown, PA",https://pietix.com/josue-comedy-madre-latina-tour
+478,97,pietix,josue-comedy-madre-latina-tour,28,Murray Hill Theatre,28|murray hill theatre,"Murray Hill Theatre, Jacksonville, Florida",https://pietix.com/josue-comedy-madre-latina-tour
+479,97,pietix,josue-comedy-madre-latina-tour,28,Parma Snow Library Auditorium,28|parma snow library auditorium,"Parma Snow Library Auditorium, Parma, Ohio",https://pietix.com/josue-comedy-madre-latina-tour
+480,97,pietix,josue-comedy-madre-latina-tour,28,SHU Community Theatre,28|shu community theatre,"SHU Community Theatre, Fairfield, Connecticut",https://pietix.com/josue-comedy-madre-latina-tour
+481,97,pietix,josue-comedy-madre-latina-tour,28,The Liberty Center,28|the liberty center,"The Liberty Center, Elizabeth, New Jersey",https://pietix.com/josue-comedy-madre-latina-tour
+482,97,pietix,josue-comedy-madre-latina-tour,28,Strand Theatre,28|strand theatre,"Strand Theatre, Boston, Massachusetts",https://pietix.com/josue-comedy-madre-latina-tour
+483,97,pietix,josue-comedy-madre-latina-tour,28,The Lovinger Theatre,28|the lovinger theatre,"The Lovinger Theatre, Bronx, New York",https://pietix.com/josue-comedy-madre-latina-tour
+484,97,pietix,josue-comedy-madre-latina-tour,28,The Palace Arts Center,28|the palace arts center,"The Palace Arts Center, Grapevine, Texas",https://pietix.com/josue-comedy-madre-latina-tour
+485,97,pietix,josue-comedy-madre-latina-tour,28,Killeen Arts and Activities Center,28|killeen arts and activities center,"Killeen Arts and Activities Center, Killeen, Texas",https://pietix.com/josue-comedy-madre-latina-tour
+486,97,pietix,josue-comedy-madre-latina-tour,28,Midtown Arts &amp; Theater Center,28|midtown arts amp theater center,"Midtown Arts &amp; Theater Center, Houston, Texas",https://pietix.com/josue-comedy-madre-latina-tour
+487,98,pietix,desnuda,58,Mesas y Telón By Dominguez,58|mesas y telon by dominguez,"Mesas y Telón By Dominguez, Ponce, Puerto Rico",https://pietix.com/desnuda
+488,98,pietix,desnuda,30,Studio 58 Café Teatro,30|studio 58 cafe teatro,"Studio 58 Café Teatro, Guayama, Puerto Rico",https://pietix.com/desnuda
+489,99,pietix,asi-somos,28,Sun On the Beach,28|sun on the beach,"Sun On the Beach, Kissimmee, Florida",https://pietix.com/asi-somos
+490,100,pietix,the-bars-show-2026,65,Puerto Rico Convention Center,65|puerto rico convention center,"Puerto Rico Convention Center, San Juan, Puerto Rico",https://pietix.com/the-bars-show-2026
+491,101,pietix,con-pablo-en-el-alma,30,Studio 58 Café Teatro,30|studio 58 cafe teatro,"Studio 58 Café Teatro, Guayama, Puerto Rico",https://pietix.com/con-pablo-en-el-alma
+492,102,pietix,super-otaku-con,58,3 DAY PASS - Complejo Ferial de Puerto Rico,58|3 day pass complejo ferial de puerto rico,"3 DAY PASS - Complejo Ferial de Puerto Rico, Ponce, Puerto Rico",https://pietix.com/super-otaku-con
+493,102,pietix,super-otaku-con,58,TWO DAY PASS (FRIDAY &amp; SATURDAY) - Complejo Ferial de Puerto Rico,58|two day pass friday amp saturday complejo ferial de puerto rico,"TWO DAY PASS (FRIDAY &amp; SATURDAY) - Complejo Ferial de Puerto Rico, Ponce, Puerto Rico",https://pietix.com/super-otaku-con
+494,102,pietix,super-otaku-con,58,GENERAL SINGLE TICKET &amp; GROUP PASS - Complejo Ferial de Puerto Rico,58|general single ticket amp group pass complejo ferial de puerto rico,"GENERAL SINGLE TICKET &amp; GROUP PASS - Complejo Ferial de Puerto Rico, Ponce, Puerto Rico",https://pietix.com/super-otaku-con
+495,102,pietix,super-otaku-con,58,TWO DAY PASS (SATURDAY &amp; SUNDAY) - Complejo Ferial de Puerto Rico,58|two day pass saturday amp sunday complejo ferial de puerto rico,"TWO DAY PASS (SATURDAY &amp; SUNDAY) - Complejo Ferial de Puerto Rico, Ponce, Puerto Rico",https://pietix.com/super-otaku-con
+496,103,pietix,la-puerca-de-juan-bobo,27,La Estación,27|la estacion,"La Estación, Fajardo, Puerto Rico",https://pietix.com/la-puerca-de-juan-bobo
+497,104,pietix,la-nueva-corte,58,Mesas y Telón By Dominguez,58|mesas y telon by dominguez,"Mesas y Telón By Dominguez, Ponce, Puerto Rico",https://pietix.com/la-nueva-corte
+498,104,pietix,la-nueva-corte,64,Teatro Sol,64|teatro sol,"Teatro Sol, San Germán, Puerto Rico",https://pietix.com/la-nueva-corte
+499,105,pietix,concierto-por-nuestra-voz,65,Teatro de la Universidad Interamericana - Recinto Metro,65|teatro de la universidad interamericana recinto metro,"Teatro de la Universidad Interamericana - Recinto Metro, San Juan, Puerto Rico",https://pietix.com/concierto-por-nuestra-voz
+500,106,pietix,npc-borinquen-classic-2026,11,Teatro Interamericana de Bayamón,11|teatro interamericana de bayamon,"Teatro Interamericana de Bayamón, Bayamón, Puerto Rico",https://pietix.com/npc-borinquen-classic-2026
+501,107,pietix,sie7e-intimo,65,PuntoFijo,65|puntofijo,"PuntoFijo, San Juan, Puerto Rico",https://pietix.com/sie7e-intimo
+502,108,pietix,tombola-yauco,78,Teatro Ideal,78|teatro ideal,"Teatro Ideal, Yauco, Puerto Rico",https://pietix.com/tombola-yauco
+503,109,pietix,chisteando-mayaguez,50,Teatro Balboa - Armando &quot;Chucho&quot; Avellanet,50|teatro balboa armando quot chucho quot avellanet,"Teatro Balboa - Armando &quot;Chucho&quot; Avellanet, Mayagüez, Puerto Rico",https://pietix.com/chisteando-mayaguez
+504,110,pietix,cuentos-de-padres,65,PuntoFijo,65|puntofijo,"PuntoFijo, San Juan, Puerto Rico",https://pietix.com/cuentos-de-padres
+505,111,pietix,el-bardo-y-el-jibarito,65,PuntoFijo,65|puntofijo,"PuntoFijo, San Juan, Puerto Rico",https://pietix.com/el-bardo-y-el-jibarito
+506,112,pietix,standoperos-chisteando,11,Teatro Braulio Castillo,11|teatro braulio castillo,"Teatro Braulio Castillo, Bayamón, Puerto Rico",https://pietix.com/standoperos-chisteando
+507,113,pietix,caribbean-gamic-expo2026,2,Centro de Convenciones de Aguada,2|centro de convenciones de aguada,"Centro de Convenciones de Aguada, Aguada, Puerto Rico",https://pietix.com/caribbean-gamic-expo2026
+508,114,pietix,penetrado-usa-tour,28,Tower Theater,28|tower theater,"Tower Theater, Miami, Florida",https://pietix.com/penetrado-usa-tour
+509,114,pietix,penetrado-usa-tour,28,Casa 21 Restaurant,28|casa 21 restaurant,"Casa 21 Restaurant, Tampa, Florida",https://pietix.com/penetrado-usa-tour
+510,114,pietix,penetrado-usa-tour,28,Sun On the Beach,28|sun on the beach,"Sun On the Beach, Kissimmee, Florida",https://pietix.com/penetrado-usa-tour
+511,114,pietix,penetrado-usa-tour,28,Southbank Hotel,28|southbank hotel,"Southbank Hotel, Jacksonville, Florida",https://pietix.com/penetrado-usa-tour
+512,115,pietix,standup-comedy-espanol-puntofijo,65,PuntoFijo,65|puntofijo,"PuntoFijo, San Juan, Puerto Rico",https://pietix.com/standup-comedy-espanol-puntofijo
+513,116,pietix,ucp-one-night-revolution,28,Dr. James R. Smith Neighborhood Center,28|dr james r smith neighborhood center,"Dr. James R. Smith Neighborhood Center, Orlando, Florida",https://pietix.com/ucp-one-night-revolution
+514,117,pietix,standup-comedy-espanol-ponce,58,Studio 58 Comedy Club,58|studio 58 comedy club,"Studio 58 Comedy Club, Ponce, Puerto Rico",https://pietix.com/standup-comedy-espanol-ponce
+515,118,pietix,kabeto-mayaguez,50,Teatro Balboa - Armando &quot;Chucho&quot; Avellanet,50|teatro balboa armando quot chucho quot avellanet,"Teatro Balboa - Armando &quot;Chucho&quot; Avellanet, Mayagüez, Puerto Rico",https://pietix.com/kabeto-mayaguez
+516,119,pietix,kabeto,11,Teatro Braulio Castillo,11|teatro braulio castillo,"Teatro Braulio Castillo, Bayamón, Puerto Rico",https://pietix.com/kabeto
+517,120,pietix,quitate-tu-pa-ponerme-yo-usa-2026,28,Tower Theater,28|tower theater,"Tower Theater, Miami, Florida",https://pietix.com/quitate-tu-pa-ponerme-yo-usa-2026
+518,120,pietix,quitate-tu-pa-ponerme-yo-usa-2026,28,Sun On the Beach,28|sun on the beach,"Sun On the Beach, Kissimmee, Florida",https://pietix.com/quitate-tu-pa-ponerme-yo-usa-2026
+519,120,pietix,quitate-tu-pa-ponerme-yo-usa-2026,28,Southbank Hotel,28|southbank hotel,"Southbank Hotel, Jacksonville, Florida",https://pietix.com/quitate-tu-pa-ponerme-yo-usa-2026
+520,121,pietix,juan-jose-hernandez,65,Centro de Bellas Artes de Santurce,65|centro de bellas artes de santurce,"Centro de Bellas Artes de Santurce, San Juan, Puerto Rico",https://pietix.com/juan-jose-hernandez
+521,122,pietix,kefas-rame-tour2026,30,Studio 58 Café Teatro,30|studio 58 cafe teatro,"Studio 58 Café Teatro, Guayama, Puerto Rico",https://pietix.com/kefas-rame-tour2026
+522,122,pietix,kefas-rame-tour2026,13,Moneró Café Teatro &amp; Bar,13|monero cafe teatro amp bar,"Moneró Café Teatro &amp; Bar, Caguas, Puerto Rico",https://pietix.com/kefas-rame-tour2026
+523,122,pietix,kefas-rame-tour2026,65,PuntoFijo,65|puntofijo,"PuntoFijo, San Juan, Puerto Rico",https://pietix.com/kefas-rame-tour2026
+524,123,pietix,candy-world-expo-winter2026,11,Coliseo Rubén Rodríguez,11|coliseo ruben rodriguez,"Coliseo Rubén Rodríguez, Bayamón, Puerto Rico",https://pietix.com/candy-world-expo-winter2026

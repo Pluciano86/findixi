@@ -1,0 +1,14 @@
+id,event_id,source,source_event_id,municipio_id,lugar,localidad_key,direccion,enlaceboletos
+424,67,ticketera,vaqueros-de-bayamon-bsn-2026-temporada-regular,11,Coliseo Rubén Rodríguez,11|coliseo ruben rodriguez,"Coliseo Rubén Rodríguez, Bayamón",https://www.ticketera.com/events/detail/vaqueros-de-bayamon-bsn-2026-temporada-regular
+425,68,ticketera,ed-sheeran,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/ed-sheeran
+426,69,ticketera,gigantes-bsn-2026-temporada-regular,15,Coliseo Carlos Miguel Mangual,15|coliseo carlos miguel mangual,"Coliseo Carlos Miguel Mangual, Canóvanas",https://www.ticketera.com/events/detail/gigantes-bsn-2026-temporada-regular
+427,70,ticketera,laura-pausini-world-tour,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/laura-pausini-world-tour
+428,71,ticketera,los-tigres-del-norte,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/los-tigres-del-norte
+429,72,ticketera,aterciopelados,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/aterciopelados
+430,73,ticketera,asi-o-mas-vulgar,11,Teatro Braulio Castillo,11|teatro braulio castillo,"Teatro Braulio Castillo, Bayamón",https://www.ticketera.com/events/detail/asi-o-mas-vulgar
+431,74,ticketera,uagm-food-fest-2026,16,"UAGM, Recinto de Carolina",16|uagm recinto de carolina,"UAGM, Recinto de Carolina",https://www.ticketera.com/events/detail/uagm-food-fest-2026
+432,75,ticketera,esto-si-es-un-show,50,Teatro Yagüez,50|teatro yaguez,"Teatro Yagüez, Mayagüez",https://www.ticketera.com/events/detail/esto-si-es-un-show
+433,75,ticketera,esto-si-es-un-show,78,Teatro Ideal,78|teatro ideal,"Teatro Ideal, Yauco",https://www.ticketera.com/events/detail/esto-si-es-un-show
+434,75,ticketera,esto-si-es-un-show,67,Centro de Bellas Artes de San Sebastián,67|centro de bellas artes de san sebastian,Centro de Bellas Artes de San Sebastián,https://www.ticketera.com/events/detail/esto-si-es-un-show
+435,76,ticketera,jonathan-barber-vision-ahead,65,Teatro Inter Metro,65|teatro inter metro,"Teatro Inter Metro, San Juan",https://www.ticketera.com/events/detail/jonathan-barber-vision-ahead
+436,77,ticketera,grupo-mania-the-originals,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/grupo-mania-the-originals
