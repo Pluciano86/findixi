@@ -7,6 +7,7 @@
 <title>Findixi</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <script type="module" src="./js/i18n.js"></script>
   
   <style>
@@ -30,6 +31,7 @@ video::-webkit-media-controls-overlay-play-button {
 .teaser-scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }
+
 </style>
 
 </head>
@@ -43,33 +45,66 @@ video::-webkit-media-controls-overlay-play-button {
 
 <div id="headerContainer"></div>
 <script type="module" src="js/header.js"></script>
+<script type="module" src="js/betaBanner.js"></script>
 
 
-<div id="bannerHomeTop" class="w-full my-4 px-4 md:px-6 max-w-6xl mx-auto"></div>
+<div id="bannerHomeTop"></div>
 
+<section id="exploraFindixiSection" class="px-4 mt-2 mb-4">
+  <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-cyan-50 p-4 shadow-sm">
+    <h1 class="text-[26px] leading-tight text-gray-900 font-semibold text-center" data-i18n="home.exploraLocalTitle">Explora Lo Local</h1>
+    <p class="text-[15px] font-normal text-gray-600 text-center mt-1" data-i18n="home.exploraLocalSubtitle">Descrubre todo lo que puedes hacer hoy</p>
+    <div class="grid grid-cols-3 gap-2 mt-4">
+      <a href="listadoComercios.html?scope=all" class="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center">
+        <p class="text-xl leading-none text-[#023047]"><i class="fa-solid fa-store" aria-hidden="true"></i></p>
+        <p class="text-[13px] font-normal text-gray-700 mt-1" data-i18n="home.quickComercios">Comercios</p>
+      </a>
+      <a href="listadoEventos.html" class="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center">
+        <p class="text-xl leading-none text-[#023047]"><i class="fa-solid fa-ticket" aria-hidden="true"></i></p>
+        <p class="text-[13px] font-normal text-gray-700 mt-1" data-i18n="home.quickEventos">Eventos</p>
+      </a>
+      <a href="listadoPlayas.html" class="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center">
+        <p class="text-xl leading-none text-[#023047]"><i class="fa-solid fa-umbrella-beach" aria-hidden="true"></i></p>
+        <p class="text-[13px] font-normal text-gray-700 mt-1" data-i18n="home.quickPlayas">Playas</p>
+      </a>
+      <a href="listadoLugares.html" class="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center">
+        <p class="text-xl leading-none text-[#023047]"><i class="fa-solid fa-location-dot" aria-hidden="true"></i></p>
+        <p class="text-[13px] font-normal text-gray-700 mt-1" data-i18n="home.quickLugares">Lugares</p>
+      </a>
+      <a href="lodehoy.html" class="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center">
+        <p class="text-xl leading-none text-[#023047]"><i class="fa-solid fa-fire-flame-curved" aria-hidden="true"></i></p>
+        <p class="text-[13px] font-normal text-gray-700 mt-1" data-i18n="home.quickLodehoy">Lo de Hoy</p>
+      </a>
+      <a href="cercaDeMi.html" class="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center">
+        <p class="text-xl leading-none text-[#023047]"><i class="fa-solid fa-compass" aria-hidden="true"></i></p>
+        <p class="text-[13px] font-normal text-gray-700 mt-1" data-i18n="home.quickCerca">Cerca de mí</p>
+      </a>
+    </div>
+  </div>
+</section>
 
-
-<section id="categoriasSection" class="text-center">
+<section id="categoriasSection" class="text-center px-4">
   <h2 class="text-2xl font-medium mb-4" data-i18n="home.categoriasTitulo">Categorías más Buscadas</h2>
+  <p id="categoriasStatus" class="text-[14px] font-normal text-gray-500 mb-2" data-i18n="home.loadingCategorias">Cargando categorías...</p>
   <div id="categoriasContainer" class="grid grid-cols-3 gap-4 px-4"></div>
-  <p id="toggleCategorias" class="mt-4 text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+  <p id="toggleCategorias" class="mt-4 text-sm font-normal text-gray-500 cursor-pointer hover:text-gray-700">
   <span data-i18n="home.verTodasCategorias">Ver todas las Categorías...</span>
 </p>
 </section>
 
 <section id="lodehoyTeaserSection" class="mt-5 px-4 hidden">
   <div class="text-center mb-2">
-    <h2 class="text-2xl font-medium mb-4">Chequea Lo de Hoy en Findixi</h2>
+    <h2 class="text-2xl font-medium mb-4" data-i18n="home.lodehoyTeaserTitle">Chequea Lo de Hoy en Findixi</h2>
   </div>
-  <p id="lodehoyTeaserStatus" class="text-xs text-gray-500 mb-2 text-left">Cargando...</p>
+  <p id="lodehoyTeaserStatus" class="text-[14px] font-normal text-gray-500 mb-2 text-left" data-i18n="common.cargando">Cargando...</p>
   <div id="lodehoyTeaserList" class="teaser-scrollbar-hidden flex gap-3 overflow-x-auto snap-x snap-mandatory pb-1"></div>
   <div class="flex justify-center mt-3">
     <a
       id="lodehoyTeaserBtn"
       href="lodehoy.html"
-      class="inline-flex items-center justify-center bg-[#023047] hover:bg-[#012737] text-white text-sm font-light py-1.5 px-6 rounded-lg shadow transition"
+      class="inline-flex items-center justify-center bg-[#023047] hover:bg-[#012737] text-white text-[15px] font-normal py-2 px-6 rounded-lg shadow transition"
     >
-      Ver mas publicaciones
+      <span data-i18n="home.explorarTodo">Explorar todo</span>
     </a>
   </div>
 </section>
@@ -100,34 +135,37 @@ video::-webkit-media-controls-overlay-play-button {
   document.addEventListener("scroll", reproducirVideoEspeciales, { once: true });
 </script>
 
-<section class="text-center my-6 px-4">
+<section id="comidaSection" class="text-center my-6 px-4">
   <h2 class="text-2xl font-medium mb-4" data-i18n="home.comidaTitulo">¡Aquí sí, se come Brutal!</h2>
+  <p id="comidaStatus" class="text-[14px] font-normal text-gray-500 mb-2" data-i18n="home.loadingOpciones">Cargando opciones...</p>
   <div id="comidaCarousel"></div>
   <div class="flex justify-center mt-3">
     <a
       href="listadoComercios.html?idCategoria=1"
-      class="inline-flex items-center justify-center bg-[#023047] hover:bg-[#012737] text-white text-sm font-light py-1.5 px-6 rounded-lg shadow transition"
+      class="inline-flex items-center justify-center bg-[#023047] hover:bg-[#012737] text-white text-[15px] font-normal py-2 px-6 rounded-lg shadow transition"
     >
-      Ver mas opciones
+      <span data-i18n="home.explorarTodo">Explorar todo</span>
     </a>
   </div>
 </section>
 
-<section class="text-center my-6 px-4">
+<section id="jangueoSection" class="text-center my-6 px-4">
   <h2 class="text-2xl font-medium mb-4" data-i18n="home.jangueoTitulo">¿Nos Fuimos pal Jangueo?</h2>
+  <p id="jangueoStatus" class="text-[14px] font-normal text-gray-500 mb-2" data-i18n="home.loadingLugares">Cargando lugares...</p>
   <div id="jangueoCarousel"></div>
   <div class="flex justify-center mt-3">
     <a
       href="listadoComercios.html?idCategoria=11"
-      class="inline-flex items-center justify-center bg-[#023047] hover:bg-[#012737] text-white text-sm font-light py-1.5 px-6 rounded-lg shadow transition"
+      class="inline-flex items-center justify-center bg-[#023047] hover:bg-[#012737] text-white text-[15px] font-normal py-2 px-6 rounded-lg shadow transition"
     >
-      Ver mas lugares
+      <span data-i18n="home.explorarTodo">Explorar todo</span>
     </a>
   </div>
 </section>
 
-<section class="text-center my-6 px-4">
+<section id="eventosSection" class="text-center my-6 px-4">
   <h2 class="text-2xl font-medium mb-4" data-i18n="home.eventosTitulo">Chequea los próximos Eventos</h2>
+  <p id="eventosStatus" class="text-[14px] font-normal text-gray-500 mb-2" data-i18n="home.loadingEventos">Cargando eventos...</p>
   <div id="eventosCarousel"></div>
 </section>
 
@@ -172,24 +210,27 @@ video::-webkit-media-controls-overlay-play-button {
   document.addEventListener("scroll", reproducirVideo, { once: true });
 </script>
 
- <a href="listadoLugares.html" class="text-center my-6 px-4">
- <h2 class="text-2xl font-medium mb-4" data-i18n="home.descubreArea">Descubre lo que hay en tu Área</h2> </a>
-
+<section id="areasSection" class="my-6">
+  <a href="listadoLugares.html" class="block text-center px-4">
+    <h2 class="text-2xl font-medium mb-2" data-i18n="home.descubreArea">Descubre lo que hay en tu Área</h2>
+  </a>
+  <p id="areasStatus" class="text-center text-[14px] font-normal text-gray-500 mb-2" data-i18n="home.loadingAreas">Cargando áreas...</p>
   <div id="areasGrid" class="grid grid-cols-2 gap-4 px-4 pb-4"></div>
+</section>
 
   <section class="px-4 pb-6">
     <a
       href="registroComercio.html"
       class="block rounded-2xl border border-cyan-200 bg-gradient-to-r from-cyan-50 to-sky-100 shadow-sm px-4 py-4"
     >
-      <p class="text-[11px] uppercase tracking-[0.18em] text-cyan-700 font-semibold">Para Negocios</p>
-      <p class="text-base font-semibold text-gray-900 mt-1">
+      <p class="text-[11px] uppercase tracking-[0.18em] text-cyan-700 font-medium" data-i18n="home.businessTag">Para Negocios</p>
+      <p class="text-base font-semibold text-gray-900 mt-1" data-i18n="home.businessOwnerTitle">
         ¿Eres dueño de negocio?
       </p>
-      <p class="text-sm text-gray-700 mt-1 leading-snug">
+      <p class="text-sm text-gray-700 mt-1 leading-snug" data-i18n="home.businessOwnerBody">
         Te interesa más visibilidad en Findixi. Registra tu comercio y activa tu perfil.
       </p>
-      <p class="text-sm font-semibold text-cyan-700 mt-2">Comenzar ahora</p>
+      <p class="text-sm font-medium text-cyan-700 mt-2" data-i18n="home.businessCta">Comenzar ahora</p>
     </a>
   </section>
 
@@ -207,21 +248,57 @@ video::-webkit-media-controls-overlay-play-button {
 <script type="module" src="./js/areasIndex.js"></script>
 <script type="module" src="./js/especialesBanner.js"></script>
 <script type="module" src="./js/lodehoyTeaserIndex.js"></script>
+<script type="module" src="./js/homeUX.js"></script>
 
 <script type="module" src="./js/bannerCarousel.js"></script>
 <script type="module">
   import { createGlobalBannerElement } from './js/bannerCarousel.js';
 
-  document.addEventListener("DOMContentLoaded", async () => {
+  const ensureBannerTopOrder = () => {
     const container = document.getElementById("bannerHomeTop");
-    if (container) {
-      const bannerElement = await createGlobalBannerElement({
-        slotName: 'banner-home-top',
-        intervalMs: 8000,
-      });
-      if (bannerElement) container.appendChild(bannerElement);
+    if (!container) return;
+
+    const betaWrapper = document.getElementById('findixi-beta-banner-wrapper');
+    if (betaWrapper) {
+      if (container.previousElementSibling === betaWrapper) return;
+      betaWrapper.insertAdjacentElement('afterend', container);
+      return;
     }
-  });
+
+    const headerContainer = document.getElementById('headerContainer');
+    if (headerContainer) {
+      if (container.previousElementSibling === headerContainer) return;
+      headerContainer.insertAdjacentElement('afterend', container);
+    }
+  };
+
+  const mountBannerTop = async () => {
+    const container = document.getElementById("bannerHomeTop");
+    if (!container) return;
+
+    ensureBannerTopOrder();
+    container.replaceChildren();
+
+    const bannerElement = await createGlobalBannerElement({
+      slotName: 'banner-top',
+      intervalMs: 8000,
+    });
+
+    if (bannerElement) container.appendChild(bannerElement);
+  };
+
+  const bootBannerTop = () => {
+    void mountBannerTop();
+    window.setTimeout(ensureBannerTopOrder, 120);
+    window.setTimeout(ensureBannerTopOrder, 500);
+    window.setTimeout(ensureBannerTopOrder, 1200);
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootBannerTop, { once: true });
+  } else {
+    bootBannerTop();
+  }
 </script>
 
 <script>
@@ -280,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div id="modalLugar" class="text-2xl font-semibold text-gray-700"></div>
       <div id="modalDireccion" class="text-medium space-y-0 text-gray-500"></div>
       <div id="modalCosto" class="text-3xl font-medium text-green-600"></div>
-      <a id="modalBoletos" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-full">Comprar boletos</a>
+      <a id="modalBoletos" href="#" target="_blank" rel="noopener noreferrer" data-i18n="evento.comprarBoletos" class="hidden inline-flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-full">Comprar boletos</a>
     </div>
   </div>
 </div>
@@ -291,6 +368,5 @@ document.addEventListener('DOMContentLoaded', () => {
 </div>
 </div>
   <script type="module" src="js/introSplash.js"></script>
-  <script type="module" src="js/betaBanner.js"></script>
 </body>
 </html>

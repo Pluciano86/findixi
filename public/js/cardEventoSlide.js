@@ -1,5 +1,6 @@
 import { t } from "./i18n.js";
 import { abrirModal } from "./modalEventos.js";
+import { toHorizontalEventImage } from "../shared/eventoImage.js";
 
 const localeMap = {
   es: "es-ES",
@@ -90,7 +91,7 @@ export function cardEventoSlide(evento) {
   const fechaDetalle = obtenerPartesFecha(fecha);
   const horaBase = horainicio || hora || "";
   const horaFormateada = formatearHora(horaBase);
-  const urlImagen = imagen || "https://placehold.co/200x120?text=Evento";
+  const urlImagen = toHorizontalEventImage(imagen) || "https://placehold.co/200x120?text=Evento";
   const municipioLabel =
     municipioNombre ||
     (Array.isArray(evento.municipioIds) && evento.municipioIds.length > 1 ? t("evento.variosMunicipios") : "") ||

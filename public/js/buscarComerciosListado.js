@@ -301,7 +301,22 @@ function obtenerIdCategoriaDesdeURL() {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function obtenerModoScopeAllDesdeURL() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = String(params.get('scope') || '').trim().toLowerCase();
+  return raw === 'all';
+}
+
 const idCategoriaDesdeURL = obtenerIdCategoriaDesdeURL();
+const abrirListadoCompleto = obtenerModoScopeAllDesdeURL();
+
+function obtenerEtiquetaListadoCompleto() {
+  return t('home.quickComercios');
+}
+
+function estaEnModoCategoriaFija() {
+  return idCategoriaDesdeURL != null;
+}
 
 function syncFiltroLabelsHeight() {
   const labels = Array.from(document.querySelectorAll('.filtro-label-sync'));
@@ -339,6 +354,7 @@ const estado = {
   categoria: '',
   categoriaObj: null,
   categoriaSlug: '',
+  categorias: [],
   subcategorias: [],
   subcategoriaSeleccionadaId: '',
   filtros: {
@@ -347,7 +363,7 @@ const estado = {
     municipioDetectado: '',
     categoria: '',
     subcategoria: '',
-    orden: 'az',
+    orden: 'ubicacion',
     abiertoAhora: false,
     favoritos: false,
     destacadosPrimero: true,
@@ -372,15 +388,41 @@ if (idCategoriaDesdeURL != null) {
   estado.filtros.categoria = String(idCategoriaDesdeURL);
 }
 
+if (abrirListadoCompleto) {
+  estado.filtros.categoria = '';
+  estado.filtros.municipio = '';
+  estado.filtros.municipioDetectado = '';
+  estado.usarMunicipioDetectado = false;
+  estado.filtros.subcategoria = '';
+  estado.subcategoriaSeleccionadaId = '';
+}
+
 if (typeof window !== 'undefined') {
   window.__estadoListadoComercios = estado;
 }
 
 // Re-render categorías / textos cuando cambia el idioma
 window.addEventListener('lang:changed', () => {
-  estado.categoria = getCategoriaLabelPorIdioma();
+  estado.categoria = !estaEnModoCategoriaFija()
+    ? obtenerEtiquetaListadoCompleto()
+    : getCategoriaLabelPorIdioma();
   actualizarEtiquetaSubcategoria(estado.categoria);
-  renderSubcategoriasDropdown();
+  if (!estaEnModoCategoriaFija()) {
+    if (estado.filtros.categoria) {
+      aplicarCategoriaSeleccionadaUI(estado.filtros.categoria);
+    } else {
+      const titulo = getElement('tituloCategoria');
+      if (titulo) {
+        titulo.setAttribute('data-i18n', 'home.quickComercios');
+        titulo.textContent = obtenerEtiquetaListadoCompleto();
+      }
+      aplicarModoListadoCompletoUI();
+    }
+    renderSubcategoriasDropdown();
+  }
+  if (estaEnModoCategoriaFija()) {
+    renderSubcategoriasDropdown();
+  }
   const base = estado.comerciosFiltrados.length ? estado.comerciosFiltrados : estado.lista;
   renderListado(base, { omitRefinamiento: true, skipFilter: true });
   requestAnimationFrame(syncFiltroLabelsHeight);
@@ -794,9 +836,13 @@ function renderProductosRelacionados() {
   const title = `${resolveSearchText('title')} (${visibleProducts.length} ${resolveSearchText('subtitle')})`;
   if (searchProductsTitle) searchProductsTitle.textContent = title;
 
+  const returnTo = encodeURIComponent(
+    `${window.location.pathname || ''}${window.location.search || ''}${window.location.hash || ''}`
+  );
+
   searchProductsGrid.innerHTML = visibleProducts.map(({ product, comercio }) => {
     const productId = encodeURIComponent(String(product?.id ?? ''));
-    const href = `${resolveAppBase()}tienda/tiendaComercio.html?idComercio=${encodeURIComponent(comercio.id)}&source=app&producto=${productId}`;
+    const href = `${resolveAppBase()}tienda/tiendaComercio.html?idComercio=${encodeURIComponent(comercio.id)}&source=listado&producto=${productId}&returnTo=${returnTo}`;
     const price = escapeHtml(product.priceLabel || resolveSearchText('noPrice'));
     return `
       <a href="${href}" class="search-product-card">
@@ -953,6 +999,25 @@ async function cargarNombreCategoria() {
   }
 }
 
+function aplicarModoListadoCompletoUI() {
+  if (estaEnModoCategoriaFija()) return;
+
+  estado.categoria = obtenerEtiquetaListadoCompleto();
+
+  const titulo = getElement('tituloCategoria');
+  if (titulo) {
+    titulo.setAttribute('data-i18n', 'home.quickComercios');
+    titulo.textContent = estado.categoria;
+  }
+
+  const input = getElement('filtro-nombre');
+  if (input) {
+    input.placeholder = interpolate(t('listado.buscarEn'), { categoria: estado.categoria });
+  }
+
+  actualizarEtiquetaSubcategoria(estado.categoria);
+}
+
 function getCategoriaLabelPorIdioma() {
   const lang = (localStorage.getItem('lang') || document.documentElement.lang || 'es').toLowerCase();
   const col = `nombre_${lang}`;
@@ -960,9 +1025,61 @@ function getCategoriaLabelPorIdioma() {
   return c[col] || c.nombre_es || c.nombre || estado.categoria || '';
 }
 
+function obtenerCategoriaDesdeEstadoPorId(idCategoria) {
+  const idNum = Number(idCategoria);
+  if (!Number.isFinite(idNum)) return null;
+  return (estado.categorias || []).find((cat) => Number(cat?.id) === idNum) || null;
+}
+
+function aplicarCategoriaSeleccionadaUI(idCategoria) {
+  if (estaEnModoCategoriaFija()) return;
+
+  const titulo = getElement('tituloCategoria');
+  const icono = getElement('iconoCategoria');
+  const input = getElement('filtro-nombre');
+  const categoria = obtenerCategoriaDesdeEstadoPorId(idCategoria);
+
+  if (!categoria) {
+    estado.categoriaObj = null;
+    estado.categoriaSlug = '';
+    aplicarModoListadoCompletoUI();
+    if (icono) {
+      icono.innerHTML = '<i class="fas fa-utensils"></i>';
+    }
+    return;
+  }
+
+  const lang = (localStorage.getItem('lang') || document.documentElement.lang || 'es').toLowerCase();
+  const col = `nombre_${lang}`;
+  const nombreCat = categoria?.[col] || categoria?.nombre_es || categoria?.nombre || t('home.quickComercios');
+
+  estado.categoriaObj = categoria;
+  estado.categoriaSlug = categoria.slug || '';
+  estado.categoria = nombreCat;
+
+  if (titulo) {
+    titulo.removeAttribute('data-i18n');
+    titulo.textContent = nombreCat;
+  }
+  if (icono && categoria.icono) {
+    if (categoria.icono.startsWith('<i')) {
+      icono.innerHTML = categoria.icono;
+    } else {
+      icono.innerHTML = `<i class="fas ${categoria.icono}"></i>`;
+    }
+  }
+  if (input) {
+    input.placeholder = interpolate(t('listado.buscarEn'), { categoria: nombreCat });
+  }
+}
+
 function actualizarEtiquetaSubcategoria(nombreCategoria) {
   const label = document.querySelector('label[for="filtro-subcategoria"]');
   if (!label) return;
+  if (!estaEnModoCategoriaFija()) {
+    label.textContent = t('listadoLugares.categorias');
+    return;
+  }
   const slug = (estado.categoriaSlug || '').toLowerCase();
   if (slug === 'restaurantes' || slug === 'food_trucks') {
     label.textContent = t('listado.tipoDeComida');
@@ -1018,32 +1135,159 @@ async function cargarSubcategorias(idCategoria) {
   }
 }
 
+async function cargarCategoriasParaFiltro() {
+  const select = getElement('filtro-subcategoria');
+  if (!select || estaEnModoCategoriaFija()) return;
+  try {
+    const { data, error } = await supabase
+      .from('Categorias')
+      .select('id, nombre, slug, icono, nombre_es, nombre_en, nombre_fr, nombre_pt, nombre_de, nombre_it, nombre_zh, nombre_ko, nombre_ja')
+      .order('nombre');
+    if (error) throw error;
+    estado.categorias = Array.isArray(data) ? data : [];
+    renderSubcategoriasDropdown();
+  } catch (err) {
+    console.error('Error cargando categorías para filtro:', err);
+  }
+}
+
 function renderSubcategoriasDropdown(subs = estado.subcategorias) {
   const select = getElement('filtro-subcategoria');
   if (!select) return;
-  const current = select.value || estado.filtros.subcategoria || '';
-  select.innerHTML = `<option value="">${t('listado.todas')}</option>`;
+  const current = select.value || estado.subcategoriaSeleccionadaId || estado.filtros.subcategoria || '';
+  const optionAll = !estaEnModoCategoriaFija() ? t('eventos.todasCategorias') : t('listado.todas');
+  select.innerHTML = `<option value="">${optionAll}</option>`;
 
   const lang = (localStorage.getItem('lang') || document.documentElement.lang || 'es').toLowerCase();
   const col = `nombre_${lang}`;
-
-  subs.forEach((sub) => {
-    const option = document.createElement('option');
-    option.value = sub.id;
-    const label = sub?.[col] || sub?.nombre_es || sub?.nombre || '';
-    option.textContent = label;
-    select.appendChild(option);
-  });
-
-  select.value = current;
-  estado.filtros.subcategoria = select.value;
-  estado.subcategoriaSeleccionadaId = select.value;
+  if (estaEnModoCategoriaFija()) {
+    subs.forEach((sub) => {
+      const option = document.createElement('option');
+      option.value = sub.id;
+      const label = sub?.[col] || sub?.nombre_es || sub?.nombre || '';
+      option.textContent = label;
+      select.appendChild(option);
+    });
+    select.value = current;
+    estado.filtros.subcategoria = select.value;
+    estado.subcategoriaSeleccionadaId = select.value;
+  } else {
+    (estado.categorias || []).forEach((cat) => {
+      const option = document.createElement('option');
+      option.value = String(cat.id);
+      const label = cat?.[col] || cat?.nombre_es || cat?.nombre || '';
+      option.textContent = label;
+      select.appendChild(option);
+    });
+    const categoriaActual = estado.filtros.categoria || '';
+    select.value = categoriaActual || '';
+  }
 }
 
 function normalizarComercio(record, referencia = obtenerReferenciaUsuarioParaCalculos()) {
   const refUsuario = obtenerReferenciaUsuarioParaCalculos();
   const ref = refUsuario || referencia;
   return normalizarComercioListadoDesdeRpc(record, { referencia: ref });
+}
+
+function obtenerCategoriaLabelTarjeta(comercio = {}) {
+  const toArray = (value) => {
+    if (Array.isArray(value)) return value;
+    if (value == null) return [];
+    if (typeof value === 'string') {
+      const txt = value.trim();
+      if (!txt) return [];
+      if (
+        (txt.startsWith('{') && txt.endsWith('}')) ||
+        (txt.startsWith('[') && txt.endsWith(']'))
+      ) {
+        const inner = txt.slice(1, -1).trim();
+        if (!inner) return [];
+        return inner.split(',').map((v) => v.trim()).filter(Boolean);
+      }
+      if (txt.includes(',')) return txt.split(',').map((v) => v.trim()).filter(Boolean);
+      return [txt];
+    }
+    return [value];
+  };
+
+  const parseNumeric = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const categoriaIds = new Set();
+  toArray(comercio?.idCategoria).forEach((id) => {
+    const num = parseNumeric(id);
+    if (num != null) categoriaIds.add(num);
+  });
+  toArray(comercio?.categoriasId).forEach((id) => {
+    const num = parseNumeric(id);
+    if (num != null) categoriaIds.add(num);
+  });
+
+  if (Array.isArray(comercio?.ComercioCategorias)) {
+    comercio.ComercioCategorias.forEach((rel) => {
+      const maybeId = rel?.idCategoria ?? rel?.idcategoria ?? rel?.id_categoria ?? rel?.categoria?.id;
+      const num = parseNumeric(maybeId);
+      if (num != null) categoriaIds.add(num);
+    });
+  }
+
+  if (categoriaIds.size > 0 && Array.isArray(estado.categorias) && estado.categorias.length > 0) {
+    const lang = (localStorage.getItem('lang') || document.documentElement.lang || 'es').toLowerCase();
+    const col = `nombre_${lang}`;
+    const labels = Array.from(categoriaIds)
+      .map((id) => estado.categorias.find((cat) => Number(cat?.id) === id))
+      .filter(Boolean)
+      .map((cat) => (cat?.[col] || cat?.nombre_es || cat?.nombre || '').trim())
+      .filter(Boolean);
+    if (labels.length > 0) {
+      return Array.from(new Set(labels)).join(', ');
+    }
+  }
+
+  const candidates = [
+    comercio?.categoriaDisplay,
+    comercio?.categoria_nombre,
+    comercio?.categoriaNombre,
+    comercio?.categoriaPrincipal,
+    comercio?.categoria,
+    Array.isArray(comercio?.categoriaNombres) ? comercio.categoriaNombres.join(', ') : '',
+    Array.isArray(comercio?.categoriasNombre) ? comercio.categoriasNombre.join(', ') : '',
+    Array.isArray(comercio?.categorias) ? comercio.categorias.join(', ') : '',
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue;
+    const text = candidate.trim();
+    if (!text) continue;
+    return text;
+  }
+  return '';
+}
+
+function insertarCategoriaBajoNombre(cardNode, comercio = {}) {
+  if (estaEnModoCategoriaFija()) return;
+  if (!cardNode) return;
+
+  const categoria = obtenerCategoriaLabelTarjeta(comercio);
+  if (!categoria) return;
+
+  cardNode.querySelector('.comercio-categoria-card')?.remove();
+
+  const nombreContainer =
+    cardNode.querySelector('a > div.relative.h-12.w-full') ||
+    cardNode.querySelector('div.relative.h-12.w-full') ||
+    cardNode.querySelector('h3')?.closest('div.relative');
+  if (!nombreContainer) return;
+
+  const categoriaEl = document.createElement('p');
+  categoriaEl.className =
+    'comercio-categoria-card -mt-1 mb-1 px-2 text-center text-[12px] font-medium text-[#6b7280] leading-tight truncate';
+  categoriaEl.textContent = categoria;
+
+  nombreContainer.insertAdjacentElement('afterend', categoriaEl);
 }
 
 async function obtenerFavoritosSet() {
@@ -1311,6 +1555,94 @@ async function enriquecerSucursales(lista = []) {
   });
 }
 
+async function enriquecerCategoriasComercios(lista = []) {
+  const ids = Array.from(
+    new Set(
+      (lista || [])
+        .map((c) => Number(c?.id))
+        .filter((id) => Number.isFinite(id))
+    )
+  );
+  if (!ids.length) return lista;
+
+  let relaciones = [];
+  try {
+    const { data, error } = await supabase
+      .from('ComercioCategorias')
+      .select(`
+        idComercio,
+        idCategoria,
+        categoria:Categorias (
+          id,
+          nombre,
+          nombre_es,
+          nombre_en,
+          nombre_fr,
+          nombre_pt,
+          nombre_de,
+          nombre_it,
+          nombre_zh,
+          nombre_ko,
+          nombre_ja
+        )
+      `)
+      .in('idComercio', ids);
+    if (error) throw error;
+    relaciones = Array.isArray(data) ? data : [];
+  } catch (err) {
+    try {
+      const { data, error } = await supabase
+        .from('ComercioCategorias')
+        .select('idcomercio,idcategoria')
+        .in('idcomercio', ids);
+      if (error) throw error;
+      relaciones = Array.isArray(data) ? data : [];
+    } catch (fallbackErr) {
+      console.warn('⚠️ No se pudieron enriquecer categorías de comercios:', fallbackErr?.message || fallbackErr);
+      return lista;
+    }
+  }
+
+  const lang = (localStorage.getItem('lang') || document.documentElement.lang || 'es').toLowerCase();
+  const col = `nombre_${lang}`;
+  const categoriasMap = new Map((estado.categorias || []).map((cat) => [Number(cat?.id), cat]));
+  const porComercio = new Map();
+
+  relaciones.forEach((rel) => {
+    const comercioId = Number(rel?.idComercio ?? rel?.idcomercio);
+    const categoriaId = Number(rel?.idCategoria ?? rel?.idcategoria ?? rel?.id_categoria ?? rel?.categoria?.id);
+    if (!Number.isFinite(comercioId) || !Number.isFinite(categoriaId)) return;
+
+    const categoriaRel = rel?.categoria || categoriasMap.get(categoriaId) || null;
+    const nombre =
+      (categoriaRel?.[col] || categoriaRel?.nombre_es || categoriaRel?.nombre || '').trim();
+
+    const current = porComercio.get(comercioId) || { ids: new Set(), nombres: new Set() };
+    current.ids.add(categoriaId);
+    if (nombre) current.nombres.add(nombre);
+    porComercio.set(comercioId, current);
+  });
+
+  return (lista || []).map((comercio) => {
+    const comercioId = Number(comercio?.id);
+    const catInfo = porComercio.get(comercioId);
+    if (!catInfo) return comercio;
+
+    const categoriaIds = Array.from(catInfo.ids);
+    const categoriaNombres = Array.from(catInfo.nombres);
+    const categoriaDisplay = categoriaNombres.join(', ');
+
+    return {
+      ...comercio,
+      categoriaIds,
+      categoriaNombres,
+      categoriasNombre: categoriaNombres,
+      categoriaDisplay: categoriaDisplay || comercio?.categoriaDisplay || '',
+      idCategoria: categoriaIds,
+    };
+  });
+}
+
 function ordenarLocalmente(lista) {
   const referencia = obtenerReferenciaUsuarioParaCalculos();
   return ordenarYFiltrarListadoComercios(lista, {
@@ -1507,6 +1839,7 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false, s
     const card = comercio.activo === true
       ? cardComercio(comercio)
       : cardComercioNoActivo(comercio);
+    insertarCategoriaBajoNombre(card, comercio);
     card.dataset.comercioId = comercio.id;
     const infoNodes = card.querySelectorAll('.flex.justify-center.items-center.gap-1');
     // limpiar cualquier string previo de tiempo, se renderiza dentro de la card con i18n
@@ -1717,6 +2050,7 @@ async function mostrarSugerenciasCercanas({
         const card = comercio.activo === true
           ? cardComercio(comercio)
           : cardComercioNoActivo(comercio);
+        insertarCategoriaBajoNombre(card, comercio);
         card.dataset.comercioId = comercio.id;
         const infoNodes = card.querySelectorAll('.flex.justify-center.items-center.gap-1');
         if (infoNodes.length) {
@@ -1821,6 +2155,7 @@ async function cargarComercios({ append = false, mostrarLoader = true } = {}) {
     });
     let base = Array.from(baseMap.values());
     base = await enriquecerSucursales(base);
+    base = await enriquecerCategoriasComercios(base);
 
     const datosConFavoritos = base.map((comercio) => {
       const esFavorito =
@@ -1949,8 +2284,21 @@ function registrarEventos() {
       estado.municipioSeleccionadoManualmente = Boolean(valor);
     }],
     ['filtro-subcategoria', 'change', (valor) => {
-      estado.filtros.subcategoria = valor;
-      estado.subcategoriaSeleccionadaId = valor;
+      if (estaEnModoCategoriaFija()) {
+        estado.filtros.subcategoria = valor;
+        estado.subcategoriaSeleccionadaId = valor;
+      } else {
+        const categoriaId = String(valor || '').trim();
+        if (categoriaId) {
+          const destino = `listadoComercios.html?idCategoria=${encodeURIComponent(categoriaId)}`;
+          window.location.href = destino;
+          return false;
+        }
+        estado.filtros.categoria = '';
+        estado.filtros.subcategoria = '';
+        estado.subcategoriaSeleccionadaId = '';
+        aplicarCategoriaSeleccionadaUI('');
+      }
     }],
     ['filtro-orden', 'change', (valor) => (estado.filtros.orden = valor)],
     ['filtro-abierto', 'change', (_, checked) => (estado.filtros.abiertoAhora = checked)],
@@ -2091,9 +2439,12 @@ export async function iniciarBusquedaComercios() {
   hideSearchProductsGrid();
 
   await cargarNombreCategoria();
+  aplicarModoListadoCompletoUI();
   await cargarMunicipios();
   if (idCategoriaDesdeURL != null) {
     await cargarSubcategorias(idCategoriaDesdeURL);
+  } else {
+    await cargarCategoriasParaFiltro();
   }
   syncFiltroLabelsHeight();
   syncToggleLabelsHeight();
@@ -2101,6 +2452,8 @@ export async function iniciarBusquedaComercios() {
   registrarEventos();
   setOrden(estado.filtros.orden);
   await obtenerCoordenadasUsuario();
-  await asegurarMunicipioInicial();
+  if (estaEnModoCategoriaFija()) {
+    await asegurarMunicipioInicial();
+  }
   await cargarComercios({ append: false, mostrarLoader: true });
 }

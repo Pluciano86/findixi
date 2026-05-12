@@ -1,9 +1,18 @@
-<!-- Footer -->
-<div id="footerContainer"></div>
-<script>
-  fetch("footer.html")
-    .then(res => res.text())
-    .then(html => document.getElementById("footerContainer").innerHTML = html);
-</script>
-
-  <script src="js/bloquearPantalla.js"></script>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Footer Button</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="./js/i18n.js"></script>
+</head>
+<body class="min-h-screen bg-slate-100">
+  <main class="max-w-md mx-auto px-4 pt-6 pb-36">
+    <h1 class="text-xl font-semibold text-slate-800">Footer Preview</h1>
+    <p class="mt-2 text-sm text-slate-600">Vista de referencia del footer público unificado.</p>
+  </main>
+  <div id="footerContainer"></div>
+  <script type="module" src="./js/footer.js"></script>
+</body>
+</html>

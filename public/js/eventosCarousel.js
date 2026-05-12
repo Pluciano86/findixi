@@ -1,6 +1,7 @@
 import { supabase } from "../shared/supabaseClient.js";
 import { abrirModal } from "./modalEventos.js";
 import { t } from "./i18n.js";
+import { toHorizontalEventImage } from "../shared/eventoImage.js";
 import {
   compareByNearestUpcomingDate,
   getLatestISODate,
@@ -232,17 +233,13 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
           ${eventos
             .map(
               (evento) => {
-                const urlImagen = evento.imagen || "https://placehold.co/400x500?text=Sin+Imagen";
+                const urlImagen = toHorizontalEventImage(evento.imagen) || "https://placehold.co/1280x720?text=Sin+Imagen";
                 return `
             <div class="swiper-slide cursor-pointer" data-id="${evento.id}">
-              <div class="w-full aspect-[3/4] overflow-hidden rounded-lg bg-gray-200 relative shadow">
-                <img src="${urlImagen}"
-                     alt=""
-                     aria-hidden="true"
-                     class="absolute inset-0 w-full h-full object-cover blur-md scale-110" />
+              <div class="w-full aspect-[16/9] overflow-hidden rounded-lg bg-gray-200 relative shadow">
                 <img src="${urlImagen}"
                      alt="${evento.nombre || "Evento"}"
-                     class="relative z-10 w-full h-full object-contain" />
+                     class="w-full h-full object-cover" />
               </div>
             </div>`;
               }

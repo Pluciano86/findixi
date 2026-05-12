@@ -4,6 +4,7 @@ import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
 import { t, getLang } from './i18n.js';
 import { abrirModal } from './modalEventos.js';
+import { toHorizontalEventImage, withVersion } from '../shared/eventoImage.js';
 
 const lista = document.getElementById('listaEventos');
 const filtroMunicipio = document.getElementById('filtroMunicipio');
@@ -13,6 +14,7 @@ const busquedaNombre = document.getElementById('busquedaNombre');
 
 const btnHoy = document.getElementById('btnHoy');
 const btnSemana = document.getElementById('btnSemana');
+const btnMes = document.getElementById('btnMes');
 const btnGratis = document.getElementById('btnGratis');
 
 // Estado
@@ -21,6 +23,7 @@ let municipios = {};
 let categorias = {};
 let filtroHoy = false;
 let filtroSemana = false;
+let filtroMes = false;
 let filtroGratis = false;
 let renderVersion = 0;
 
@@ -79,22 +82,71 @@ function obtenerProximaFecha(evento) {
   return ordenadas.find((item) => item.fecha >= hoyISO) || ordenadas[ordenadas.length - 1] || null;
 }
 
-function eventoEsHoy(evento) {
+function obtenerProximaFechaDesdeLista(fechas = []) {
   const hoyISO = new Date().toISOString().slice(0, 10);
-  return evento.fechas.some((item) => item.fecha === hoyISO);
+  const ordenadas = ordenarFechas(fechas);
+  return ordenadas.find((item) => item.fecha >= hoyISO) || ordenadas[0] || null;
 }
 
-function eventoEstaEnSemana(evento) {
-  const hoy = new Date();
-  const inicioSemana = new Date(hoy);
-  inicioSemana.setDate(hoy.getDate() - hoy.getDay());
-  const finSemana = new Date(inicioSemana);
-  finSemana.setDate(inicioSemana.getDate() + 6);
+function crearFechaLocal(fechaISO = '') {
+  const [year, month, day] = String(fechaISO).split('-').map(Number);
+  if ([year, month, day].some((value) => Number.isNaN(value))) return null;
+  return new Date(year, month - 1, day);
+}
 
-  return evento.fechas.some((item) => {
-    const fecha = new Date(`${item.fecha}T00:00:00`);
-    return fecha >= inicioSemana && fecha <= finSemana;
-  });
+function fechaEsHoy(fechaISO = '') {
+  const fecha = crearFechaLocal(fechaISO);
+  if (!fecha) return false;
+  const hoy = new Date();
+  return (
+    fecha.getFullYear() === hoy.getFullYear() &&
+    fecha.getMonth() === hoy.getMonth() &&
+    fecha.getDate() === hoy.getDate()
+  );
+}
+
+function fechaEstaEnSemanaActual(fechaISO = '') {
+  const fecha = crearFechaLocal(fechaISO);
+  if (!fecha) return false;
+
+  const hoy = new Date();
+  const inicioSemana = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - hoy.getDay());
+  const finSemana = new Date(inicioSemana.getFullYear(), inicioSemana.getMonth(), inicioSemana.getDate() + 6);
+
+  inicioSemana.setHours(0, 0, 0, 0);
+  finSemana.setHours(23, 59, 59, 999);
+
+  return fecha >= inicioSemana && fecha <= finSemana;
+}
+
+function fechaEstaEnMesActual(fechaISO = '') {
+  const fecha = crearFechaLocal(fechaISO);
+  if (!fecha) return false;
+  const hoy = new Date();
+  return (
+    fecha.getFullYear() === hoy.getFullYear() &&
+    fecha.getMonth() === hoy.getMonth()
+  );
+}
+
+function filtrarFechasPorMunicipio(fechas = [], municipioId = null) {
+  if (!municipioId) return Array.isArray(fechas) ? fechas : [];
+  return (Array.isArray(fechas) ? fechas : []).filter((item) => Number(item.municipio_id) === Number(municipioId));
+}
+
+function filtrarFechasPorPeriodo(fechas = []) {
+  const base = Array.isArray(fechas) ? fechas : [];
+  if (filtroHoy) return base.filter((item) => fechaEsHoy(item.fecha));
+  if (filtroSemana) return base.filter((item) => fechaEstaEnSemanaActual(item.fecha));
+  if (filtroMes) return base.filter((item) => fechaEstaEnMesActual(item.fecha));
+  return base;
+}
+
+function obtenerFechasVisibles(evento, municipioId = null, fallbackBase = false) {
+  const base = filtrarFechasPorMunicipio(evento?.fechas || [], municipioId);
+  const filtradas = filtrarFechasPorPeriodo(base);
+  if (fallbackBase && filtradas.length === 0) return base;
+  return filtradas;
 }
 
 async function cargarEventos() {
@@ -179,7 +231,8 @@ async function cargarEventos() {
         fechas: fechasOrdenadas,
         eventoFechas: fechasOrdenadas,
         ultimaFecha,
-        boletos_por_localidad: Boolean(evento.boletos_por_localidad)
+        boletos_por_localidad: Boolean(evento.boletos_por_localidad),
+        imagen: toHorizontalEventImage(evento.imagen)
       };
       return eventoNormalizado;
     })
@@ -192,12 +245,25 @@ function normalizarTexto(texto) {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
+function aplicarEstiloImagenTarjeta(contenedor, imageUrl) {
+  if (!contenedor || !imageUrl) return;
+  const imgMain = contenedor.querySelector('[data-event-main-image="true"]');
+  if (!imgMain) return;
+
+  // Ajuste por alto: la imagen llena altura y el ancho se adapta.
+  imgMain.style.height = '100%';
+  imgMain.style.width = 'auto';
+  imgMain.style.maxWidth = 'none';
+  imgMain.style.objectFit = 'contain';
+  imgMain.style.objectPosition = 'center';
+}
+
 async function renderizarEventos() {
   const currentRender = ++renderVersion;
   await renderTopBannerEventos();
   if (currentRender !== renderVersion) return;
 
-  lista.className = 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 gap-y-6 px-4 md:px-6';
+  lista.className = 'flex flex-col gap-4 px-4 md:px-6';
   cleanupCarousels(lista);
   lista.innerHTML = '';
 
@@ -206,21 +272,17 @@ async function renderizarEventos() {
   const cat = filtroCategoria.value;
   const orden = filtroOrden.value;
   const muniId = muni ? Number(muni) : null;
+  const hayFiltroPeriodo = filtroHoy || filtroSemana || filtroMes;
 
   let filtrados = eventos.filter((evento) => {
     const matchTexto = !texto || normalizarTexto(evento.nombre).includes(texto);
     const matchMuni = !muni || (evento.municipioIds || []).includes(Number(muni));
     const matchCat = !cat || evento.categoria == cat;
-
-    let matchFiltro = true;
-    if (filtroHoy) {
-      matchFiltro = eventoEsHoy(evento);
-    } else if (filtroSemana) {
-      matchFiltro = eventoEstaEnSemana(evento);
-    }
+    const fechasEvaluacion = obtenerFechasVisibles(evento, muniId);
+    const matchFiltro = hayFiltroPeriodo ? fechasEvaluacion.length > 0 : true;
 
     if (filtroGratis) {
-      matchFiltro = matchFiltro && evento.gratis === true;
+      return matchTexto && matchMuni && matchCat && matchFiltro && evento.gratis === true;
     }
 
     return matchTexto && matchMuni && matchCat && matchFiltro;
@@ -228,14 +290,14 @@ async function renderizarEventos() {
 
   if (orden === 'fechaAsc') {
     filtrados.sort((a, b) => {
-      const fa = obtenerProximaFecha(a)?.fecha || '9999-12-31';
-      const fb = obtenerProximaFecha(b)?.fecha || '9999-12-31';
+      const fa = obtenerProximaFechaDesdeLista(obtenerFechasVisibles(a, muniId, true))?.fecha || '9999-12-31';
+      const fb = obtenerProximaFechaDesdeLista(obtenerFechasVisibles(b, muniId, true))?.fecha || '9999-12-31';
       return fa.localeCompare(fb);
     });
   } else if (orden === 'fechaDesc') {
     filtrados.sort((a, b) => {
-      const fa = obtenerProximaFecha(a)?.fecha || '0000-01-01';
-      const fb = obtenerProximaFecha(b)?.fecha || '0000-01-01';
+      const fa = obtenerProximaFechaDesdeLista(obtenerFechasVisibles(a, muniId, true))?.fecha || '0000-01-01';
+      const fb = obtenerProximaFechaDesdeLista(obtenerFechasVisibles(b, muniId, true))?.fecha || '0000-01-01';
       return fb.localeCompare(fa);
     });
   } else if (orden === 'alfabetico') {
@@ -257,18 +319,35 @@ async function renderizarEventos() {
 
   for (let i = 0; i < filtrados.length; i++) {
     const evento = filtrados[i];
-    const fechasBase = Array.isArray(evento.fechas) ? evento.fechas : [];
-    const fechasFiltradas = muniId
-      ? fechasBase.filter((item) => Number(item.municipio_id) === muniId)
-      : fechasBase;
-    const mostrarVariasFechas = fechasFiltradas.length > 1;
-    const proxima = !mostrarVariasFechas
-      ? (fechasFiltradas[0] || obtenerProximaFecha(evento))
-      : null;
+    const fechasTarjeta = ordenarFechas(obtenerFechasVisibles(evento, muniId, true));
+    const proxima = obtenerProximaFechaDesdeLista(fechasTarjeta) || obtenerProximaFecha(evento);
+    const totalFechas = fechasTarjeta.length;
+    const mostrarMasFechas = totalFechas > 1;
     const fechaDetalle = proxima ? obtenerPartesFecha(proxima.fecha) : null;
     const horaTexto = proxima?.horainicio ? formatearHora(proxima.horainicio) : '';
+    const municipioPrincipal = proxima?.municipioNombre || evento.municipioNombre || '';
+    const municipiosConFecha = Array.from(
+      new Set(
+        fechasTarjeta
+          .map((item) => item?.municipioNombre || '')
+          .filter(Boolean)
+      )
+    );
+    const mostrarMasLocalidades = municipiosConFecha.length > 1;
+    const textoOtrasFechas = (() => {
+      const valor = t('evento.otrasFechasDisponibles');
+      return valor === 'evento.otrasFechasDisponibles' ? t('evento.variasFechas') : valor;
+    })();
+    const textoOtrosMunicipios = (() => {
+      const valor = t('evento.otrosMunicipiosDisponibles');
+      return valor === 'evento.otrosMunicipiosDisponibles' ? t('evento.variosMunicipios') : valor;
+    })();
     const iconoCategoria = evento.categoriaIcono ? `<i class="fas ${evento.categoriaIcono}"></i>` : '';
     const nombreClass = (evento.nombre || '').length > 25 ? 'text-base' : 'text-lg';
+    const imagenEvento = withVersion(
+      toHorizontalEventImage(evento.imagen) || 'https://placehold.co/1280x720?text=Evento',
+      evento.id
+    );
     const costoRaw = evento.costo != null ? String(evento.costo).trim() : '';
     const costoConSimbolo = /^[\d,.]+$/.test(costoRaw) && !costoRaw.startsWith('$')
       ? `$${costoRaw}`
@@ -289,48 +368,58 @@ async function renderizarEventos() {
             ? costoConSimbolo
             : t('evento.costoLabel', { costo: normalizarMonto(costoConSimbolo) })))
         : t('evento.costoNoDisponible');
+    const fechaBloque = fechaDetalle
+      ? `
+          <div class="text-red-700 font-semibold leading-tight">${fechaDetalle.weekday}</div>
+          <div class="text-red-600 leading-tight">${fechaDetalle.resto}</div>
+          ${mostrarMasFechas ? `<div class="text-[10px] leading-none text-gray-400 mt-1">${textoOtrasFechas}</div>` : ''}
+        `
+      : `<div class="text-red-600 font-medium leading-tight">${t('evento.sinFecha')}</div>`;
+
+    const horaBloque = horaTexto
+      ? `<div class="text-slate-700 font-semibold leading-tight">${horaTexto}</div>`
+      : `<div class="text-slate-500 leading-tight">${t('area.noDisponible')}</div>`;
+
     const div = document.createElement('div');
-    div.className = 'bg-white rounded shadow hover:shadow-lg transition overflow-hidden cursor-pointer flex flex-col';
+    div.className = 'bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden cursor-pointer flex flex-col border border-slate-200';
     div.innerHTML = `
-      <div class="aspect-[4/5] w-full overflow-hidden bg-gray-200 relative">
-        <img src="${evento.imagen}?v=${evento.id}" class="absolute inset-0 w-full h-full object-cover blur-md scale-110" alt="" />
-        <img src="${evento.imagen}?v=${evento.id}" class="relative z-10 w-full h-full object-contain" alt="${evento.nombre}" />
+      <div class="aspect-[21/8] w-full overflow-hidden bg-gray-200 relative">
+        <img src="${imagenEvento}" class="absolute inset-0 w-full h-full object-cover blur-xl scale-110" alt="" aria-hidden="true" />
+        <div class="relative z-10 w-full h-full flex items-center justify-center overflow-hidden">
+          <img src="${imagenEvento}" data-event-main-image="true" class="w-full h-full object-cover" alt="${evento.nombre}" loading="lazy" />
+        </div>
       </div>
-      <div class="p-3 flex flex-col flex-1">
-        <div class="flex flex-col gap-2 flex-1">
-          <h3 class="flex items-center justify-center text-center leading-tight ${nombreClass} font-bold line-clamp-2 h-12">${evento.nombre}</h3>
-          <div class="flex items-center justify-center gap-1 text-sm text-orange-500">
-            ${iconoCategoria}
-            <span>${evento.categoriaNombre || ''}</span>
+      <div class="p-3 flex flex-col gap-2">
+        <div class="flex items-start justify-between gap-2">
+          <h3 class="leading-tight ${nombreClass} font-bold line-clamp-2">${evento.nombre}</h3>
+          <div class="shrink-0 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-1">${costoTexto}</div>
+        </div>
+        <div class="flex items-center gap-1 text-sm text-orange-500">
+          ${iconoCategoria}
+          <span>${evento.categoriaNombre || ''}</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          <div class="rounded-lg border border-red-100 bg-red-50/70 px-2 py-2 text-center">
+            ${fechaBloque}
           </div>
-          ${mostrarVariasFechas ? `
-            <div class="flex items-center justify-center gap-1 text-base text-red-600 font-medium leading-tight text-center">
-              ${t('evento.variasFechas')}
+          <div class="rounded-lg border border-sky-100 bg-sky-50/70 px-2 py-2 text-center">
+            ${horaBloque}
+            <div class="mt-1 flex items-center justify-center gap-1 font-medium" style="color:#23B4E9;">
+              <i class="fa-solid fa-map-pin"></i>
+              <span>${municipioPrincipal || t('evento.variosMunicipios')}</span>
             </div>
-          ` : (fechaDetalle ? `
-            <div class="flex flex-col items-center justify-center gap-0 text-base text-red-600 font-medium leading-tight">
-              <span>${fechaDetalle.weekday}</span>
-              <span>${fechaDetalle.resto}</span>
-            </div>
-          ` : `
-            <div class="flex items-center justify-center gap-1 text-sm text-red-600 font-medium leading-tight">${t('evento.sinFecha')}</div>
-          `)}
-          ${!mostrarVariasFechas && horaTexto ? `<div class="flex items-center justify-center gap-1 text-sm text-gray-500 leading-tight">${horaTexto}</div>` : ''}
-          <div class="flex items-center justify-center gap-1 text-sm font-medium" style="color:#23B4E9;">
-            <i class="fa-solid fa-map-pin"></i>
-            <span>${evento.municipioNombre}</span>
+            ${mostrarMasLocalidades ? `<div class="text-[10px] leading-none text-gray-400 mt-1">${textoOtrosMunicipios}</div>` : ''}
           </div>
         </div>
-        <div class="mt-3 text-sm font-semibold text-green-600 flex items-center justify-center">${costoTexto}</div>
       </div>
     `;
+    aplicarEstiloImagenTarjeta(div, imagenEvento);
     div.addEventListener('click', () => abrirModal(evento));
     fragment.appendChild(div);
-
     cartasEnFila += 1;
 
     const esUltimaCarta = i === filtrados.length - 1;
-    const filaCompleta = cartasEnFila === 2 || esUltimaCarta;
+    const filaCompleta = cartasEnFila === 1 || esUltimaCarta;
 
     if (filaCompleta) {
       totalFilas += 1;
@@ -469,7 +558,9 @@ btnHoy.addEventListener('change', (e) => {
   filtroHoy = e.target.checked;
   if (filtroHoy) {
     filtroSemana = false;
-    document.getElementById('btnSemana').checked = false;
+    btnSemana.checked = false;
+    filtroMes = false;
+    btnMes.checked = false;
   }
   renderizarEventos();
 });
@@ -478,7 +569,20 @@ btnSemana.addEventListener('change', (e) => {
   filtroSemana = e.target.checked;
   if (filtroSemana) {
     filtroHoy = false;
-    document.getElementById('btnHoy').checked = false;
+    btnHoy.checked = false;
+    filtroMes = false;
+    btnMes.checked = false;
+  }
+  renderizarEventos();
+});
+
+btnMes.addEventListener('change', (e) => {
+  filtroMes = e.target.checked;
+  if (filtroMes) {
+    filtroHoy = false;
+    btnHoy.checked = false;
+    filtroSemana = false;
+    btnSemana.checked = false;
   }
   renderizarEventos();
 });

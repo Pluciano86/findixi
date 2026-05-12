@@ -32,10 +32,12 @@ FRONTPAGE_URL = "https://boletos.prticket.com/events/en/frontpage"
 BASE_EVENTS_URL = "https://boletos.prticket.com/events/en/"
 REQUEST_TIMEOUT = 35
 REQUEST_SLEEP_SECONDS = 0.2
+SOURCE_NAME = "prticket"
 
 EVENTOS_CSV = "eventos_prticket.csv"
 EVENTOS_MUNICIPIOS_CSV = "eventos_municipios_prticket.csv"
 EVENTO_FECHAS_CSV = "eventoFechas_prticket.csv"
+EVENTOS_BOLETERIAS_CSV = "eventos_boleterias_prticket.csv"
 NO_DATED_CSV = "no_dated_items_prticket.csv"
 CATEGORIAS_SQL = "categoriaEventos_nuevas_insert.sql"
 
@@ -108,9 +110,20 @@ class Venue:
 
 
 @dataclass
+class SessionOccurrence:
+    fecha: str
+    hora: str
+    municipio_id: Optional[int]
+    municipio_nombre: str
+    lugar: str
+    direccion: str
+
+
+@dataclass
 class EventScraped:
     url: str
     slug: str
+    source_event_id: str
     nombre: str
     descripcion: str
     costo: str
@@ -118,6 +131,7 @@ class EventScraped:
     imagen: str
     datetimes: List[Tuple[str, str]]
     venues: List[Venue]
+    session_occurrences: List[SessionOccurrence]
     motivo_no_exportable: Optional[str] = None
 
 
@@ -149,6 +163,18 @@ def normalize_text(value: str) -> str:
 def clean_spaces(value: str) -> str:
     value = re.sub(r"\s+", " ", value or "").strip()
     return value
+
+
+def sanitize_description(value: str) -> str:
+    # Requisito: si no hay descripción confiable, guardar en blanco.
+    cleaned = clean_spaces(value or "")
+    return cleaned if cleaned else ""
+
+
+def build_localidad_key(municipio_id: Optional[int], lugar: str) -> str:
+    if not municipio_id or not clean_spaces(lugar):
+        return ""
+    return f"{int(municipio_id)}|{normalize_text(lugar)}"
 
 
 def html_to_text(fragment: str) -> str:
@@ -326,21 +352,107 @@ def extract_category_raw(page_html: str, data_layer: dict) -> str:
 
 
 def extract_image_url(page_html: str, page_url: str) -> str:
+    def to_abs(url: str) -> str:
+        return urllib.parse.urljoin(page_url, clean_spaces(url))
+
+    def extract_image_candidates(html_text: str) -> List[str]:
+        candidates: List[str] = []
+        patterns = [
+            r"""(?is)\bsrcset=["']([^"']+)["']""",
+            r"""(?is)\bsrc=["']([^"']+)["']""",
+            r"""(?is)\bdata-src=["']([^"']+)["']""",
+            r"""(?is)\bdata-original=["']([^"']+)["']""",
+        ]
+        for pattern in patterns:
+            for raw in re.findall(pattern, html_text):
+                val = clean_spaces(raw)
+                if not val:
+                    continue
+                # srcset puede traer varias opciones separadas por coma.
+                first = val.split(",")[0].strip().split(" ")[0].strip()
+                if first:
+                    candidates.append(first)
+        return candidates
+
+    def normalize_horizontal_candidate(url: str) -> str:
+        if not url:
+            return ""
+        # PRticket suele publicar poster vertical y banner horizontal en la misma carpeta.
+        url = re.sub(r"/(?:xs|s|m)_poster\.(?:jpg|jpeg|png|webp)$", "/m_banner.jpg", url, flags=re.I)
+        url = re.sub(r"_poster\.(jpg|jpeg|png|webp)$", "_banner.jpg", url, flags=re.I)
+        return url
+
+    def score_image_url(url: str) -> int:
+        text = (url or "").lower()
+        if not text:
+            return -999
+        score = 0
+        if "img_web" in text:
+            score += 15
+        if "banner" in text:
+            score += 80
+        if "cover" in text or "landscape" in text:
+            score += 40
+        if "m_banner" in text:
+            score += 35
+        if "s_banner" in text:
+            score += 20
+        if "poster" in text:
+            score -= 90
+        if "logo" in text or "icon" in text:
+            score -= 120
+        return score
+
+    # 1) Buscar el bloque de banner principal del evento.
+    banner_block = re.search(
+        r"""(?is)<div[^>]*class=["'][^"']*orion-img-banner-no-parallax[^"']*["'][^>]*>(.*?)</div>""",
+        page_html,
+    )
+    if banner_block:
+        raw_candidates = extract_image_candidates(banner_block.group(1))
+        if raw_candidates:
+            abs_candidates = [to_abs(normalize_horizontal_candidate(c)) for c in raw_candidates]
+            abs_candidates.sort(key=score_image_url, reverse=True)
+            if abs_candidates and score_image_url(abs_candidates[0]) > -200:
+                return abs_candidates[0]
+
+    # 2) Fallback: cualquier candidato de imagen en todo el HTML con scoring.
+    all_candidates_raw = extract_image_candidates(page_html)
+    if all_candidates_raw:
+        all_candidates = [to_abs(normalize_horizontal_candidate(c)) for c in all_candidates_raw]
+        all_candidates.sort(key=score_image_url, reverse=True)
+        if all_candidates and score_image_url(all_candidates[0]) > -200:
+            return all_candidates[0]
+
+    # 3) Fallback final: og:image (si viene poster, lo convertimos a banner).
     og_image = extract_meta_content(page_html, "property", "og:image")
     if og_image:
-        return urllib.parse.urljoin(page_url, og_image)
+        return to_abs(normalize_horizontal_candidate(og_image))
 
     m_picture_img = re.search(
         r"""(?is)<picture[^>]*>.*?<img[^>]*\bsrc=["']([^"']+)["'][^>]*>.*?</picture>""",
         page_html,
     )
     if m_picture_img:
-        return urllib.parse.urljoin(page_url, m_picture_img.group(1))
+        return to_abs(normalize_horizontal_candidate(m_picture_img.group(1)))
 
     m_any_img = re.search(r"""(?is)<img[^>]*\bsrc=["']([^"']+)["'][^>]*>""", page_html)
     if m_any_img:
-        return urllib.parse.urljoin(page_url, m_any_img.group(1))
+        return to_abs(normalize_horizontal_candidate(m_any_img.group(1)))
     return ""
+
+
+def detect_image_orientation(image_url: str) -> str:
+    text = (image_url or "").lower()
+    if not text:
+        return "unknown"
+    horizontal_markers = ("banner", "cover", "landscape", "1200x630", "16x9", "16_9")
+    vertical_markers = ("poster", "flyer", "portrait", "560x700", "4x5", "3x4")
+    if any(marker in text for marker in horizontal_markers):
+        return "horizontal"
+    if any(marker in text for marker in vertical_markers):
+        return "vertical"
+    return "unknown"
 
 
 def parse_date_candidates(text: str) -> List[str]:
@@ -428,6 +540,117 @@ def parse_time_candidates(text: str) -> List[str]:
         if val not in seen:
             seen.add(val)
             unique.append(val)
+    return unique
+
+
+def extract_event_id(data_layer: dict) -> str:
+    if not isinstance(data_layer, dict):
+        return ""
+    return clean_spaces(str(data_layer.get("eventId", "")))
+
+
+def extract_sessions_from_purchase_page(
+    http: SimpleHttp,
+    event_id: str,
+    municipios: List[Tuple[int, str, str]],
+) -> List[SessionOccurrence]:
+    if not event_id:
+        return []
+
+    buy_url = f"https://boletos.prticket.com/events/en/comprarEvento?idEvento={urllib.parse.quote(event_id)}"
+    try:
+        html_buy = http.fetch_text(buy_url)
+    except Exception:
+        return []
+
+    m = re.search(r"""(?is)var\s+arraySesiones\s*=\s*(\[[\s\S]*?\]);""", html_buy)
+    if not m:
+        return []
+
+    raw_json = m.group(1).strip()
+    try:
+        sessions = json.loads(raw_json)
+    except Exception:
+        return []
+
+    m_dir = re.search(r"""(?is)var\s+direccionRecinto\s*=\s*(['"])(.*?)\1\s*;""", html_buy)
+    direccion_recinto = clean_spaces(html.unescape(m_dir.group(2))) if m_dir else ""
+
+    buy_data_layer = {}
+    m_dl = re.search(r"""(?is)var\s+dataLayerP4\s*=\s*(\{.*?\});""", html_buy)
+    if m_dl:
+        try:
+            buy_data_layer = json.loads(m_dl.group(1))
+        except Exception:
+            buy_data_layer = {}
+    buy_venue = clean_spaces(str(buy_data_layer.get("venue", ""))) if isinstance(buy_data_layer, dict) else ""
+    buy_city = clean_spaces(str(buy_data_layer.get("venueCity", ""))) if isinstance(buy_data_layer, dict) else ""
+    buy_state = clean_spaces(str(buy_data_layer.get("venueState", ""))) if isinstance(buy_data_layer, dict) else ""
+
+    occurrences: List[SessionOccurrence] = []
+    for item in sessions if isinstance(sessions, list) else []:
+        if not isinstance(item, dict):
+            continue
+
+        fecha_celebracion = clean_spaces(str(item.get("fechaCelebracionStr", "")))
+        if not fecha_celebracion or "T" not in fecha_celebracion:
+            continue
+        fecha = fecha_celebracion.split("T", 1)[0]
+        hora = fecha_celebracion.split("T", 1)[1][:5]
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", fecha):
+            continue
+        if not re.match(r"^\d{2}:\d{2}$", hora):
+            continue
+
+        lit_sesion = clean_spaces(str(item.get("litSesion", "")))
+        lit_sala = clean_spaces(str(item.get("litSala", "")))
+        promo = clean_spaces(str(item.get("promotionalSessionLabel", ""))).lstrip("@").strip()
+        search_text_primary = " | ".join(part for part in [lit_sesion, promo, lit_sala] if part)
+        municipio_id, municipio_nombre = detect_municipio_id(search_text_primary, municipios)
+        if not municipio_id:
+            search_text_fallback = " | ".join(part for part in [direccion_recinto, buy_city, buy_state, buy_venue] if part)
+            municipio_id, municipio_nombre = detect_municipio_id(search_text_fallback, municipios)
+
+        lugar = promo or buy_venue or lit_sala
+        if not lugar:
+            # fallback: intentar extraer texto después de "-" en litSesion
+            m_lugar = re.search(r"-\s*([^-\n\r]+)$", lit_sesion)
+            if m_lugar:
+                lugar = clean_spaces(m_lugar.group(1))
+        if not lugar and municipio_nombre:
+            lugar = municipio_nombre
+
+        if municipio_nombre and lugar and normalize_text(municipio_nombre) not in normalize_text(lugar):
+            direccion = clean_spaces(f"{municipio_nombre} @ {lugar}")
+        else:
+            direccion = direccion_recinto or lugar or municipio_nombre or ""
+
+        occurrences.append(
+            SessionOccurrence(
+                fecha=fecha,
+                hora=hora,
+                municipio_id=municipio_id,
+                municipio_nombre=municipio_nombre,
+                lugar=lugar or (municipio_nombre or "Multiple Locations"),
+                direccion=direccion or (lugar or "Multiple Locations"),
+            )
+        )
+
+    # Deduplicar preservando orden.
+    unique: List[SessionOccurrence] = []
+    seen = set()
+    for occ in occurrences:
+        key = (
+            occ.fecha,
+            occ.hora,
+            int(occ.municipio_id) if occ.municipio_id else 0,
+            normalize_text(occ.lugar),
+            normalize_text(occ.direccion),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(occ)
     return unique
 
 
@@ -637,8 +860,21 @@ def map_category_id(
 
     # Respeta IDs existentes si están en DB.
     valid_existing_ids = {int(row.get("id")) for row in categories_existing if row.get("id") is not None}
+    existing_other_ids = [
+        int(row.get("id"))
+        for row in categories_existing
+        if normalize_text(str(row.get("nombre", ""))) in {"otro", "otros", "otra", "otras", "other", "others"}
+        and row.get("id") is not None
+    ]
 
     raw = normalize_text(raw_category)
+    if not raw:
+        if existing_other_ids:
+            return existing_other_ids[0], next_category_id
+        if 9 in valid_existing_ids:
+            return 9, next_category_id
+        raw = "otro"
+
     if raw in existing_by_norm:
         return existing_by_norm[raw], next_category_id
 
@@ -652,10 +888,12 @@ def map_category_id(
                     return db_id, next_category_id
 
     # Fallback defensivo a "Otro" para evitar categorías duplicadas/no confiables.
+    if existing_other_ids:
+        return existing_other_ids[0], next_category_id
     if 9 in valid_existing_ids:
         return 9, next_category_id
 
-    new_key = clean_spaces(raw_category or "Otro")
+    new_key = clean_spaces(raw_category or "Otros")
     new_key_norm = normalize_text(new_key)
     if new_key_norm in existing_by_norm:
         return existing_by_norm[new_key_norm], next_category_id
@@ -675,10 +913,13 @@ def scrape_event(
 ) -> EventScraped:
     page_html = http.fetch_text(event_url)
     slug = event_url.rstrip("/").split("/")[-1]
+    source_event_id = slug
     data_layer = extract_data_layer(page_html)
     description_html = extract_section_description_html(page_html)
-    description_text = html_to_text(description_html)
-    description_lines = split_lines(description_text)
+    # Importante: conservar saltos de línea para detectar venues/fechas por renglón.
+    description_text_raw = html_to_text(description_html)
+    description_text = sanitize_description(description_text_raw)
+    description_lines = split_lines(description_text_raw)
 
     nombre = extract_title(page_html, description_html)
     if not nombre and isinstance(data_layer, dict):
@@ -689,6 +930,13 @@ def scrape_event(
     categoria_raw = extract_category_raw(page_html, data_layer)
     imagen = extract_image_url(page_html, event_url)
     costo = summarize_price(description_text, page_html)
+    event_id = extract_event_id(data_layer)
+
+    session_occurrences = extract_sessions_from_purchase_page(
+        http=http,
+        event_id=event_id,
+        municipios=municipios,
+    )
 
     dates: List[str] = []
     times_: List[str] = []
@@ -705,13 +953,41 @@ def scrape_event(
     dates = list(dict.fromkeys(dates))
     times_ = list(dict.fromkeys(times_))
     datetimes = pair_dates_times(dates, times_)
-
     venues = infer_venues(description_lines, data_layer, municipios)
+
+    if session_occurrences:
+        datetimes = [(occ.fecha, occ.hora) for occ in session_occurrences]
+        venues_from_sessions: List[Venue] = []
+        seen_venues = set()
+        has_municipio_from_sessions = False
+        for occ in session_occurrences:
+            key = (
+                int(occ.municipio_id) if occ.municipio_id else 0,
+                normalize_text(occ.lugar),
+                normalize_text(occ.direccion),
+            )
+            if key in seen_venues:
+                continue
+            seen_venues.add(key)
+            if occ.municipio_id:
+                has_municipio_from_sessions = True
+            venues_from_sessions.append(
+                Venue(
+                    municipio_id=occ.municipio_id,
+                    municipio_nombre=occ.municipio_nombre,
+                    lugar=occ.lugar,
+                    direccion=occ.direccion,
+                )
+            )
+        # Solo reemplazar venues si las sesiones lograron mapear al menos un municipio.
+        if venues_from_sessions and has_municipio_from_sessions:
+            venues = venues_from_sessions
 
     if not datetimes:
         return EventScraped(
             url=event_url,
             slug=slug,
+            source_event_id=source_event_id,
             nombre=nombre,
             descripcion=description_text,
             costo=costo,
@@ -719,12 +995,14 @@ def scrape_event(
             imagen=imagen,
             datetimes=[],
             venues=venues,
+            session_occurrences=session_occurrences,
             motivo_no_exportable="Sin fecha/hora concreta detectada",
         )
 
     return EventScraped(
         url=event_url,
         slug=slug,
+        source_event_id=source_event_id,
         nombre=nombre,
         descripcion=description_text,
         costo=costo,
@@ -732,6 +1010,7 @@ def scrape_event(
         imagen=imagen,
         datetimes=datetimes,
         venues=venues,
+        session_occurrences=session_occurrences,
     )
 
 
@@ -817,6 +1096,7 @@ def main() -> int:
     eventos_rows: List[dict] = []
     eventos_municipios_rows: List[dict] = []
     evento_fechas_rows: List[dict] = []
+    eventos_boleterias_rows: List[dict] = []
     no_dated_rows: List[dict] = []
 
     event_id_seq = max_event_id
@@ -873,10 +1153,13 @@ def main() -> int:
         )
 
         venue_primary = scraped.venues[0]
+        image_orientation = detect_image_orientation(scraped.imagen)
         event_id_seq += 1
         eventos_rows.append(
             {
                 "id": event_id_seq,
+                "source": SOURCE_NAME,
+                "source_event_id": scraped.source_event_id,
                 "nombre": scraped.nombre,
                 "descripcion": scraped.descripcion,
                 "costo": scraped.costo,
@@ -888,6 +1171,18 @@ def main() -> int:
                 "enlaceboletos": scraped.url,
                 "boletos_por_localidad": "false",
                 "imagen": scraped.imagen,
+                "imagen_orientacion": image_orientation,
+                "activo": "true",
+            }
+        )
+        eventos_boleterias_rows.append(
+            {
+                "evento_id": event_id_seq,
+                "source": SOURCE_NAME,
+                "source_event_id": scraped.source_event_id,
+                "url_evento": scraped.url,
+                "logo_key": SOURCE_NAME,
+                "prioridad": "10",
                 "activo": "true",
             }
         )
@@ -908,8 +1203,11 @@ def main() -> int:
                 {
                     "id": evento_municipio_id_seq,
                     "event_id": event_id_seq,
+                    "source": SOURCE_NAME,
+                    "source_event_id": scraped.source_event_id,
                     "municipio_id": venue.municipio_id,
                     "lugar": venue.lugar,
+                    "localidad_key": build_localidad_key(venue.municipio_id, venue.lugar),
                     "direccion": venue.direccion,
                     "enlaceboletos": scraped.url,
                 }
@@ -931,27 +1229,59 @@ def main() -> int:
             continue
 
         # Asignación de fechas a evento_municipio_id.
-        # Si hay una sola sede: todas las fechas ahí.
-        # Si hay igual número de fechas y sedes: una a una.
-        # Si no: todas a la primera sede.
-        if len(venue_rows_for_event) == 1:
-            assignment = [venue_rows_for_event[0][0] for _ in scraped.datetimes]
-        elif len(venue_rows_for_event) == len(scraped.datetimes):
-            assignment = [row_id for row_id, _ in venue_rows_for_event]
-        else:
-            assignment = [venue_rows_for_event[0][0] for _ in scraped.datetimes]
+        # Prioridad:
+        # 1) Si hay sesiones detalladas (arraySesiones), mapear por venue exacto.
+        # 2) Fallback legado: reglas por cantidad.
+        if scraped.session_occurrences:
+            venue_id_by_key = {}
+            for row_id, venue in venue_rows_for_event:
+                key = (
+                    int(venue.municipio_id) if venue.municipio_id else 0,
+                    normalize_text(venue.lugar),
+                    normalize_text(venue.direccion),
+                )
+                venue_id_by_key[key] = row_id
 
-        for (fecha, hora), evento_municipio_id in zip(scraped.datetimes, assignment):
-            evento_fecha_id_seq += 1
-            evento_fechas_rows.append(
-                {
-                    "id": evento_fecha_id_seq,
-                    "evento_municipio_id": evento_municipio_id,
-                    "fecha": fecha,
-                    "horainicio": hora,
-                    "mismahora": "false",
-                }
-            )
+            fallback_venue_id = venue_rows_for_event[0][0]
+            for occ in scraped.session_occurrences:
+                venue_key = (
+                    int(occ.municipio_id) if occ.municipio_id else 0,
+                    normalize_text(occ.lugar),
+                    normalize_text(occ.direccion),
+                )
+                evento_municipio_id = venue_id_by_key.get(venue_key, fallback_venue_id)
+                evento_fecha_id_seq += 1
+                evento_fechas_rows.append(
+                    {
+                        "id": evento_fecha_id_seq,
+                        "evento_municipio_id": evento_municipio_id,
+                        "source": SOURCE_NAME,
+                        "fecha": occ.fecha,
+                        "horainicio": occ.hora,
+                        "mismahora": "false",
+                    }
+                )
+        else:
+            # Fallback legado para fuentes sin sessions detalladas.
+            if len(venue_rows_for_event) == 1:
+                assignment = [venue_rows_for_event[0][0] for _ in scraped.datetimes]
+            elif len(venue_rows_for_event) == len(scraped.datetimes):
+                assignment = [row_id for row_id, _ in venue_rows_for_event]
+            else:
+                assignment = [venue_rows_for_event[0][0] for _ in scraped.datetimes]
+
+            for (fecha, hora), evento_municipio_id in zip(scraped.datetimes, assignment):
+                evento_fecha_id_seq += 1
+                evento_fechas_rows.append(
+                    {
+                        "id": evento_fecha_id_seq,
+                        "evento_municipio_id": evento_municipio_id,
+                        "source": SOURCE_NAME,
+                        "fecha": fecha,
+                        "horainicio": hora,
+                        "mismahora": "false",
+                    }
+                )
 
         if idx % 10 == 0:
             print(f"[INFO] Procesados {idx}/{len(event_urls)} eventos de frontpage...")
@@ -960,6 +1290,8 @@ def main() -> int:
 
     eventos_headers = [
         "id",
+        "source",
+        "source_event_id",
         "nombre",
         "descripcion",
         "costo",
@@ -971,15 +1303,36 @@ def main() -> int:
         "enlaceboletos",
         "boletos_por_localidad",
         "imagen",
+        "imagen_orientacion",
         "activo",
     ]
-    eventos_municipios_headers = ["id", "event_id", "municipio_id", "lugar", "direccion", "enlaceboletos"]
-    evento_fechas_headers = ["id", "evento_municipio_id", "fecha", "horainicio", "mismahora"]
+    eventos_municipios_headers = [
+        "id",
+        "event_id",
+        "source",
+        "source_event_id",
+        "municipio_id",
+        "lugar",
+        "localidad_key",
+        "direccion",
+        "enlaceboletos",
+    ]
+    evento_fechas_headers = ["id", "evento_municipio_id", "source", "fecha", "horainicio", "mismahora"]
+    eventos_boleterias_headers = [
+        "evento_id",
+        "source",
+        "source_event_id",
+        "url_evento",
+        "logo_key",
+        "prioridad",
+        "activo",
+    ]
     no_dated_headers = ["url", "nombre", "categoria_raw", "motivo", "descripcion_preview"]
 
     write_csv(export_dir / EVENTOS_CSV, eventos_headers, eventos_rows)
     write_csv(export_dir / EVENTOS_MUNICIPIOS_CSV, eventos_municipios_headers, eventos_municipios_rows)
     write_csv(export_dir / EVENTO_FECHAS_CSV, evento_fechas_headers, evento_fechas_rows)
+    write_csv(export_dir / EVENTOS_BOLETERIAS_CSV, eventos_boleterias_headers, eventos_boleterias_rows)
     write_csv(export_dir / NO_DATED_CSV, no_dated_headers, no_dated_rows)
     total_new_categories = write_category_sql(export_dir / CATEGORIAS_SQL, categories_new)
 
@@ -988,6 +1341,7 @@ def main() -> int:
     print(f"Filas {EVENTOS_CSV}: {len(eventos_rows)}")
     print(f"Filas {EVENTOS_MUNICIPIOS_CSV}: {len(eventos_municipios_rows)}")
     print(f"Filas {EVENTO_FECHAS_CSV}: {len(evento_fechas_rows)}")
+    print(f"Filas {EVENTOS_BOLETERIAS_CSV}: {len(eventos_boleterias_rows)}")
     print(f"Filas {NO_DATED_CSV}: {len(no_dated_rows)}")
     print(f"Filas {CATEGORIAS_SQL} (categorías nuevas): {total_new_categories}")
 
@@ -995,6 +1349,7 @@ def main() -> int:
     print(f"Total eventos exportados: {len(eventos_rows)}")
     print(f"Total venues (eventos_municipios): {len(eventos_municipios_rows)}")
     print(f"Total fechas (eventoFechas): {len(evento_fechas_rows)}")
+    print(f"Total links de boletería: {len(eventos_boleterias_rows)}")
     print(f"Total items sin fecha: {len(no_dated_rows)}")
     print(f"Total categorías nuevas detectadas: {total_new_categories}")
 

@@ -1,0 +1,41 @@
+name: eventos-sync-prticket
+
+on:
+  schedule:
+    # Puerto Rico (AST, UTC-4): 12:00 AM y 12:00 PM
+    # UTC equivale a 04:00 y 16:00.
+    - cron: "0 4,16 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: eventos-sync-prticket
+  cancel-in-progress: false
+
+jobs:
+  sync-prticket:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate env
+        run: |
+          test -n "$SUPABASE_URL" || (echo "Missing SUPABASE_URL secret" && exit 1)
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || (echo "Missing SUPABASE_SERVICE_ROLE_KEY secret" && exit 1)
+
+      - name: Scrape PRticket
+        run: python3 tools/scrapers/prticket/scrape_prticket.py
+
+      - name: Sync to Supabase
+        run: python3 tools/scrapers/prticket/sync_prticket_to_supabase.py

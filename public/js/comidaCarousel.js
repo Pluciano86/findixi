@@ -2,6 +2,7 @@
 import { supabase } from "../shared/supabaseClient.js";
 import { resolverPlanComercio } from "../shared/planes.js";
 import { pickRandomItems } from "../shared/utils.js";
+import { t } from "./i18n.js";
 
 const COMERCIOS_SELECT = `
   id,
@@ -140,7 +141,7 @@ export async function renderComidaCarousel(containerId) {
     const comerciosAleatorios = pickRandomItems(comerciosFiltrados, maxSlides);
 
     if (comerciosAleatorios.length === 0) {
-      container.innerHTML = `<p class="text-gray-500 text-center">No hay restaurantes disponibles</p>`;
+      container.innerHTML = `<p class="text-gray-500 text-center">${t('home.noRestaurantesDisponibles')}</p>`;
       return;
     }
 
@@ -148,7 +149,7 @@ export async function renderComidaCarousel(containerId) {
     const idsComercios = comerciosAleatorios.map((c) => c.id).filter(Boolean);
     if (idsComercios.length === 0) {
       console.warn("⚠️ Comercios sin IDs válidos.");
-      container.innerHTML = `<p class="text-gray-500 text-center">No hay imágenes disponibles.</p>`;
+      container.innerHTML = `<p class="text-gray-500 text-center">${t('home.noImagenesDisponibles')}</p>`;
       return;
     }
 
@@ -161,7 +162,7 @@ export async function renderComidaCarousel(containerId) {
     if (imgError) throw imgError;
 
     if (!imagenes || imagenes.length === 0) {
-      container.innerHTML = `<p class="text-gray-500 text-center">No hay imágenes de restaurantes.</p>`;
+      container.innerHTML = `<p class="text-gray-500 text-center">${t('home.noImagenesRestaurantes')}</p>`;
       return;
     }
 
@@ -240,6 +241,6 @@ export async function renderComidaCarousel(containerId) {
     });
   } catch (err) {
     console.error("❌ Error cargando carrusel de Restaurantes:", err);
-    container.innerHTML = `<p class="text-red-500 text-center">Error al cargar los restaurantes.</p>`;
+    container.innerHTML = `<p class="text-red-500 text-center">${t('home.errorCargarRestaurantes')}</p>`;
   }
 }

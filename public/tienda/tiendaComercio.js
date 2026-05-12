@@ -4,6 +4,7 @@ const params = new URLSearchParams(window.location.search);
 const idComercio = Number(params.get('idComercio') || params.get('id'));
 const navSource = String(params.get('source') || '').trim().toLowerCase();
 const requestedProductId = String(params.get('producto') || '').trim();
+const returnToParam = String(params.get('returnTo') || '').trim();
 
 const heroBannerImg = document.getElementById('heroBannerImg');
 const heroOverlay = document.getElementById('heroOverlay');
@@ -179,6 +180,15 @@ function normalizeExternalUrl(url) {
   if (!raw) return '';
   if (/^https?:\/\//i.test(raw)) return raw;
   return `https://${raw}`;
+}
+
+function resolveSafeInternalReturnPath(rawValue = '') {
+  const raw = String(rawValue || '').trim();
+  if (!raw) return '';
+  if (!raw.startsWith('/')) return '';
+  if (/^\/\//.test(raw)) return '';
+  if (/[\r\n]/.test(raw)) return '';
+  return raw;
 }
 
 function parseMoney(value) {
@@ -1477,27 +1487,46 @@ function mountModalEvents() {
 
 function bindBackLink() {
   if (!btnVolverPerfil) return;
-  const fallbackHref = `../perfilComercio.html?id=${idComercio}`;
+  const defaultListHref = '../listadoComercios.html';
+  const safeReturnTo = resolveSafeInternalReturnPath(returnToParam);
+  const fallbackHref = navSource === 'listado'
+    ? (safeReturnTo || defaultListHref)
+    : `../perfilComercio.html?id=${idComercio}`;
   btnVolverPerfil.href = fallbackHref;
 
   btnVolverPerfil.addEventListener('click', (event) => {
     const hasHistory = window.history.length > 1;
     let cameFromPerfil = false;
+    let cameFromListado = false;
 
     try {
       if (document.referrer) {
         const refUrl = new URL(document.referrer);
         cameFromPerfil = refUrl.origin === window.location.origin
           && /\/perfilComercio\.html$/i.test(refUrl.pathname);
+        cameFromListado = refUrl.origin === window.location.origin
+          && /\/listadoComercios\.html$/i.test(refUrl.pathname);
       }
     } catch (_) {
       cameFromPerfil = false;
+      cameFromListado = false;
     }
 
     // Si vino del perfil, volver en historial evita crear una nueva entrada de perfil.
     if (navSource === 'perfil' && hasHistory && cameFromPerfil) {
       event.preventDefault();
       window.history.back();
+      return;
+    }
+
+    // Si vino del listado por búsqueda, volver al historial/listado en vez de ir al perfil.
+    if (navSource === 'listado') {
+      event.preventDefault();
+      if (hasHistory && cameFromListado) {
+        window.history.back();
+        return;
+      }
+      window.location.href = safeReturnTo || defaultListHref;
     }
   });
 }

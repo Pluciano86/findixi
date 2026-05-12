@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { t } from './i18n.js';
 
 const PUBLIC_BUCKET_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios';
 const DEFAULT_LOGO = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoPerfil.png';
@@ -394,7 +395,7 @@ function renderTeaser(posts = []) {
     const title = escapeHtml(rawTitle);
     const titleHtml = title || '&nbsp;';
     const hora = escapeHtml(formatHoraPR(post.created_at));
-    const comercioNombre = escapeHtml(String(post.comercioNombre || 'Comercio').trim());
+    const comercioNombre = escapeHtml(String(post.comercioNombre || t('home.defaultBusinessName')).trim());
     const logoUrl = escapeHtml(String(post.comercioLogo || DEFAULT_LOGO));
     const href = comercioId
       ? `${window.location.origin}${APP_PREFIX}/perfilComercio.html?id=${comercioId}`
@@ -421,7 +422,7 @@ function renderTeaser(posts = []) {
               </p>
             </div>
             <div class="mt-1 flex items-center justify-center">
-              <p class="text-[10px] text-gray-500 text-center">Publicado: ${hora || '--'}</p>
+              <p class="text-[10px] text-gray-500 text-center">${escapeHtml(t('home.publishedLabel'))}: ${hora || '--'}</p>
             </div>
           </div>
         </article>
@@ -445,7 +446,7 @@ async function loadTeaser() {
 
   loaded = true;
   lastFiltersKey = filtersKey;
-  setStatus('Cargando Lo de Hoy...');
+  setStatus(t('home.loadingLodehoy'));
   if (teaserBtnEl) {
     teaserBtnEl.href = buildLoDeHoyHref(filters);
   }
@@ -474,7 +475,7 @@ async function loadTeaser() {
           return {
             ...row,
             likeCount: Number(likesMap.get(comercioId) || 0),
-            comercioNombre: comercio.nombre || 'Comercio',
+            comercioNombre: comercio.nombre || t('home.defaultBusinessName'),
             comercioLogo: logoUrl || DEFAULT_LOGO,
             comercioIdArea: toNumber(comercio._idArea),
             comercioIdMunicipio: toNumber(comercio._idMunicipio),

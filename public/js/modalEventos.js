@@ -1,6 +1,7 @@
 // public/js/modalEventos.js
 import { getEventoI18n } from "../shared/eventoI18n.js";
 import { t } from "./i18n.js";
+import { toHorizontalEventImage } from "../shared/eventoImage.js";
 
 let eventoOriginal = null;
 const MODAL_TRANSLATING_LABELS = {
@@ -189,7 +190,7 @@ async function renderModal(evento) {
   const traduccionStatus = ensureTraduccionStatusNode();
 
   titulo.textContent = evento.nombre || fallback("modal.sinTitulo", "Evento sin título");
-  imagen.src = evento.imagen || evento.img_principal || "https://placehold.co/560x400?text=Evento";
+  imagen.src = toHorizontalEventImage(evento.imagen) || evento.img_principal || "https://placehold.co/560x400?text=Evento";
   imagen.alt = evento.nombre || fallback("modal.sinTitulo", "Evento sin título");
   ajustarImagenModalSegunProporcion(imagen);
   imagen.style.cursor = "zoom-in";

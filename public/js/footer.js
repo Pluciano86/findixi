@@ -21,19 +21,122 @@ if (isLiveServer && ruta.includes('/public/')) {
 
 const base = nivel === 0 ? './' : '../'.repeat(nivel);
 
-// Otros valores
-const hora = new Date().getHours();
-const esAlmuerzo = hora >= 6 && hora < 15;
-
-const icono = esAlmuerzo ? 'cutlery.svg' : 'beer.svg';
-const texto = esAlmuerzo ? 'Almuerzos' : 'Happy Hours';
-
-const iconBase = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/appicon/';
-
 const defaultCuentaImg = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoPerfil.png';
 const defaultCuentaTexto = t('footer.cuenta');
 let footerMensajesRealtimeChannels = [];
 let footerMensajesRefreshTimer = null;
+const footerState = {
+  activeKey: '',
+  disabledKeys: new Set(),
+  unreadKeys: new Set(),
+};
+
+function detectActiveFooterKey() {
+  const pathname = String(location.pathname || '').toLowerCase().replace(/\/+$/, '');
+  const parts = pathname.split('/').filter(Boolean);
+  const lastPart = parts[parts.length - 1] || '';
+  const fileName = !lastPart || !lastPart.includes('.') ? 'index.html' : lastPart;
+
+  if (fileName === 'index.html') return 'inicio';
+  if (fileName === 'cercademi.html') return 'cerca';
+  if (fileName === 'lodehoy.html') return 'lodehoy';
+  if (fileName === 'cuentausuario.html') return 'cuenta';
+  return '';
+}
+
+function applyFooterNavStates() {
+  const links = container?.querySelectorAll('[data-footer-key]');
+  if (!links?.length) return;
+
+  links.forEach((link) => {
+    const key = String(link.getAttribute('data-footer-key') || '').trim();
+    const isActive = key && footerState.activeKey === key;
+    const isDisabled = key && footerState.disabledKeys.has(key);
+    const hasUnread = key && footerState.unreadKeys.has(key);
+
+    const linkClasses = [
+      'footer-nav-item',
+      'group',
+      'flex',
+      'flex-col',
+      'items-center',
+      'w-1/4',
+      'text-xs',
+      'sm:text-sm',
+      'transition-all',
+      'duration-150',
+    ];
+
+    if (isDisabled) {
+      linkClasses.push('pointer-events-none', 'opacity-45');
+    } else if (isActive) {
+      linkClasses.push('text-white', 'font-semibold');
+    } else {
+      linkClasses.push('text-white/90', 'hover:text-white');
+    }
+
+    link.className = linkClasses.join(' ');
+
+    if (isActive) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
+    if (isDisabled) {
+      link.setAttribute('aria-disabled', 'true');
+      link.setAttribute('tabindex', '-1');
+    } else {
+      link.removeAttribute('aria-disabled');
+      link.removeAttribute('tabindex');
+    }
+
+    const iconWrap = link.querySelector('.footer-icon-wrap');
+    if (iconWrap) {
+      const iconWrapClasses = [
+        'footer-icon-wrap',
+        'relative',
+        'inline-flex',
+        'items-center',
+        'justify-center',
+        'w-9',
+        'h-9',
+        'rounded-full',
+        'mb-1',
+        'transition-all',
+        'duration-150',
+      ];
+      if (isActive) iconWrapClasses.push('bg-white/15', 'ring-1', 'ring-white/25');
+      if (hasUnread) iconWrapClasses.push('ring-2', 'ring-cyan-300');
+      iconWrap.className = iconWrapClasses.join(' ');
+    }
+
+    const icon = link.querySelector('.footer-icon');
+    if (icon) {
+      icon.className = `footer-icon w-7 h-7${key === 'cuenta' ? ' object-cover rounded-full' : ''}`;
+    }
+
+    const label = link.querySelector('.footer-label');
+    if (label) {
+      const labelClasses = ['footer-label', 'leading-tight'];
+      if (hasUnread && !isActive) labelClasses.push('font-semibold', 'text-cyan-200');
+      label.className = labelClasses.join(' ');
+    }
+  });
+}
+
+function setFooterDisabled(key, isDisabled) {
+  if (!key) return;
+  if (isDisabled) footerState.disabledKeys.add(key);
+  else footerState.disabledKeys.delete(key);
+  applyFooterNavStates();
+}
+
+function setFooterUnread(key, hasUnread) {
+  if (!key) return;
+  if (hasUnread) footerState.unreadKeys.add(key);
+  else footerState.unreadKeys.delete(key);
+  applyFooterNavStates();
+}
 
 function setFooterMensajesBadge(count = 0) {
   const badge = document.getElementById('footerMensajesBadge');
@@ -43,11 +146,13 @@ function setFooterMensajesBadge(count = 0) {
   if (!Number.isFinite(total) || total <= 0) {
     badge.textContent = '0';
     badge.classList.add('hidden');
+    setFooterUnread('cuenta', false);
     return;
   }
 
   badge.textContent = total > 99 ? '99+' : String(total);
   badge.classList.remove('hidden');
+  setFooterUnread('cuenta', true);
 }
 
 async function obtenerConteoMensajesPendientes({ userId, email }) {
@@ -142,6 +247,7 @@ function renderFooter() {
   if (!container) return;
 
   const maxWidth = '28rem'; // igual que max-w-md para alinear con el header/columna
+  footerState.activeKey = detectActiveFooterKey();
   container.innerHTML = `
     <footer
       data-footer-fixed
@@ -154,42 +260,49 @@ function renderFooter() {
         transform: translate(-50%, var(--footer-offset, 0px));
       ">
       <nav class="flex justify-around py-2">
-        <a href="${base}index.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
-          <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoHome.png" class="w-8 h-8 mb-1" alt="Inicio">
-          <span data-i18n="footer.inicio">Inicio</span>
+        <a href="${base}index.html" data-footer-key="inicio" class="footer-nav-item group flex flex-col items-center w-1/4 text-xs sm:text-sm">
+          <span class="footer-icon-wrap relative inline-flex items-center justify-center w-9 h-9 rounded-full mb-1">
+            <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoHome.png" class="footer-icon w-7 h-7" alt="Inicio">
+          </span>
+          <span class="footer-label leading-tight" data-i18n="footer.inicio">Inicio</span>
         </a>
-        <a href="${base}cercaDeMi.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
-          <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoNearMe.png" class="w-8 h-8 mb-1" alt="Cerca de Mi">
-          <span data-i18n="footer.cerca">Cerca de Mi</span>
+        <a href="${base}cercaDeMi.html" data-footer-key="cerca" class="footer-nav-item group flex flex-col items-center w-1/4 text-xs sm:text-sm">
+          <span class="footer-icon-wrap relative inline-flex items-center justify-center w-9 h-9 rounded-full mb-1">
+            <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoNearMe.png" class="footer-icon w-7 h-7" alt="Cerca de Mi">
+          </span>
+          <span class="footer-label leading-tight" data-i18n="footer.cerca">Cerca de Mi</span>
         </a>
-        <a href="${base}lodehoy.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
-          <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/botonLodeHoy.svg" class="w-8 h-8 mb-1" alt="Lo de Hoy">
-          <span>Lo de Hoy</span>
+        <a href="${base}lodehoy.html" data-footer-key="lodehoy" class="footer-nav-item group flex flex-col items-center w-1/4 text-xs sm:text-sm">
+          <span class="footer-icon-wrap relative inline-flex items-center justify-center w-9 h-9 rounded-full mb-1">
+            <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/botonLodeHoy.svg" class="footer-icon w-7 h-7" alt="Lo de Hoy">
+          </span>
+          <span class="footer-label leading-tight" data-i18n="footer.lodehoy">Lo de Hoy</span>
         </a>
-        <a id="enlaceMiCuenta" href="${loginPath}" class="flex flex-col items-center text-sm font-extralight w-1/4">
-          <span class="relative inline-flex mb-1">
+        <a id="enlaceMiCuenta" href="${loginPath}" data-footer-key="cuenta" class="footer-nav-item group flex flex-col items-center w-1/4 text-xs sm:text-sm">
+          <span class="footer-icon-wrap relative inline-flex items-center justify-center w-9 h-9 rounded-full mb-1">
             <img 
               id="footerImagen"
               src="${defaultCuentaImg}"
-              class="w-8 h-8"
+              class="footer-icon w-7 h-7 object-cover rounded-full"
               alt="Cuenta">
             <span
               id="footerMensajesBadge"
               class="hidden absolute -top-1 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[16px] font-semibold text-center"
             >0</span>
           </span>
-          <span id="footerTexto" data-i18n="footer.cuenta">${defaultCuentaTexto}</span>
+          <span id="footerTexto" class="footer-label leading-tight" data-i18n="footer.cuenta">${defaultCuentaTexto}</span>
         </a>
       </nav>
-      <div class="flex flex-wrap justify-center gap-x-3 gap-y-1 px-3 pb-2 text-[11px] text-white/80 border-t border-white/10">
-        <a href="${privacyPath}" class="hover:text-white underline-offset-2 hover:underline">Privacy Policy</a>
+      <div class="flex flex-wrap justify-center gap-x-3 gap-y-1 px-3 pb-2 text-[12px] text-white/95 border-t border-white/10">
+        <a href="${privacyPath}" data-i18n="footer.privacyPolicy" class="hover:text-white underline-offset-2 hover:underline">Privacy Policy</a>
         <span class="opacity-60">•</span>
-        <a href="${termsPath}" class="hover:text-white underline-offset-2 hover:underline">Terms of Service</a>
+        <a href="${termsPath}" data-i18n="footer.termsOfService" class="hover:text-white underline-offset-2 hover:underline">Terms of Service</a>
         <span class="opacity-60">•</span>
         <a href="mailto:info@findixi.com" class="hover:text-white underline-offset-2 hover:underline">info@findixi.com</a>
       </div>
     </footer>
   `;
+  applyFooterNavStates();
 }
 
 renderFooter();
@@ -216,6 +329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const cuentaImagen = document.getElementById('footerImagen');
   const cuentaTexto = document.getElementById('footerTexto');
   setFooterMensajesBadge(0);
+  setFooterDisabled('cuenta', true);
 
   if (!enlaceMiCuenta) return;
 
@@ -249,20 +363,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       setFooterMensajesBadge(totalPendientes);
       setupFooterMensajesRealtime({ userId: user.id, email: user.email });
+      setFooterDisabled('cuenta', false);
     } else {
       cuentaImagen.src = defaultCuentaImg;
+      cuentaImagen.classList.add('rounded-full', 'object-cover');
       cuentaTexto.textContent = defaultCuentaTexto;
       enlaceMiCuenta.href = loginPath;
       setFooterMensajesBadge(0);
       clearFooterMensajesRealtime();
+      setFooterDisabled('cuenta', false);
     }
   } catch (error) {
     console.error('Error verificando sesión:', error);
     cuentaImagen.src = defaultCuentaImg;
+    cuentaImagen.classList.add('rounded-full', 'object-cover');
     cuentaTexto.textContent = defaultCuentaTexto;
     enlaceMiCuenta.href = loginPath;
     setFooterMensajesBadge(0);
     clearFooterMensajesRealtime();
+    setFooterDisabled('cuenta', false);
   }
 });
 
