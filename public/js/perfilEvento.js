@@ -265,9 +265,35 @@ function costoParaVista(evento = {}) {
 }
 
 function construirTextoGps(lugar = '', municipio = '', direccion = '') {
-  const partes = [lugar, municipio, direccion].map((item) => String(item || '').trim()).filter(Boolean);
+  const lugarLimpio = limpiarLugarMostrado(lugar, municipio, direccion);
+  const direccionLimpia = limpiarDireccionMostrada(direccion, municipio, lugarLimpio);
+  const partes = [lugarLimpio, municipio, direccionLimpia].map((item) => String(item || '').trim()).filter(Boolean);
   if (!partes.length) return '';
   return `${partes.join(', ')}, Puerto Rico`;
+}
+
+function esLugarGenerico(valor = '') {
+  const norm = normalizeText(valor).replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  return !norm || ['multiple location', 'multiple locations', 'multiple'].includes(norm);
+}
+
+function limpiarLugarMostrado(lugar = '', municipio = '', direccion = '') {
+  const lugarTxt = String(lugar || '').trim();
+  if (!esLugarGenerico(lugarTxt)) return lugarTxt;
+  const direccionTxt = String(direccion || '').trim();
+  if (direccionTxt && !esLugarGenerico(direccionTxt)) return direccionTxt;
+  return String(municipio || '').trim();
+}
+
+function limpiarDireccionMostrada(direccion = '', municipio = '', lugar = '') {
+  const direccionTxt = String(direccion || '').trim();
+  if (!direccionTxt) return '';
+  const norm = normalizeText(direccionTxt);
+  if (norm.startsWith('. -') || norm === '.' || norm === '-' || norm.includes('multiple location')) return '';
+  const municipioNorm = normalizeText(municipio || '');
+  const lugarNorm = normalizeText(lugar || '');
+  if (municipioNorm && norm.includes(municipioNorm) && lugarNorm && norm === lugarNorm) return '';
+  return direccionTxt;
 }
 
 async function resolverCoordenadasEvento(municipioId, lugar, direccion) {
@@ -490,17 +516,17 @@ async function cargarEvento() {
         return;
       }
       lugarEventoSectionEl.classList.remove('hidden');
-      const lugarTexto = fechaItem.lugar || fechaItem.municipioNombre || t('area.noDisponible');
-      const direccionTexto = fechaItem.direccion || '';
+      const lugarTexto = limpiarLugarMostrado(fechaItem.lugar, fechaItem.municipioNombre, fechaItem.direccion) || t('area.noDisponible');
+      const direccionTexto = limpiarDireccionMostrada(fechaItem.direccion, fechaItem.municipioNombre, lugarTexto);
       lugarEventoTextoEl.textContent = lugarTexto;
       direccionEventoTextoEl.textContent = direccionTexto;
 
-      const coords = await resolverCoordenadasEvento(fechaItem.municipio_id, fechaItem.lugar, fechaItem.direccion);
+      const coords = await resolverCoordenadasEvento(fechaItem.municipio_id, lugarTexto, direccionTexto || fechaItem.direccion);
       if (coords) {
         btnEventoGoogleMapsEl.href = `https://www.google.com/maps?q=${coords.lat},${coords.lon}`;
         btnEventoWazeEl.href = `https://waze.com/ul?ll=${coords.lat},${coords.lon}&navigate=yes`;
       } else {
-        const queryText = construirTextoGps(fechaItem.lugar, fechaItem.municipioNombre, fechaItem.direccion);
+        const queryText = construirTextoGps(lugarTexto, fechaItem.municipioNombre, direccionTexto || fechaItem.direccion);
         const encoded = encodeURIComponent(queryText || `${evento.nombre || 'Evento'} Puerto Rico`);
         btnEventoGoogleMapsEl.href = `https://www.google.com/maps/search/?api=1&query=${encoded}`;
         btnEventoWazeEl.href = `https://waze.com/ul?q=${encoded}&navigate=yes`;
@@ -564,7 +590,7 @@ async function cargarEvento() {
           const fechaDetalle = obtenerPartesFecha(item.fecha);
           const horaTxt = formatearHora(item.horainicio) || t('area.noDisponible');
           const municipioTxt = item.municipioNombre || t('area.noDisponible');
-          const lugarTxt = item.lugar || t('area.noDisponible');
+          const lugarTxt = limpiarLugarMostrado(item.lugar, item.municipioNombre, item.direccion) || t('area.noDisponible');
           return `
             <li>
               <button

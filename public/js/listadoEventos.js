@@ -16,6 +16,7 @@ const btnHoy = document.getElementById('btnHoy');
 const btnSemana = document.getElementById('btnSemana');
 const btnMes = document.getElementById('btnMes');
 const btnGratis = document.getElementById('btnGratis');
+const filtroBoleteriasEl = document.getElementById('filtroBoleterias');
 
 // Estado
 let eventos = [];
@@ -25,6 +26,8 @@ let filtroHoy = false;
 let filtroSemana = false;
 let filtroMes = false;
 let filtroGratis = false;
+let filtroBoleteriasSeleccionadas = new Set();
+let boleteriasDisponibles = [];
 let renderVersion = 0;
 const focusDetectCache = new Map();
 const boleteriasByEventoId = new Map();
@@ -174,6 +177,18 @@ function normalizarBoleteriaKey(value = '') {
   return String(value || '').trim().toLowerCase();
 }
 
+function getBoleteriaLabel(key = '') {
+  const brand = BOLETERIA_BRAND[key];
+  if (brand?.label) return brand.label;
+  return key ? key.charAt(0).toUpperCase() + key.slice(1) : 'Boletería';
+}
+
+function getBoleteriaSortRank(key = '') {
+  const order = ['prticket', 'prtickets', 'ticketera', 'pietix'];
+  const idx = order.indexOf(key);
+  return idx >= 0 ? idx : 999;
+}
+
 function getBoleteriasDeEvento(eventoId) {
   const list = boleteriasByEventoId.get(Number(eventoId)) || [];
   const unique = [];
@@ -185,6 +200,74 @@ function getBoleteriasDeEvento(eventoId) {
     unique.push(item);
   }
   return unique;
+}
+
+function getBoleteriaKeysDeEvento(eventoId) {
+  return getBoleteriasDeEvento(eventoId)
+    .map((item) => normalizarBoleteriaKey(item.logo_key || item.source || ''))
+    .filter(Boolean);
+}
+
+function actualizarBoleteriasDisponibles() {
+  const keys = new Set();
+  for (const [, items] of boleteriasByEventoId) {
+    for (const item of items || []) {
+      const key = normalizarBoleteriaKey(item.logo_key || item.source || '');
+      if (key) keys.add(key);
+    }
+  }
+  boleteriasDisponibles = Array.from(keys).sort((a, b) => {
+    const rank = getBoleteriaSortRank(a) - getBoleteriaSortRank(b);
+    if (rank !== 0) return rank;
+    return getBoleteriaLabel(a).localeCompare(getBoleteriaLabel(b));
+  });
+
+  const nextSelected = new Set();
+  for (const key of filtroBoleteriasSeleccionadas) {
+    if (keys.has(key)) nextSelected.add(key);
+  }
+  filtroBoleteriasSeleccionadas = nextSelected;
+}
+
+function renderFiltroBoleterias() {
+  if (!filtroBoleteriasEl) return;
+  if (!boleteriasDisponibles.length) {
+    filtroBoleteriasEl.innerHTML = '';
+    return;
+  }
+
+  filtroBoleteriasEl.innerHTML = boleteriasDisponibles
+    .map((key) => {
+      const checked = filtroBoleteriasSeleccionadas.has(key);
+      const brand = BOLETERIA_BRAND[key];
+      const label = getBoleteriaLabel(key);
+      const logoHtml = brand?.logo
+        ? `<img src="${brand.logo}" alt="${label}" class="h-4 w-auto object-contain" loading="lazy" />`
+        : `<i class="fa-solid fa-ticket text-[11px]"></i>`;
+
+      return `
+        <label class="inline-flex w-full items-center justify-center rounded-full h-9 cursor-pointer transition ${
+          checked
+            ? 'border-2 border-[#23B4E9] bg-sky-50 text-sky-700 shadow-sm ring-1 ring-sky-200'
+            : 'border-transparent bg-transparent text-slate-600'
+        }">
+          <input type="checkbox" data-boleteria-key="${key}" class="sr-only" ${checked ? 'checked' : ''} />
+          ${logoHtml}
+        </label>
+      `;
+    })
+    .join('');
+
+  filtroBoleteriasEl.querySelectorAll('input[data-boleteria-key]').forEach((input) => {
+    input.addEventListener('change', (e) => {
+      const key = normalizarBoleteriaKey(e.target?.getAttribute('data-boleteria-key') || '');
+      if (!key) return;
+      if (e.target.checked) filtroBoleteriasSeleccionadas.add(key);
+      else filtroBoleteriasSeleccionadas.delete(key);
+      renderFiltroBoleterias();
+      renderizarEventos();
+    });
+  });
 }
 
 function renderBoleteriasInline(eventoId) {
@@ -332,6 +415,9 @@ async function cargarEventos() {
       }
     }
   }
+
+  actualizarBoleteriasDisponibles();
+  renderFiltroBoleterias();
 
   const hoyISO = new Date().toISOString().slice(0, 10);
 
@@ -798,14 +884,18 @@ async function renderizarEventos() {
     const matchTexto = !texto || normalizarTexto(evento.nombre).includes(texto);
     const matchMuni = !muni || (evento.municipioIds || []).includes(Number(muni));
     const matchCat = !cat || evento.categoria == cat;
+    const eventoBoleterias = getBoleteriaKeysDeEvento(evento.id);
+    const matchBoleteria =
+      filtroBoleteriasSeleccionadas.size === 0 ||
+      eventoBoleterias.some((key) => filtroBoleteriasSeleccionadas.has(key));
     const fechasEvaluacion = obtenerFechasVisibles(evento, muniId);
     const matchFiltro = hayFiltroPeriodo ? fechasEvaluacion.length > 0 : true;
 
     if (filtroGratis) {
-      return matchTexto && matchMuni && matchCat && matchFiltro && evento.gratis === true;
+      return matchTexto && matchMuni && matchCat && matchBoleteria && matchFiltro && evento.gratis === true;
     }
 
-    return matchTexto && matchMuni && matchCat && matchFiltro;
+    return matchTexto && matchMuni && matchCat && matchBoleteria && matchFiltro;
   });
 
   if (orden === 'fechaAsc') {

@@ -59,7 +59,23 @@ def clean_spaces(value: str) -> str:
 
 
 def sanitize_description(value: str) -> str:
-    cleaned = clean_spaces(value or "")
+    text = (value or "").replace("\r\n", "\n").replace("\r", "\n")
+    lines = [clean_spaces(line) for line in text.split("\n")]
+    compact: List[str] = []
+    prev_blank = False
+    for line in lines:
+        if not line:
+            if not prev_blank:
+                compact.append("")
+            prev_blank = True
+            continue
+        compact.append(line)
+        prev_blank = False
+    while compact and compact[0] == "":
+        compact.pop(0)
+    while compact and compact[-1] == "":
+        compact.pop()
+    cleaned = "\n".join(compact).strip()
     return cleaned if cleaned else ""
 
 
@@ -181,7 +197,25 @@ def has_explicit_non_pr_marker(text: str) -> bool:
         return False
     if " puerto rico " in norm:
         return False
+    # Evitar falso positivo con el municipio Florida (PR).
+    if " florida pr " in norm or " florida puerto rico " in norm or " municipio florida " in norm:
+        return False
     non_pr_markers = (
+        " florida usa ",
+        " florida united states ",
+        " miami fl ",
+        " miami florida ",
+        " orlando fl ",
+        " orlando florida ",
+        " tampa fl ",
+        " tampa florida ",
+        " jacksonville fl ",
+        " jacksonville florida ",
+        " fort lauderdale fl ",
+        " fort lauderdale florida ",
+        " west palm beach fl ",
+        " west palm beach florida ",
+        " miami dade ",
         " mexico ",
         " cdmx ",
         " ciudad de mexico ",
@@ -274,12 +308,44 @@ def infer_category_label(raw_category: str, nombre: str, descripcion: str) -> st
     raw = clean_spaces(raw_category)
     raw_norm = normalize_text(raw)
     generic = {"otro", "otros", "otra", "otras", "other", "others", "general", "n/a", "na"}
+    broad_labels = {
+        "artes escenicas",
+        "artes escénicas",
+        "cultura",
+        "cultura / teatro",
+        "culture",
+        "theater",
+        "theatre",
+        "show",
+        "evento",
+        "events",
+    }
     if raw and raw_norm not in generic:
+        text_with_raw = normalize_text(" ".join([nombre or "", descripcion or "", raw or ""]))
+        if raw_norm in broad_labels:
+            if any(k in text_with_raw for k in ["comic con", "comicon", "cosplay", "otaku", "anime", "manga"]):
+                return "Comicon / Cosplay"
+            if any(k in text_with_raw for k in ["magia", "ilusionismo", "ilusionista", "mago", "mentalista", "mentalismo", "dato curioso"]):
+                return "Magia / Ilusionismo"
+            if any(k in text_with_raw for k in ["charla", "conferencia", "conversatorio", "seminario", "workshop", "masterclass", "relaciones"]):
+                return "Charla / Conferencia"
+            if any(k in text_with_raw for k in ["experiencia", "inmersiva", "inmersivo", "retiro", "wellness", "mindfulness", "karmaval"]):
+                return "Experiencia"
         return raw
 
     text = normalize_text(" ".join([nombre or "", descripcion or "", raw or ""]))
     if not text:
         return "Otros"
+
+    # Reglas específicas de negocio (prioridad alta).
+    if any(k in text for k in ["comic con", "comicon", "cosplay", "otaku", "anime", "manga"]):
+        return "Comicon / Cosplay"
+    if any(k in text for k in ["magia", "ilusionismo", "ilusionista", "mago", "mentalista", "mentalismo", "dato curioso"]):
+        return "Magia / Ilusionismo"
+    if any(k in text for k in ["charla", "conferencia", "conversatorio", "seminario", "workshop", "masterclass", "relaciones"]):
+        return "Charla / Conferencia"
+    if any(k in text for k in ["experiencia", "inmersiva", "inmersivo", "retiro", "wellness", "mindfulness", "karmaval"]):
+        return "Experiencia"
 
     keyword_to_label = [
         (["gaming", "esport", "videojuego", "game"], "Gaming"),
@@ -316,7 +382,11 @@ def map_category_id(
         (4, ["fair", "feria", "expo"]),
         (5, ["family", "familiar", "kids", "ninos", "niños"]),
         (6, ["party", "nightclub", "discoteca", "club", "bailable"]),
-        (7, ["culture", "cultura", "theater", "theatre", "teatro", "musical", "artes escenicas", "magia"]),
+        (0, ["magia", "ilusionismo", "ilusionista", "mago", "mentalista", "mentalismo", "dato curioso"]),
+        (0, ["comicon", "comic con", "cosplay", "otaku", "anime", "manga"]),
+        (0, ["charla", "conferencia", "conversatorio", "seminario", "workshop", "masterclass", "relaciones"]),
+        (0, ["experiencia", "inmersiva", "inmersivo", "retiro", "wellness", "mindfulness", "karmaval"]),
+        (7, ["culture", "cultura", "theater", "theatre", "teatro", "musical", "artes escenicas"]),
         (8, ["food", "gastronomic", "gastronomico", "gastronómico", "culinary"]),
         (10, ["comedy", "comedia", "standup", "stand up", "impro"]),
         (12, ["horror", "terror"]),

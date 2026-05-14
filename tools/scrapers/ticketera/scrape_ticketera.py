@@ -97,7 +97,23 @@ def clean_spaces(value: str) -> str:
 
 
 def sanitize_description(value: str) -> str:
-    cleaned = clean_spaces(value or "")
+    text = (value or "").replace("\r\n", "\n").replace("\r", "\n")
+    lines = [clean_spaces(line) for line in text.split("\n")]
+    compact: List[str] = []
+    prev_blank = False
+    for line in lines:
+        if not line:
+            if not prev_blank:
+                compact.append("")
+            prev_blank = True
+            continue
+        compact.append(line)
+        prev_blank = False
+    while compact and compact[0] == "":
+        compact.pop(0)
+    while compact and compact[-1] == "":
+        compact.pop()
+    cleaned = "\n".join(compact).strip()
     return cleaned if cleaned else ""
 
 
@@ -219,8 +235,26 @@ def has_explicit_non_pr_marker(text: str) -> bool:
     )
     if any(marker in norm for marker in pr_markers):
         return False
+    # Evitar falso positivo con el municipio Florida (PR).
+    if " florida pr " in norm or " florida puerto rico " in norm or " municipio florida " in norm:
+        return False
 
     non_pr_markers = (
+        " florida usa ",
+        " florida united states ",
+        " miami fl ",
+        " miami florida ",
+        " orlando fl ",
+        " orlando florida ",
+        " tampa fl ",
+        " tampa florida ",
+        " jacksonville fl ",
+        " jacksonville florida ",
+        " fort lauderdale fl ",
+        " fort lauderdale florida ",
+        " west palm beach fl ",
+        " west palm beach florida ",
+        " miami dade ",
         " mexico ",
         " cdmx ",
         " ciudad de mexico ",
@@ -408,6 +442,24 @@ def extract_listing_entries(list_html: str) -> List[dict]:
     return rows
 
 
+def extract_discovery_urls(list_html: str) -> List[str]:
+    urls: List[str] = []
+    seen = set()
+    for href in re.findall(r'href=["\']([^"\']+)["\']', list_html, flags=re.I):
+        href = clean_spaces(html.unescape(href))
+        if not href:
+            continue
+        if "/events/category/" not in href and "/events/venue/" not in href:
+            continue
+        full = urllib.parse.urljoin("https://www.ticketera.com/", href)
+        key = full.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        urls.append(full)
+    return urls
+
+
 def extract_detail_title(page_html: str, fallback: str) -> str:
     og_title = extract_meta_content(page_html, "property", "og:title")
     if og_title:
@@ -426,6 +478,15 @@ def extract_description(page_html: str) -> str:
 
 
 def extract_keywords(page_html: str) -> str:
+    # Preferir el bloque de categoría visible del evento (más confiable que meta keywords SEO).
+    m_sidebar = re.search(
+        r'(?is)<li class="item sidebar_event_keywords"[^>]*>.*?<span>(.*?)</span>',
+        page_html,
+    )
+    if m_sidebar:
+        sidebar_text = clean_spaces(html_to_text(m_sidebar.group(1)))
+        if sidebar_text:
+            return sidebar_text
     return extract_meta_content(page_html, "name", "keywords")
 
 
@@ -491,29 +552,66 @@ def extract_showings(page_html: str) -> List[dict]:
 
 def infer_category_label(raw_category: str, nombre: str, descripcion: str) -> str:
     raw = clean_spaces(raw_category)
-    raw_norm = normalize_text(raw)
-    generic = {"otro", "otros", "otra", "otras", "other", "others", "general", "n/a", "na"}
-    if raw and raw_norm not in generic:
-        return raw
-
     text = normalize_text(" ".join([nombre or "", descripcion or "", raw or ""]))
     if not text:
         return "Otros"
+
+    # Reglas específicas de negocio (prioridad alta).
+    if any(k in text for k in ["comic con", "comicon", "cosplay", "otaku", "anime", "manga"]):
+        return "Comicon / Cosplay"
+    if any(k in text for k in ["magia", "ilusionismo", "ilusionista", "mago", "mentalista", "mentalismo", "dato curioso"]):
+        return "Magia / Ilusionismo"
+    if any(k in text for k in ["charla", "conferencia", "conversatorio", "seminario", "workshop", "masterclass", "relaciones"]):
+        return "Charla / Conferencia"
+    if any(k in text for k in ["experiencia", "inmersiva", "inmersivo", "retiro", "wellness", "mindfulness", "karmaval"]):
+        return "Experiencia"
 
     keyword_to_label = [
         (["gaming", "esport", "videojuego", "game"], "Gaming"),
         (["fair", "feria", "expo", "convencion", "convención"], "Ferias"),
         (["comedy", "comedia", "standup", "stand up", "impro"], "Comedia"),
         (["sports", "deporte", "bsn", "baloncesto", "basket", "futbol"], "Deportes"),
-        (["concert", "concierto", "musica", "música"], "Conciertos"),
+        ([
+            "concert", "concierto", "musica", "música", "tour", "world tour", "music hall",
+            "orquesta", "banda", "salsa", "merengue", "reggaeton", "sinfonico", "sinfonica",
+            "symphony", "symphonic", "filarmonica", "filarmonica"
+        ], "Conciertos"),
         (["culture", "cultura", "theater", "teatro", "musical"], "Cultura / Teatro"),
-        (["food", "gastronomic", "gastronomico", "culinary"], "Gastronomía"),
+        ([
+            "food", "gastronomic", "gastronomico", "gastronomia", "gastronomy", "culinary",
+            "mojito", "mojitos", "coctel", "cocteles", "cocktail", "cocktails", "mixologia", "sabor"
+        ], "Gastronomía"),
         (["horror", "terror"], "Terror"),
         (["family", "familiar", "kids", "ninos", "niños"], "Familiar"),
     ]
     for keywords, label in keyword_to_label:
         if any(normalize_text(k) in text for k in keywords):
             return label
+
+    # Solo aceptar categoría "raw" cuando parece realmente una categoría corta
+    # (evita usar meta keywords largos como categoría literal).
+    raw_norm = normalize_text(raw)
+    generic = {"otro", "otros", "otra", "otras", "other", "others", "general", "n/a", "na"}
+    raw_word_count = len(raw.split()) if raw else 0
+    if (
+        raw
+        and raw_norm not in generic
+        and "," not in raw
+        and len(raw) <= 42
+        and raw_word_count <= 4
+    ):
+        return raw
+
+    # Heurística final: venue de concierto sin señales de comedia/deportes.
+    if (
+        ("coliseo" in text or "music hall" in text or "cpr" in text)
+        and "comedia" not in text
+        and "standup" not in text
+        and "bsn" not in text
+        and "deporte" not in text
+    ):
+        return "Conciertos"
+
     return "Otros"
 
 
@@ -535,8 +633,19 @@ def map_category_id(
         (4, ["fair", "feria", "expo"]),
         (5, ["family", "familiar", "kids", "ninos", "niños"]),
         (6, ["party", "nightclub", "discoteca", "club", "bailable"]),
-        (7, ["culture", "cultura", "theater", "theatre", "teatro", "musical", "artes escenicas", "magia"]),
-        (8, ["food", "gastronomic", "gastronomico", "gastronómico", "culinary"]),
+        (0, ["magia", "ilusionismo", "ilusionista", "mago", "mentalista", "mentalismo", "dato curioso"]),
+        (0, ["comicon", "comic con", "cosplay", "otaku", "anime", "manga"]),
+        (0, ["charla", "conferencia", "conversatorio", "seminario", "workshop", "masterclass", "relaciones"]),
+        (0, ["experiencia", "inmersiva", "inmersivo", "retiro", "wellness", "mindfulness", "karmaval"]),
+        (7, ["culture", "cultura", "theater", "theatre", "teatro", "musical", "artes escenicas"]),
+        (
+            8,
+            [
+                "food", "gastronomic", "gastronomico", "gastronómico", "gastronomia",
+                "gastronomy", "culinary", "mojito", "mojitos", "coctel", "cocteles",
+                "cocktail", "cocktails", "mixologia", "sabor"
+            ],
+        ),
         (10, ["comedy", "comedia", "standup", "stand up", "impro"]),
         (12, ["horror", "terror"]),
         (0, ["gaming", "gamer", "esport", "e-sport"]),
@@ -544,44 +653,26 @@ def map_category_id(
     ]
 
     inferred_label = infer_category_label(raw_category, nombre_evento, descripcion_evento)
-    candidates: List[str] = []
-    for value in [clean_spaces(raw_category), inferred_label, "Otros"]:
-        if value and value not in candidates:
-            candidates.append(value)
+    text_for_mapping = normalize_text(" ".join([raw_category or "", inferred_label or "", nombre_evento or "", descripcion_evento or ""]))
 
-    for label in candidates:
-        raw = normalize_text(label)
-        if not raw:
-            continue
-        if raw in existing_by_norm:
-            return existing_by_norm[raw], next_category_id
+    inferred_norm = normalize_text(inferred_label)
+    if inferred_norm and inferred_norm in existing_by_norm:
+        return existing_by_norm[inferred_norm], next_category_id
 
-        for category_id, keywords in mapping_keywords:
-            if any(normalize_text(keyword) in raw for keyword in keywords):
-                if category_id and category_id in valid_existing_ids:
-                    return category_id, next_category_id
-                for norm_name, db_id in existing_by_norm.items():
-                    if any(normalize_text(keyword) in norm_name for keyword in keywords):
-                        return db_id, next_category_id
-
-        if raw in new_categories:
-            return new_categories[raw], next_category_id
-
-        if raw not in {"otro", "otros", "other", "others"}:
-            assigned = next_category_id
-            new_categories[raw] = assigned
-            return assigned, assigned + 1
+    for category_id, keywords in mapping_keywords:
+        if any(normalize_text(keyword) in text_for_mapping for keyword in keywords):
+            if category_id and category_id in valid_existing_ids:
+                return category_id, next_category_id
+            for norm_name, db_id in existing_by_norm.items():
+                if any(normalize_text(keyword) in norm_name for keyword in keywords):
+                    return db_id, next_category_id
 
     if "otros" in existing_by_norm:
         return existing_by_norm["otros"], next_category_id
     if 9 in valid_existing_ids:
         return 9, next_category_id
-
-    if "otros" in new_categories:
-        return new_categories["otros"], next_category_id
-    assigned = next_category_id
-    new_categories["otros"] = assigned
-    return assigned, assigned + 1
+    fallback_existing = min(valid_existing_ids) if valid_existing_ids else 1
+    return fallback_existing, next_category_id
 
 
 def write_csv(path: Path, headers: List[str], rows: List[dict]) -> None:
@@ -723,7 +814,28 @@ def main() -> int:
     max_evento_fecha_id = supabase.get_max_id("eventoFechas")
 
     list_html = http.fetch_text(LIST_URL)
-    listing_entries = extract_listing_entries(list_html)
+    listing_entries_map: Dict[str, dict] = {}
+
+    def add_entries_from_html(page_html: str) -> None:
+        for row in extract_listing_entries(page_html):
+            url = clean_spaces(row.get("url", ""))
+            if not url:
+                continue
+            key = url.lower()
+            if key not in listing_entries_map:
+                listing_entries_map[key] = row
+
+    add_entries_from_html(list_html)
+
+    discovery_urls = extract_discovery_urls(list_html)
+    for page_url in discovery_urls:
+        try:
+            page_html = http.fetch_text(page_url, extra_headers={"Referer": LIST_URL})
+            add_entries_from_html(page_html)
+        except Exception as exc:
+            print(f"[WARN] No se pudo cargar página de descubrimiento {page_url}: {exc}", file=sys.stderr)
+
+    listing_entries = list(listing_entries_map.values())
     if not listing_entries:
         print("ERROR: No se detectaron eventos en Ticketera /events.", file=sys.stderr)
         return 1

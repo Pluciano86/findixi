@@ -1,46 +1,45 @@
 id,event_id,source,source_event_id,municipio_id,lugar,localidad_key,direccion,enlaceboletos
-379,67,prticket,5kfaderun,65,Colegio de Barberos y Estilistas de Puerto Rico,65|colegio de barberos y estilistas de puerto rico,"Colegio de Barberos y Estilistas de Puerto Rico, San Juan, San Juan",https://boletos.prticket.com/events/en/5kfaderun
-380,68,prticket,aguadillapickleballcenter,3,Aguadilla Pickleball Center,3|aguadilla pickleball center,"Carr PR-442 km 4.2, Aguadilla, 00603, Puerto Rico - Aguadilla (Aguadilla)",https://boletos.prticket.com/events/en/aguadillapickleballcenter
-381,69,prticket,algoextra-9,65,Café Teatro El Shorty,65|cafe teatro el shorty,San Juan @ Café Teatro El Shorty,https://boletos.prticket.com/events/en/algoextra-9
-382,70,prticket,asalto,65,Café Teatro El Shorty,65|cafe teatro el shorty,San Juan @ Café Teatro El Shorty,https://boletos.prticket.com/events/en/asalto
-383,71,prticket,best-jevas,65,Café Teatro El Shorty,65|cafe teatro el shorty,San Juan @ Café Teatro El Shorty,https://boletos.prticket.com/events/en/best-jevas
-384,72,prticket,campamentoxplore360,11,Parque de las Ciencias,11|parque de las ciencias,Bayamón @ Parque de las Ciencias,https://boletos.prticket.com/events/en/campamentoxplore360
-385,73,prticket,cangrejeros2026,65,Coliseo Roberto Clemente,65|coliseo roberto clemente,San Juan @ Coliseo Roberto Clemente,https://boletos.prticket.com/events/en/cangrejeros2026
-386,74,prticket,comediageek,13,Titan Games,13|titan games,Caguas @ Titan Games,https://boletos.prticket.com/events/en/comediageek
-387,75,prticket,comicosanonimos,65,MULTIPLE LOCATION,65|multiple location,San Juan @ MULTIPLE LOCATION,https://boletos.prticket.com/events/en/comicosanonimos
-388,75,prticket,comicosanonimos,30,Guayama,30|guayama,. - San Juan (San Juan),https://boletos.prticket.com/events/en/comicosanonimos
-389,75,prticket,comicosanonimos,50,Mayagüez,50|mayaguez,. - San Juan (San Juan),https://boletos.prticket.com/events/en/comicosanonimos
-390,76,prticket,cortaditoocapuchino,65,Abracadabra Counter Cafe,65|abracadabra counter cafe,San Juan @ Abracadabra Counter Cafe,https://boletos.prticket.com/events/en/cortaditoocapuchino
-391,77,prticket,disneyonice,65,Gala de Apertura,65|gala de apertura,San Juan @ Gala de Apertura,https://boletos.prticket.com/events/en/disneyonice
-392,77,prticket,disneyonice,65,Coliseo Roberto Clemente,65|coliseo roberto clemente,San Juan @ Coliseo Roberto Clemente,https://boletos.prticket.com/events/en/disneyonice
-393,77,prticket,disneyonice,65,Nueva Función,65|nueva funcion,San Juan @ Nueva Función,https://boletos.prticket.com/events/en/disneyonice
-394,78,prticket,dragacadabra,65,Abracadabra Counter Café en Santurce,65|abracadabra counter cafe en santurce,"Abracadabra Counter Café en Santurce, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/dragacadabra
-395,79,prticket,firstattack2026,65,Entrada los 3 dias,65|entrada los 3 dias,San Juan @ Entrada los 3 dias,https://boletos.prticket.com/events/en/firstattack2026
-396,79,prticket,firstattack2026,65,Centro de Convenciones P.R.,65|centro de convenciones p r,San Juan @ Centro de Convenciones P.R.,https://boletos.prticket.com/events/en/firstattack2026
-397,80,prticket,gamingisland,65,Coliseito Pedrín Zorrilla,65|coliseito pedrin zorrilla,San Juan @ Coliseito Pedrín Zorrilla,https://boletos.prticket.com/events/en/gamingisland
-398,81,prticket,irvingdarisho,65,"Teatro Tapia, Viejo San Juan",65|teatro tapia viejo san juan,"Calle Fortaleza, C. de la Fortaleza - San Juan (Puerto Rico)",https://boletos.prticket.com/events/en/irvingdarisho
-399,82,prticket,karmavalcuartaedicion,65,Playa El Escambrón,65|playa el escambron,"Playa El Escambrón, San Juan",https://boletos.prticket.com/events/en/karmavalcuartaedicion
-400,83,prticket,la-marquesa2,32,Parque Forestal La Marquesa,32|parque forestal la marquesa,Guaynabo @ Parque Forestal La Marquesa,https://boletos.prticket.com/events/en/la-marquesa2
-401,84,prticket,la-marquesa3,32,Parque Forestal La Marquesa,32|parque forestal la marquesa,Guaynabo @ Parque Forestal La Marquesa,https://boletos.prticket.com/events/en/la-marquesa3
-402,85,prticket,lacomidacomoculturadialogosdesobremesa,13,Centro Criollo de Ciencias y Tecnología del Caribe,13|centro criollo de ciencias y tecnologia del caribe,Caguas @ Centro Criollo de Ciencias y Tecnología del Caribe,https://boletos.prticket.com/events/en/lacomidacomoculturadialogosdesobremesa
-403,86,prticket,lagala,65,Teatro de la Universidad de Puerto Rico,65|teatro de la universidad de puerto rico,San Juan @ Teatro de la Universidad de Puerto Rico,https://boletos.prticket.com/events/en/lagala
-404,87,prticket,lamesa,65,Facultad de Humanidades,65|facultad de humanidades,San Juan @ Facultad de Humanidades,https://boletos.prticket.com/events/en/lamesa
-405,88,prticket,masturbadoquetu,27,Multiple Locations,27|multiple locations,Fajardo @ Multiple Locations,https://boletos.prticket.com/events/en/masturbadoquetu
-406,88,prticket,masturbadoquetu,65,Multiple Locations,65|multiple locations,San Juan @ Multiple Locations,https://boletos.prticket.com/events/en/masturbadoquetu
-407,88,prticket,masturbadoquetu,50,Multiple Locations,50|multiple locations,Mayagüez @ Multiple Locations,https://boletos.prticket.com/events/en/masturbadoquetu
-408,89,prticket,natalianieves,54,Centro de Bellas Artes de Naranjito,54|centro de bellas artes de naranjito,#97 C. Georgetti - Naranjito (Puerto Rico),https://boletos.prticket.com/events/en/natalianieves
-409,90,prticket,ndi-calle,2,Bambalinas Cafe Teatro,2|bambalinas cafe teatro,Aguada @ Bambalinas Cafe Teatro,https://boletos.prticket.com/events/en/ndi-calle
-410,91,prticket,nextgenerationbigstep,71,Coliseo Rubén Zayas Montañez,71|coliseo ruben zayas montanez,Trujillo Alto @ Coliseo Rubén Zayas Montañez,https://boletos.prticket.com/events/en/nextgenerationbigstep
-411,92,prticket,nochesdeimpro,65,Café Teatro El Shorty,65|cafe teatro el shorty,San Juan @ Café Teatro El Shorty,https://boletos.prticket.com/events/en/nochesdeimpro
-412,93,prticket,piratas,59,Coliseo Raymond Dalmau,59|coliseo raymond dalmau,Quebradillas @ Coliseo Raymond Dalmau,https://boletos.prticket.com/events/en/piratas
-413,94,prticket,puertoricosekaijucon,36,Coliseo Marcelo Trujillo,36|coliseo marcelo trujillo,Humacao @ Coliseo Marcelo Trujillo,https://boletos.prticket.com/events/en/puertoricosekaijucon
-414,95,prticket,quien-mato-a-rene,65,Multiple Locations,65|multiple locations,San Juan @ Multiple Locations,https://boletos.prticket.com/events/en/quien-mato-a-rene
-415,96,prticket,rickycolonencomplicidad,13,Moneró Café Teatro y Bar (CBA Caguas),13|monero cafe teatro y bar cba caguas,"Calle Padial, Esquina, C. Ruiz Belvis - Caguas (Puerto Rico)",https://boletos.prticket.com/events/en/rickycolonencomplicidad
-416,97,prticket,showdejossiedeguzman,65,"Teatro Tapia, Viejo San Juan",65|teatro tapia viejo san juan,"Calle Fortaleza, C. de la Fortaleza - San Juan (Puerto Rico)",https://boletos.prticket.com/events/en/showdejossiedeguzman
-417,98,prticket,tallerdemarketing,65,Saffra Cowork,65|saffra cowork,San Juan @ Saffra Cowork,https://boletos.prticket.com/events/en/tallerdemarketing
-418,99,prticket,vip-parking,65,Coliseo Roberto Clemente,65|coliseo roberto clemente,San Juan @ Coliseo Roberto Clemente,https://boletos.prticket.com/events/en/vip-parking
-419,100,prticket,wwcaniversario53,65,Coliseo Roberto Clemente,65|coliseo roberto clemente,San Juan @ Coliseo Roberto Clemente,https://boletos.prticket.com/events/en/wwcaniversario53
-420,101,prticket,yaireenaniversario,54,Multiple Locations,54|multiple locations,Naranjito @ Multiple Locations,https://boletos.prticket.com/events/en/yaireenaniversario
-421,101,prticket,yaireenaniversario,58,Multiple Locations,58|multiple locations,Ponce @ Multiple Locations,https://boletos.prticket.com/events/en/yaireenaniversario
-422,101,prticket,yaireenaniversario,6,Multiple Locations,6|multiple locations,Añasco @ Multiple Locations,https://boletos.prticket.com/events/en/yaireenaniversario
-423,101,prticket,yaireenaniversario,41,Multiple Locations,41|multiple locations,Lajas @ Multiple Locations,https://boletos.prticket.com/events/en/yaireenaniversario
+538,142,prticket,5kfaderun,65,Colegio de Barberos y Estilistas de Puerto Rico,65|colegio de barberos y estilistas de puerto rico,"Colegio de Barberos y Estilistas de Puerto Rico, San Juan, San Juan",https://boletos.prticket.com/events/en/5kfaderun
+539,143,prticket,aguadillapickleballcenter,3,Aguadilla,3|aguadilla,"Carr PR-442 km 4.2, Aguadilla, 00603, Puerto Rico - Aguadilla (Aguadilla)",https://boletos.prticket.com/events/en/aguadillapickleballcenter
+540,144,prticket,algoextra-9,65,Enumerado con 2 precios,65|enumerado con 2 precios,San Juan @ Enumerado con 2 precios,https://boletos.prticket.com/events/en/algoextra-9
+541,145,prticket,asalto,65,Enumerado con 2 precios+ Vision Limitada,65|enumerado con 2 precios vision limitada,San Juan @ Enumerado con 2 precios+ Vision Limitada,https://boletos.prticket.com/events/en/asalto
+542,146,prticket,bbq,65,Plaza de la Independencia,65|plaza de la independencia,"Plaza de la Independencia, San Juan PR",https://boletos.prticket.com/events/en/bbq
+543,147,prticket,best-jevas,65,Enumerado con 2 precios+ Vision Limitada,65|enumerado con 2 precios vision limitada,San Juan @ Enumerado con 2 precios+ Vision Limitada,https://boletos.prticket.com/events/en/best-jevas
+544,148,prticket,campamentoxplore360,11,Camp Explore 360,11|camp explore 360,Bayamón @ Camp Explore 360,https://boletos.prticket.com/events/en/campamentoxplore360
+545,149,prticket,cangrejeros2026,65,Cangrejeros 2026,65|cangrejeros 2026,San Juan @ Cangrejeros 2026,https://boletos.prticket.com/events/en/cangrejeros2026
+546,150,prticket,comediageek,13,Titan Games,13|titan games,Caguas @ Titan Games,https://boletos.prticket.com/events/en/comediageek
+547,151,prticket,comicosanonimos,30,"Studio 58, Guayama",30|studio 58 guayama,"Studio 58, Guayama",https://boletos.prticket.com/events/en/comicosanonimos
+548,151,prticket,comicosanonimos,50,"Teatro Balboa, Mayagüez",50|teatro balboa mayaguez,"Teatro Balboa, Mayagüez",https://boletos.prticket.com/events/en/comicosanonimos
+549,152,prticket,cortaditoocapuchino,65,Abracadabra Counter Cafe,65|abracadabra counter cafe,San Juan @ Abracadabra Counter Cafe,https://boletos.prticket.com/events/en/cortaditoocapuchino
+550,153,prticket,disneyonice,65,CRC_disney,65|crc disney,San Juan @ CRC_disney,https://boletos.prticket.com/events/en/disneyonice
+551,154,prticket,dragacadabra,65,Abracadabra Enumerado New,65|abracadabra enumerado new,San Juan @ Abracadabra Enumerado New,https://boletos.prticket.com/events/en/dragacadabra
+552,155,prticket,elmagodeoz,65,T.Tapia - 4 precios,65|t tapia 4 precios,San Juan @ T.Tapia - 4 precios,https://boletos.prticket.com/events/en/elmagodeoz
+553,156,prticket,firstattack2026,65,First Attack,65|first attack,San Juan @ First Attack,https://boletos.prticket.com/events/en/firstattack2026
+554,157,prticket,gamingisland,65,Coliseito Pedrín Zorrilla General,65|coliseito pedrin zorrilla general,San Juan @ Coliseito Pedrín Zorrilla General,https://boletos.prticket.com/events/en/gamingisland
+555,158,prticket,irvingdarisho,65,Irving & Darisho,65|irving darisho,San Juan @ Irving & Darisho,https://boletos.prticket.com/events/en/irvingdarisho
+556,159,prticket,karmavalcuartaedicion,65,Playa El Escambrón,65|playa el escambron,"Playa El Escambrón, San Juan",https://boletos.prticket.com/events/en/karmavalcuartaedicion
+557,160,prticket,lacomidacomoculturadialogosdesobremesa,13,Teatro del C3TEC,13|teatro del c3tec,Caguas @ Teatro del C3TEC,https://boletos.prticket.com/events/en/lacomidacomoculturadialogosdesobremesa
+558,161,prticket,lagala,65,General,65|general,San Juan @ General,https://boletos.prticket.com/events/en/lagala
+559,162,prticket,lamesa,65,Facultad de Humanidades,65|facultad de humanidades,San Juan @ Facultad de Humanidades,https://boletos.prticket.com/events/en/lamesa
+560,163,prticket,masturbadoquetu,27,Teatro José M. Lugo Emanuelli,27|teatro jose m lugo emanuelli,Fajardo @ Teatro José M. Lugo Emanuelli,https://boletos.prticket.com/events/en/masturbadoquetu
+561,163,prticket,masturbadoquetu,65,Teatro Francisco Arriví - 4 PRECIOS (2/2),65|teatro francisco arrivi 4 precios 2/2,San Juan @ Teatro Francisco Arriví - 4 PRECIOS (2/2),https://boletos.prticket.com/events/en/masturbadoquetu
+562,163,prticket,masturbadoquetu,50,"Teatro Yagüez, Mayagüez",50|teatro yaguez mayaguez,"Teatro Yagüez, Mayagüez",https://boletos.prticket.com/events/en/masturbadoquetu
+563,164,prticket,natalianieves,54,CBA Naranjito - .Online,54|cba naranjito online,#97 C. Georgetti - Naranjito (Puerto Rico),https://boletos.prticket.com/events/en/natalianieves
+564,165,prticket,ndi-calle,2,Bambalinas Café Teatro,2|bambalinas cafe teatro,Aguada @ Bambalinas Café Teatro,https://boletos.prticket.com/events/en/ndi-calle
+565,166,prticket,nextgenerationbigstep,71,Next Generation 2026,71|next generation 2026,Trujillo Alto @ Next Generation 2026,https://boletos.prticket.com/events/en/nextgenerationbigstep
+566,167,prticket,nochesdeimpro,65,Enumerado con 2 precios+ Vision Limitada,65|enumerado con 2 precios vision limitada,San Juan @ Enumerado con 2 precios+ Vision Limitada,https://boletos.prticket.com/events/en/nochesdeimpro
+567,168,prticket,piratas,59,BSN (General + Enumerado),59|bsn general enumerado,Quebradillas @ BSN (General + Enumerado),https://boletos.prticket.com/events/en/piratas
+568,169,prticket,puertoricosekaijucon,36,Sekaiju,36|sekaiju,Humacao @ Sekaiju,https://boletos.prticket.com/events/en/puertoricosekaijucon
+569,170,prticket,queens-of-ring,65,Coliseito Pedrin Zorrilla,65|coliseito pedrin zorrilla,"Coliseito Pedrin Zorrilla, San Juan",https://boletos.prticket.com/events/en/queens-of-ring
+570,171,prticket,quien-mato-a-rene,65,Teatro Tapia-Reynold,65|teatro tapia reynold,San Juan @ Teatro Tapia-Reynold,https://boletos.prticket.com/events/en/quien-mato-a-rene
+571,171,prticket,quien-mato-a-rene,65,"Teatro Yagüez, Raynold",65|teatro yaguez raynold,"San Juan @ Teatro Yagüez, Raynold",https://boletos.prticket.com/events/en/quien-mato-a-rene
+572,172,prticket,rickycolonencomplicidad,13,Moneró - .Online,13|monero online,Caguas @ Moneró - .Online,https://boletos.prticket.com/events/en/rickycolonencomplicidad
+573,173,prticket,showdejossiedeguzman,65,T.Tapia - 4 precios,65|t tapia 4 precios,San Juan @ T.Tapia - 4 precios,https://boletos.prticket.com/events/en/showdejossiedeguzman
+574,174,prticket,tallerdemarketing,65,Saffra Cowork,65|saffra cowork,San Juan @ Saffra Cowork,https://boletos.prticket.com/events/en/tallerdemarketing
+575,175,prticket,tradicionalbailepadres,65,Sheraton Puerto Rico Hotel & Casino,65|sheraton puerto rico hotel casino,"Sheraton Puerto Rico Hotel & Casino, San Juan, Puerto Rico",https://boletos.prticket.com/events/en/tradicionalbailepadres
+576,176,prticket,vip-parking,65,Parking VIP,65|parking vip,San Juan @ Parking VIP,https://boletos.prticket.com/events/en/vip-parking
+577,177,prticket,wwcaniversario53,65,WWC,65|wwc,San Juan @ WWC,https://boletos.prticket.com/events/en/wwcaniversario53
+578,178,prticket,yaireenaniversario,54,Centro de Bellas Artes de Naranjito,54|centro de bellas artes de naranjito,Centro de Bellas Artes de Naranjito,https://boletos.prticket.com/events/en/yaireenaniversario
+579,178,prticket,yaireenaniversario,58,"Studio 58, Ponce",58|studio 58 ponce,"Studio 58, Ponce",https://boletos.prticket.com/events/en/yaireenaniversario
+580,178,prticket,yaireenaniversario,6,"Rancho Grande, Añasco",6|rancho grande anasco,"Rancho Grande, Añasco",https://boletos.prticket.com/events/en/yaireenaniversario
+581,178,prticket,yaireenaniversario,41,Cine Teatro Juventud - Lajas,41|cine teatro juventud lajas,Cine Teatro Juventud - Lajas,https://boletos.prticket.com/events/en/yaireenaniversario

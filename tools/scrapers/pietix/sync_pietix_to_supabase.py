@@ -123,6 +123,54 @@ def detect_non_event_reason(*parts: str) -> str:
     return ""
 
 
+def has_explicit_non_pr_marker(*parts: str) -> bool:
+    norm = f" {normalize_text(' '.join([p or '' for p in parts]))} "
+    if not norm.strip():
+        return False
+    if " puerto rico " in norm:
+        return False
+    # Evitar falso positivo con el municipio Florida (PR).
+    if " florida pr " in norm or " florida puerto rico " in norm or " municipio florida " in norm:
+        return False
+    non_pr_markers = (
+        " florida usa ",
+        " florida united states ",
+        " miami fl ",
+        " miami florida ",
+        " orlando fl ",
+        " orlando florida ",
+        " tampa fl ",
+        " tampa florida ",
+        " jacksonville fl ",
+        " jacksonville florida ",
+        " fort lauderdale fl ",
+        " fort lauderdale florida ",
+        " west palm beach fl ",
+        " west palm beach florida ",
+        " miami dade ",
+        " miami ",
+        " orlando ",
+        " new york ",
+        " los angeles ",
+        " mexico ",
+        " cdmx ",
+        " ciudad de mexico ",
+        " republica dominicana ",
+        " dominican republic ",
+        " santo domingo ",
+        " bogota ",
+        " medellin ",
+        " lima ",
+        " madrid ",
+        " buenos aires ",
+        " chile ",
+        " argentina ",
+        " colombia ",
+        " peru ",
+    )
+    return any(marker in norm for marker in non_pr_markers)
+
+
 def to_bool(value: Any) -> bool:
     text = clean(value).lower()
     return text in {"1", "true", "t", "yes", "y"}
@@ -281,9 +329,45 @@ def sync() -> int:
     )
     existing_by_url = {clean(r.get("url_evento")).lower(): to_int(r.get("evento_id")) for r in existing_boleterias if clean(r.get("url_evento"))}
     existing_by_source_event_id: Dict[str, int] = {}
+    existing_categoria_by_event_id: Dict[int, Optional[int]] = {}
+    existing_event_ids = sorted({event_id for event_id in existing_by_url.values() if event_id > 0})
+    if existing_event_ids:
+        existing_events_rows = sb.select(
+            "eventos",
+            {
+                "select": "id,categoria",
+                "id": f"in.{build_in_filter(existing_event_ids)}",
+                "limit": "5000",
+            },
+        )
+        for item in existing_events_rows:
+            event_id = to_int(item.get("id"))
+            categoria_id = to_int(item.get("categoria")) or None
+            if event_id > 0:
+                existing_categoria_by_event_id[event_id] = categoria_id
+
+    def obtener_categoria_existente(event_id: int) -> Optional[int]:
+        if event_id <= 0:
+            return None
+        if event_id in existing_categoria_by_event_id:
+            return existing_categoria_by_event_id[event_id]
+        rows = sb.select(
+            "eventos",
+            {
+                "select": "id,categoria",
+                "id": f"eq.{event_id}",
+                "limit": "1",
+            },
+        )
+        categoria_id = to_int(rows[0].get("categoria")) if rows else 0
+        categoria_final = categoria_id or None
+        existing_categoria_by_event_id[event_id] = categoria_final
+        return categoria_final
 
     temp_to_real_event_id: Dict[int, int] = {}
     skipped_non_event = 0
+    skipped_non_pr = 0
+    categorias_manual_preservadas = 0
 
     # 1) Upsert eventos base
     for row in eventos:
@@ -300,8 +384,21 @@ def sync() -> int:
         if non_event_reason:
             skipped_non_event += 1
             continue
+        if has_explicit_non_pr_marker(
+            clean(row.get("nombre")),
+            clean(row.get("descripcion")),
+            clean(row.get("lugar")),
+            clean(row.get("direccion")),
+        ):
+            skipped_non_pr += 1
+            continue
         url_key = url_evento.lower()
         source_event_id = clean(row.get("source_event_id"))
+        categoria_csv = (
+            to_int(row.get("categoria"))
+            if to_int(row.get("categoria")) in valid_categoria_ids
+            else categoria_otros_id
+        )
         payload = {
             "source_event_id": source_event_id or None,
             "nombre": clean(row.get("nombre")),
@@ -311,11 +408,7 @@ def sync() -> int:
             "lugar": clean(row.get("lugar")),
             "direccion": clean(row.get("direccion")),
             "municipio_id": to_int(row.get("municipio_id")) or None,
-            "categoria": (
-                to_int(row.get("categoria"))
-                if to_int(row.get("categoria")) in valid_categoria_ids
-                else categoria_otros_id
-            ),
+            "categoria": categoria_csv,
             "enlaceboletos": url_evento,
             "boletos_por_localidad": to_bool(row.get("boletos_por_localidad")),
             "imagen": clean(row.get("imagen")),
@@ -379,6 +472,11 @@ def sync() -> int:
             if lookup_by_link:
                 existing_event_id = to_int(lookup_by_link[0].get("id"))
         if existing_event_id:
+            categoria_manual = obtener_categoria_existente(existing_event_id)
+            if categoria_manual:
+                if categoria_manual != categoria_csv:
+                    categorias_manual_preservadas += 1
+                payload["categoria"] = categoria_manual
             updated = sb.patch("eventos", {"id": f"eq.{existing_event_id}"}, payload)
             if not updated:
                 raise RuntimeError(f"No se pudo actualizar evento id={existing_event_id} url={url_evento}")
@@ -392,6 +490,7 @@ def sync() -> int:
         if not real_event_id:
             raise RuntimeError(f"Evento sin id retornado para url={url_evento}")
         temp_to_real_event_id[temp_event_id] = real_event_id
+        existing_categoria_by_event_id[real_event_id] = payload.get("categoria")
         existing_by_url[url_key] = real_event_id
         if source_event_id:
             existing_by_source_event_id[source_event_id.lower()] = real_event_id
@@ -524,6 +623,8 @@ def sync() -> int:
 
     print(f"[sync_pietix] eventos_upsert: {len(temp_to_real_event_id)}")
     print(f"[sync_pietix] eventos_descartados_no_evento: {skipped_non_event}")
+    print(f"[sync_pietix] eventos_descartados_no_pr: {skipped_non_pr}")
+    print(f"[sync_pietix] categorias_manual_preservadas: {categorias_manual_preservadas}")
     print(f"[sync_pietix] sedes_insertadas: {len(temp_sede_to_real_sede)}")
     print(f"[sync_pietix] fechas_insertadas: {len(fechas_payload)}")
     print(f"[sync_pietix] boleterias_insertadas: {len(boleterias_payload)}")

@@ -10,6 +10,7 @@ const filtroCategoria = document.getElementById('filtroCategoria');
 const filtroActivo = document.getElementById('filtroActivo');
 
 const btnNuevoEvento = document.getElementById('btnNuevoEvento');
+const btnSyncEventos = document.getElementById('btnSyncEventos');
 const modal = document.getElementById('modalEvento');
 const modalTitulo = document.getElementById('modalTitulo');
 const btnCerrarModal = document.getElementById('btnCerrarModal');
@@ -119,6 +120,28 @@ function obtenerPartesFecha(fechaStr) {
     weekday: weekday || completa,
     resto: resto || ''
   };
+}
+
+function normalizarSedesParaComparar(sedes = []) {
+  return (sedes || [])
+    .map((sede) => ({
+      municipio_id: Number(sede.municipio_id) || null,
+      lugar: (sede.lugar || '').trim(),
+      direccion: (sede.direccion || '').trim(),
+      enlaceboletos: (sede.enlaceboletos || '').trim(),
+      fechas: (sede.fechas || [])
+        .map((fecha) => ({
+          fecha: (fecha.fecha || '').trim(),
+          horainicio: (fecha.horainicio || '').trim(),
+          mismahora: Boolean(fecha.mismahora)
+        }))
+        .sort((a, b) => `${a.fecha} ${a.horainicio}`.localeCompare(`${b.fecha} ${b.horainicio}`))
+    }))
+    .sort((a, b) => {
+      const ak = `${a.municipio_id || 0}|${a.lugar}|${a.direccion}|${a.enlaceboletos}`;
+      const bk = `${b.municipio_id || 0}|${b.lugar}|${b.direccion}|${b.enlaceboletos}`;
+      return ak.localeCompare(bk);
+    });
 }
 
 function construirOpcionesMunicipios() {
@@ -552,17 +575,24 @@ function renderEventos(lista) {
   lista.forEach((evento) => {
     const estadoBadge = `<span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${evento.activo ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}">${evento.activo ? 'Activo' : 'Inactivo'}</span>`;
     const proximaFecha = obtenerProximaFechaEvento(evento.fechas);
-    const fechaDetalle = proximaFecha ? obtenerPartesFecha(proximaFecha.fecha) : null;
     const horaDestacada = proximaFecha?.horainicio ? formatHora(proximaFecha.horainicio) : '';
-    const categoriaIconoHtml = evento.categoriaIcono ? `<i class="fas ${evento.categoriaIcono}"></i>` : '';
-    const costoTexto = evento.gratis ? 'Gratis' : (evento.costo || 'No disponible');
+    const fechaProxima = proximaFecha ? formatFecha(proximaFecha.fecha) : 'Sin fecha';
+    const municipioProximo = proximaFecha?.municipioNombre || evento.municipioNombre || '—';
+    const fechaHoraTexto = proximaFecha
+      ? `${fechaProxima}${horaDestacada ? ` · ${horaDestacada}` : ''}`
+      : fechaProxima;
+    const imagenEvento = evento.imagen || 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/placeholder-evento.jpg';
 
     const fila = document.createElement('tr');
     fila.innerHTML = `
-      <td class="px-4 py-3 font-medium text-gray-800">${evento.nombre}</td>
-      <td class="px-4 py-3 text-gray-600">${evento.municipioNombre}</td>
-      <td class="px-4 py-3 text-gray-600">${evento.categoriaNombre}</td>
-      <td class="px-4 py-3 text-gray-600">${formatFechasListado(evento.fechas)}</td>
+      <td class="px-4 py-3">
+        <div class="flex items-center gap-3">
+          <img src="${imagenEvento}" alt="${evento.nombre}" class="w-20 h-14 rounded object-cover border border-gray-200 bg-gray-100" loading="lazy" />
+          <p class="font-medium text-gray-800 line-clamp-2">${evento.nombre}</p>
+        </div>
+      </td>
+      <td class="px-4 py-3 text-gray-600">${fechaHoraTexto}</td>
+      <td class="px-4 py-3 text-gray-600">${municipioProximo}</td>
       <td class="px-4 py-3 text-center">${estadoBadge}</td>
       <td class="px-4 py-3 text-center space-x-2">
         <button data-accion="editar" data-id="${evento.id}" class="text-blue-600 hover:text-blue-800">Editar</button>
@@ -576,33 +606,21 @@ function renderEventos(lista) {
     card.className = 'bg-white rounded-lg shadow p-4 flex flex-col justify-between';
     card.innerHTML = `
       <div class="space-y-3">
+        <img src="${imagenEvento}" alt="${evento.nombre}" class="w-full h-40 rounded-lg object-cover border border-gray-200 bg-gray-100" loading="lazy" />
         <header class="flex items-start justify-between gap-3">
-          <div class="flex-1 flex flex-col items-center text-center gap-2">
-            <h3 class="flex items-center justify-center text-center text-lg font-bold text-gray-800 leading-snug line-clamp-2 h-12">${evento.nombre}</h3>
-            <div class="flex items-center justify-center gap-1 text-sm text-orange-500">
-              ${categoriaIconoHtml}
-              <span>${evento.categoriaNombre}</span>
-            </div>
-          </div>
+          <h3 class="flex-1 text-lg font-bold text-gray-800 leading-snug line-clamp-2">${evento.nombre}</h3>
           ${estadoBadge}
         </header>
         <div class="space-y-2 text-sm">
-          ${fechaDetalle ? `
-            <div class="flex flex-col items-center justify-center gap-0 text-red-600 font-medium leading-tight">
-              <span>${fechaDetalle.weekday}</span>
-              <span>${fechaDetalle.resto}</span>
-            </div>
-          ` : `
-            <div class="flex items-center justify-center gap-2 text-red-600 font-medium leading-tight">Sin fecha</div>
-          `}
-          ${horaDestacada ? `<div class="flex items-center justify-center gap-2 text-red-600">${horaDestacada}</div>` : ''}
-          <div class="flex items-center justify-center gap-2 font-medium" style="color:#23B4E9;">
-            <i class="fas fa-map-pin"></i>
-            <span>${evento.municipioNombre}</span>
+          <div class="flex items-center gap-2 text-red-600 font-semibold">
+            <i class="fas fa-calendar-alt"></i>
+            <span>${fechaHoraTexto}</span>
           </div>
-          <div class="text-green-600 font-semibold">Costo: ${costoTexto}</div>
+          <div class="flex items-center gap-2 font-medium" style="color:#23B4E9;">
+            <i class="fas fa-map-pin"></i>
+            <span>${municipioProximo}</span>
+          </div>
         </div>
-        <div class="text-xs text-gray-500 leading-snug border-t border-gray-100 pt-2">${formatFechasListado(evento.fechas)}</div>
       </div>
       <footer class="flex flex-wrap gap-3 text-sm pt-3 border-t border-gray-100 mt-3">
         <button data-accion="editar" data-id="${evento.id}" class="text-blue-600 hover:text-blue-800">Editar</button>
@@ -664,6 +682,10 @@ async function cargarEventos() {
 function resetModal() {
   eventoEnEdicion = null;
   formEvento.reset();
+  inputNombre.setAttribute('required', 'required');
+  inputDescripcion.setAttribute('required', 'required');
+  selectCategoria.setAttribute('required', 'required');
+  inputCosto.setAttribute('required', 'required');
   imagenActual.classList.add('hidden');
   imagenActual.innerHTML = '';
   errorEvento.classList.add('hidden');
@@ -685,6 +707,10 @@ function abrirModal(evento = null) {
 
   if (evento) {
     eventoEnEdicion = evento;
+    inputNombre.removeAttribute('required');
+    inputDescripcion.removeAttribute('required');
+    selectCategoria.removeAttribute('required');
+    inputCosto.removeAttribute('required');
     eventoIdHidden.value = evento.id;
     inputNombre.value = evento.nombre || '';
     inputDescripcion.value = evento.descripcion || '';
@@ -714,7 +740,143 @@ function cerrarModal() {
   resetModal();
 }
 
+async function obtenerTokenSesion() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  const token = data?.session?.access_token;
+  if (!token) throw new Error('No se encontró sesión activa.');
+  return token;
+}
+
+function getEventosSyncEndpointCandidates() {
+  const host = String(window.location.hostname || '').toLowerCase();
+  const port = String(window.location.port || '');
+  const isLocal = ['localhost', '127.0.0.1', '::1'].includes(host);
+  const customBase = String(window.FINDIXI_FUNCTIONS_BASE_URL || '').trim().replace(/\/+$/, '');
+  const urls = [];
+
+  if (customBase) {
+    urls.push(`${customBase}/api/eventos-sync`);
+    urls.push(`${customBase}/.netlify/functions/eventos-sync`);
+  }
+
+  if (isLocal && port !== '8888') {
+    urls.push('http://localhost:8888/api/eventos-sync');
+    urls.push('http://localhost:8888/.netlify/functions/eventos-sync');
+  }
+
+  urls.push('/api/eventos-sync');
+  urls.push('/.netlify/functions/eventos-sync');
+
+  return [...new Set(urls)];
+}
+
+async function callEventosSyncEndpoint({ token, payload }) {
+  const endpoints = getEventosSyncEndpointCandidates();
+  let lastError = null;
+  const diagnostics = [];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const raw = await response.text();
+      let data = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (response.ok) return data || {};
+
+      const detail = data?.detalle || data?.error || `HTTP ${response.status}`;
+      const canTryNext = response.status === 404 || response.status === 405;
+      diagnostics.push({ endpoint, status: response.status, detail: String(detail || '') });
+      if (!canTryNext) {
+        throw new Error(String(detail || 'No se pudo sincronizar eventos.'));
+      }
+      lastError = new Error(`Endpoint ${endpoint} respondió ${response.status}.`);
+    } catch (error) {
+      diagnostics.push({
+        endpoint,
+        status: 'network',
+        detail: String(error?.message || error),
+      });
+      lastError = error;
+    }
+  }
+
+  const host = String(window.location.hostname || '').toLowerCase();
+  const port = String(window.location.port || '');
+  const isLocal = ['localhost', '127.0.0.1', '::1'].includes(host);
+  const hasRefused8888 = diagnostics.some((entry) =>
+    String(entry?.endpoint || '').includes('localhost:8888')
+    && /refused|failed to fetch|networkerror|load failed|connection/i.test(String(entry?.detail || ''))
+  );
+  const has405Static = diagnostics.some((entry) => Number(entry?.status) === 405);
+
+  if (isLocal && port !== '8888' && hasRefused8888 && has405Static) {
+    throw new Error(
+      'No hay runtime de funciones activo. Abre esta app con Netlify Dev (http://localhost:8888), no desde Live Server :5500.'
+    );
+  }
+
+  throw lastError || new Error('No se encontró un endpoint disponible para sincronizar eventos.');
+}
+
+async function sincronizarEventosManual() {
+  if (!btnSyncEventos) return;
+  const confirmar = confirm(
+    'Esto ejecutará scrape + sync de PRticket, Ticketera y Pietix. Puede tardar varios minutos. ¿Continuar?'
+  );
+  if (!confirmar) return;
+
+  const originalHtml = btnSyncEventos.innerHTML;
+  btnSyncEventos.disabled = true;
+  btnSyncEventos.classList.add('opacity-70', 'cursor-not-allowed');
+  btnSyncEventos.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+
+  if (typeof mostrarLoader === 'function') await mostrarLoader();
+
+  try {
+    const token = await obtenerTokenSesion();
+    const payload = await callEventosSyncEndpoint({
+      token,
+      payload: { sources: ['prticket', 'ticketera', 'pietix'] }
+    });
+    if (payload?.ok === false) {
+      throw new Error(payload?.error || payload?.detalle || 'La sincronización devolvió error.');
+    }
+
+    const resumen = Array.isArray(payload?.results)
+      ? payload.results
+          .map((item) => `• ${item.source}: ${item.ok ? 'OK' : 'ERROR'} (${item.duration_ms || 0}ms)`)
+          .join('\n')
+      : 'Sin detalles';
+
+    alert(`Sincronización completada.\n\n${resumen}`);
+    await cargarEventos();
+  } catch (error) {
+    console.error('Error en sincronización manual de eventos:', error);
+    alert(`No se pudo completar la sincronización.\n${error.message || error}`);
+  } finally {
+    if (typeof ocultarLoader === 'function') await ocultarLoader();
+    btnSyncEventos.disabled = false;
+    btnSyncEventos.classList.remove('opacity-70', 'cursor-not-allowed');
+    btnSyncEventos.innerHTML = originalHtml;
+  }
+}
+
 btnNuevoEvento.addEventListener('click', () => abrirModal());
+btnSyncEventos?.addEventListener('click', sincronizarEventosManual);
 btnCerrarModal.addEventListener('click', cerrarModal);
 btnCancelarModal.addEventListener('click', cerrarModal);
 modal.addEventListener('click', (event) => {
@@ -831,62 +993,72 @@ async function manejarSubmit(event) {
   errorEvento.textContent = '';
 
   const sedesPayload = sedesUI.map((item) => item.getData());
-
-  if (sedesPayload.length === 0) {
-    errorEvento.textContent = 'Agrega al menos un municipio con fechas.';
-    errorEvento.classList.remove('hidden');
-    return;
-  }
-
-  const sedeIncompleta = sedesPayload.find((sede) => !sede.municipio_id || !sede.lugar || !sede.direccion);
-  if (sedeIncompleta) {
-    errorEvento.textContent = 'Completa municipio, lugar y dirección en cada sede.';
-    errorEvento.classList.remove('hidden');
-    return;
-  }
-
-  const sedeSinFechas = sedesPayload.find((sede) => !Array.isArray(sede.fechas) || sede.fechas.length === 0);
-  if (sedeSinFechas) {
-    errorEvento.textContent = 'Cada municipio debe tener al menos una fecha.';
-    errorEvento.classList.remove('hidden');
-    return;
-  }
-
-  const fechaSinHora = sedesPayload.some((sede) => sede.fechas.some((item) => !item.horainicio));
-  if (fechaSinHora) {
-    errorEvento.textContent = 'Todas las fechas deben tener una hora asignada.';
-    errorEvento.classList.remove('hidden');
-    return;
-  }
-
   const boletosPorLocalidad = !checkBoletosGlobal?.checked;
-  if (boletosPorLocalidad) {
-    const sedeSinLink = sedesPayload.find((sede) => !sede.enlaceboletos);
-    if (sedeSinLink) {
-      errorEvento.textContent = 'Agrega el link de boletos en cada localidad.';
+  const sedesOriginales = normalizarSedesParaComparar(eventoEnEdicion?.sedes || []);
+  const sedesNuevas = normalizarSedesParaComparar(sedesPayload);
+  const sedesCambiaron = !eventoEnEdicion || JSON.stringify(sedesOriginales) !== JSON.stringify(sedesNuevas);
+
+  if (sedesCambiaron) {
+    if (sedesPayload.length === 0) {
+      errorEvento.textContent = 'Agrega al menos un municipio con fechas.';
       errorEvento.classList.remove('hidden');
       return;
     }
+
+    const sedeIncompleta = sedesPayload.find((sede) => !sede.municipio_id || !sede.lugar || !sede.direccion);
+    if (sedeIncompleta) {
+      errorEvento.textContent = 'Completa municipio, lugar y dirección en cada sede.';
+      errorEvento.classList.remove('hidden');
+      return;
+    }
+
+    const sedeSinFechas = sedesPayload.find((sede) => !Array.isArray(sede.fechas) || sede.fechas.length === 0);
+    if (sedeSinFechas) {
+      errorEvento.textContent = 'Cada municipio debe tener al menos una fecha.';
+      errorEvento.classList.remove('hidden');
+      return;
+    }
+
+    const fechaSinHora = sedesPayload.some((sede) => sede.fechas.some((item) => !item.horainicio));
+    if (fechaSinHora) {
+      errorEvento.textContent = 'Todas las fechas deben tener una hora asignada.';
+      errorEvento.classList.remove('hidden');
+      return;
+    }
+
+    if (boletosPorLocalidad) {
+      const sedeSinLink = sedesPayload.find((sede) => !sede.enlaceboletos);
+      if (sedeSinLink) {
+        errorEvento.textContent = 'Agrega el link de boletos en cada localidad.';
+        errorEvento.classList.remove('hidden');
+        return;
+      }
+    }
   }
 
-  const sedePrincipal = sedesPayload[0];
+  const sedePrincipal = sedesPayload[0] || {};
   const enlaceGlobal = checkBoletosGlobal?.checked ? inputBoletos.value.trim() : '';
   const payloadBase = {
     nombre: inputNombre.value.trim(),
     descripcion: inputDescripcion.value.trim(),
     costo: checkGratis.checked ? 'Libre de Costo' : inputCosto.value.trim(),
     gratis: checkGratis.checked,
-    lugar: sedePrincipal.lugar,
-    direccion: sedePrincipal.direccion,
-    municipio_id: sedePrincipal.municipio_id,
+    lugar: sedePrincipal.lugar || '',
+    direccion: sedePrincipal.direccion || '',
+    municipio_id: sedePrincipal.municipio_id || null,
     categoria: Number(selectCategoria.value),
     enlaceboletos: enlaceGlobal || null,
     boletos_por_localidad: boletosPorLocalidad,
     activo: checkActivo.checked
   };
 
-  if (!payloadBase.nombre || !payloadBase.descripcion || !payloadBase.municipio_id || !payloadBase.categoria) {
+  if (!eventoEnEdicion && (!payloadBase.nombre || !payloadBase.descripcion || !payloadBase.municipio_id || !payloadBase.categoria)) {
     errorEvento.textContent = 'Completa los campos obligatorios del formulario.';
+    errorEvento.classList.remove('hidden');
+    return;
+  }
+  if (!eventoEnEdicion && !checkGratis.checked && !payloadBase.costo) {
+    errorEvento.textContent = 'Ingresa el costo del evento o marca el evento como gratuito.';
     errorEvento.classList.remove('hidden');
     return;
   }
@@ -898,48 +1070,85 @@ async function manejarSubmit(event) {
     if (inputImagen.files?.[0]) {
       imagenUrl = await subirImagen(inputImagen.files[0]);
     }
-    if (!imagenUrl) {
+    if (!eventoEnEdicion && !imagenUrl) {
       errorEvento.textContent = 'Debes seleccionar una imagen para el evento.';
       errorEvento.classList.remove('hidden');
       return;
     }
 
     if (eventoEnEdicion) {
-      const { data: eventoActualizado, error: errorEventoUpdate } = await supabase
-        .from('eventos')
-        .update({ ...payloadBase, imagen: imagenUrl })
-        .eq('id', eventoEnEdicion.id)
-        .select('id, nombre, descripcion, costo, gratis, lugar, direccion, municipio_id, categoria, enlaceboletos, imagen, activo')
-        .single();
+      const payloadUpdate = {};
+      const nombreNuevo = inputNombre.value.trim();
+      const descripcionNueva = inputDescripcion.value.trim();
+      const categoriaNueva = selectCategoria.value ? Number(selectCategoria.value) : null;
+      const gratisNuevo = checkGratis.checked;
+      const costoNuevo = gratisNuevo ? 'Libre de Costo' : inputCosto.value.trim();
+      const activoNuevo = checkActivo.checked;
 
-      if (errorEventoUpdate) throw errorEventoUpdate;
+      if (nombreNuevo && nombreNuevo !== (eventoEnEdicion.nombre || '')) payloadUpdate.nombre = nombreNuevo;
+      if (descripcionNueva && descripcionNueva !== (eventoEnEdicion.descripcion || '')) payloadUpdate.descripcion = descripcionNueva;
+      if (categoriaNueva && categoriaNueva !== Number(eventoEnEdicion.categoria || 0)) payloadUpdate.categoria = categoriaNueva;
+      if (gratisNuevo !== Boolean(eventoEnEdicion.gratis)) {
+        payloadUpdate.gratis = gratisNuevo;
+        payloadUpdate.costo = costoNuevo || (gratisNuevo ? 'Libre de Costo' : (eventoEnEdicion.costo || ''));
+      } else if (!gratisNuevo && costoNuevo && costoNuevo !== (eventoEnEdicion.costo || '')) {
+        payloadUpdate.costo = costoNuevo;
+      }
+      if (activoNuevo !== Boolean(eventoEnEdicion.activo)) payloadUpdate.activo = activoNuevo;
+      if (boletosPorLocalidad !== Boolean(eventoEnEdicion.boletos_por_localidad)) {
+        payloadUpdate.boletos_por_localidad = boletosPorLocalidad;
+      }
+      if (!boletosPorLocalidad && (enlaceGlobal || '') !== (eventoEnEdicion.enlaceboletos || '')) {
+        payloadUpdate.enlaceboletos = enlaceGlobal || null;
+      }
+      if (boletosPorLocalidad && eventoEnEdicion.enlaceboletos) {
+        payloadUpdate.enlaceboletos = null;
+      }
+      if (inputImagen.files?.[0] && imagenUrl) {
+        payloadUpdate.imagen = imagenUrl;
+      }
+      if (sedesCambiaron && sedePrincipal) {
+        payloadUpdate.lugar = sedePrincipal.lugar;
+        payloadUpdate.direccion = sedePrincipal.direccion;
+        payloadUpdate.municipio_id = sedePrincipal.municipio_id;
+      }
 
-      await supabase.from('eventos_municipios').delete().eq('event_id', eventoEnEdicion.id);
+      if (Object.keys(payloadUpdate).length > 0) {
+        const { error: errorEventoUpdate } = await supabase
+          .from('eventos')
+          .update(payloadUpdate)
+          .eq('id', eventoEnEdicion.id);
+        if (errorEventoUpdate) throw errorEventoUpdate;
+      }
 
-      for (const sede of sedesPayload) {
-        const { data: sedeCreada, error: errorSede } = await supabase
-          .from('eventos_municipios')
-          .insert({
-            event_id: eventoEnEdicion.id,
-            municipio_id: sede.municipio_id,
-            lugar: sede.lugar,
-            direccion: sede.direccion,
-            enlaceboletos: boletosPorLocalidad ? (sede.enlaceboletos || null) : null
-          })
-          .select('id')
-          .single();
+      if (sedesCambiaron) {
+        await supabase.from('eventos_municipios').delete().eq('event_id', eventoEnEdicion.id);
 
-        if (errorSede || !sedeCreada?.id) throw errorSede || new Error('No se pudo crear el municipio del evento');
+        for (const sede of sedesPayload) {
+          const { data: sedeCreada, error: errorSede } = await supabase
+            .from('eventos_municipios')
+            .insert({
+              event_id: eventoEnEdicion.id,
+              municipio_id: sede.municipio_id,
+              lugar: sede.lugar,
+              direccion: sede.direccion,
+              enlaceboletos: boletosPorLocalidad ? (sede.enlaceboletos || null) : null
+            })
+            .select('id')
+            .single();
 
-        const fechasInsert = sede.fechas.map((item) => ({
-          evento_municipio_id: sedeCreada.id,
-          fecha: item.fecha,
-          horainicio: item.horainicio,
-          mismahora: item.mismahora
-        }));
+          if (errorSede || !sedeCreada?.id) throw errorSede || new Error('No se pudo crear el municipio del evento');
 
-        const { error: errorFechas } = await supabase.from('eventoFechas').insert(fechasInsert);
-        if (errorFechas) throw errorFechas;
+          const fechasInsert = sede.fechas.map((item) => ({
+            evento_municipio_id: sedeCreada.id,
+            fecha: item.fecha,
+            horainicio: item.horainicio,
+            mismahora: item.mismahora
+          }));
+
+          const { error: errorFechas } = await supabase.from('eventoFechas').insert(fechasInsert);
+          if (errorFechas) throw errorFechas;
+        }
       }
 
       await cargarEventos();
