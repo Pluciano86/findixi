@@ -246,6 +246,69 @@ def has_explicit_non_pr_marker(text: str) -> bool:
     return any(marker in norm for marker in non_pr_markers)
 
 
+def detect_non_event_reason(*parts: str) -> str:
+    norm = f" {normalize_text(' '.join([p or '' for p in parts]))} "
+    if not norm.strip():
+        return ""
+
+    rental_markers = (
+        " alquiler ",
+        " alquila ",
+        " alquilar ",
+        " renta ",
+        " rent ",
+        " rental ",
+        " for rent ",
+    )
+    if any(marker in norm for marker in rental_markers):
+        return "Descartado: no es evento (alquiler/renta)"
+
+    sale_markers = (
+        " venta ",
+        " vende ",
+        " se vende ",
+        " for sale ",
+    )
+    ticket_sale_allow = (
+        " venta de boletos ",
+        " venta de boleto ",
+        " venta de entradas ",
+        " venta de entrada ",
+        " ticket sale ",
+    )
+    if any(marker in norm for marker in sale_markers):
+        if any(marker in norm for marker in ticket_sale_allow):
+            return ""
+        product_markers = (
+            " gazebo ",
+            " gazebos ",
+            " salon ",
+            " actividades ",
+            " carpa ",
+            " carpas ",
+            " silla ",
+            " sillas ",
+            " mesa ",
+            " mesas ",
+            " inflable ",
+            " inflables ",
+            " articulo ",
+            " articulos ",
+            " producto ",
+            " productos ",
+            " mercancia ",
+            " merchandise ",
+            " equipo ",
+            " equipos ",
+        )
+        if any(marker in norm for marker in product_markers):
+            return "Descartado: no es evento (venta/artículo)"
+        if norm.strip().startswith("venta "):
+            return "Descartado: no es evento (venta/artículo)"
+
+    return ""
+
+
 def parse_time_12h_to_24h(text: str) -> str:
     m = re.search(r"\b(\d{1,2}):(\d{2})\s*([AaPp][Mm])\b", text or "")
     if not m:
@@ -737,6 +800,25 @@ def main() -> int:
                     "nombre": nombre,
                     "categoria_raw": keywords,
                     "motivo": "Descartado: evento fuera de Puerto Rico",
+                    "descripcion_preview": description[:280],
+                }
+            )
+            continue
+
+        non_event_reason = detect_non_event_reason(
+            nombre,
+            description,
+            keywords,
+            default_venue,
+            item.get("location_listing", ""),
+        )
+        if non_event_reason:
+            no_dated_rows.append(
+                {
+                    "url": event_url,
+                    "nombre": nombre,
+                    "categoria_raw": keywords,
+                    "motivo": non_event_reason,
                     "descripcion_preview": description[:280],
                 }
             )

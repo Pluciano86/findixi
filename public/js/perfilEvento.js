@@ -28,12 +28,15 @@ const BOLETERIA_BRAND = {
 const loader = document.getElementById('loader');
 const nombreEventoEl = document.getElementById('nombreEvento');
 const categoriaEventoEl = document.getElementById('categoriaEvento');
+const eventoImagenFrameEl = document.getElementById('eventoImagenFrame');
+const proximaFechaLabelEl = document.getElementById('proximaFechaLabel');
 const fechaPrincipalDiaEl = document.getElementById('fechaPrincipalDia');
 const fechaPrincipalRestoEl = document.getElementById('fechaPrincipalResto');
 const horaPrincipalEl = document.getElementById('horaPrincipal');
 const municipioPrincipalEl = document.getElementById('municipioPrincipal');
 const otrasFechasHintEl = document.getElementById('otrasFechasHint');
 const otrosMunicipiosHintEl = document.getElementById('otrosMunicipiosHint');
+const proximasFechasSectionEl = document.getElementById('proximasFechasSection');
 const descripcionSectionEl = document.getElementById('descripcionSection');
 const descripcionEventoEl = document.getElementById('descripcionEvento');
 const toggleDescripcionEventoEl = document.getElementById('toggleDescripcionEvento');
@@ -48,6 +51,31 @@ const lugarEventoTextoEl = document.getElementById('lugarEventoTexto');
 const direccionEventoTextoEl = document.getElementById('direccionEventoTexto');
 const btnEventoGoogleMapsEl = document.getElementById('btnEventoGoogleMaps');
 const btnEventoWazeEl = document.getElementById('btnEventoWaze');
+
+function scrollToProximasFechas() {
+  if (!proximasFechasSectionEl) return;
+  proximasFechasSectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function makeHintClickable(node) {
+  if (!node) return;
+  if (node.dataset.scrollBound === 'true') return;
+  node.dataset.scrollBound = 'true';
+  node.setAttribute('role', 'button');
+  node.setAttribute('tabindex', '0');
+  node.classList.add('cursor-pointer', 'underline', 'underline-offset-2', 'hover:text-slate-500');
+  node.addEventListener('click', scrollToProximasFechas);
+  node.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      scrollToProximasFechas();
+    }
+  });
+}
+
+function scrollToImagenEvento() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 function mostrarLoader() {
   loader?.classList.remove('hidden');
@@ -277,6 +305,8 @@ async function cargarEvento() {
   }
 
   mostrarLoader();
+  makeHintClickable(otrasFechasHintEl);
+  makeHintClickable(otrosMunicipiosHintEl);
 
   try {
     const selectBase = `
@@ -566,11 +596,16 @@ async function cargarEvento() {
       listaFechasEventoEl.querySelectorAll('button[data-fecha-key]').forEach((btn) => {
         btn.addEventListener('click', async () => {
           const key = btn.getAttribute('data-fecha-key');
-          if (!key || key === selectedFechaKey) return;
+          if (!key) return;
           selectedFechaKey = key;
           const index = fechas.findIndex((item, idx) => fechaKey(item, idx) === key);
           const fechaSeleccionada = index >= 0 ? fechas[index] : null;
           await actualizarBloquePrincipal(fechaSeleccionada);
+          if (proximaFechaLabelEl) {
+            proximaFechaLabelEl.textContent = '';
+            proximaFechaLabelEl.classList.add('hidden');
+          }
+          scrollToImagenEvento();
           renderSelectorFechas();
         });
       });

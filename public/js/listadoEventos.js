@@ -196,7 +196,7 @@ function renderBoleteriasInline(eventoId) {
       const brand = BOLETERIA_BRAND[key];
       const label = item.source_display || item.source || 'Boletería';
       if (brand?.logo) {
-        return `<img src="${brand.logo}" alt="${brand.label}" title="${brand.label}" class="h-5 w-auto object-contain" loading="lazy" />`;
+        return `<img src="${brand.logo}" alt="${brand.label}" title="${brand.label}" class="h-4 sm:h-5 w-auto object-contain" loading="lazy" />`;
       }
       return `<span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2 py-[2px] text-[11px] font-semibold text-slate-700">${label}</span>`;
     })
@@ -387,6 +387,7 @@ async function cargarEventos() {
       };
       return eventoNormalizado;
     })
+    .filter((evento) => !isBlockedNonEventEntry(evento))
     .filter((evento) => !evento.ultimaFecha || evento.ultimaFecha >= hoyISO);
 
   await renderizarEventos();
@@ -394,6 +395,51 @@ async function cargarEventos() {
 
 function normalizarTexto(texto) {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+function isBlockedNonEventEntry(evento = {}) {
+  const rawText = [
+    evento?.nombre || '',
+    evento?.descripcion || '',
+    evento?.lugar || '',
+    evento?.direccion || '',
+    evento?.categoriaNombre || '',
+  ].join(' ');
+  const text = normalizarTexto(String(rawText || ''))
+    .replace(/[^a-z0-9\s/]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!text) return false;
+
+  const rentalMarkers = ['alquiler', 'alquila', 'alquilar', 'renta', 'rent', 'rental'];
+  if (rentalMarkers.some((marker) => new RegExp(`\\b${marker}\\b`, 'i').test(text))) {
+    return true;
+  }
+
+  const saleMarkers = ['venta', 'vende'];
+  const hasSale = saleMarkers.some((marker) => new RegExp(`\\b${marker}\\b`, 'i').test(text)) || /\bfor sale\b/i.test(text);
+  if (!hasSale) return false;
+
+  const ticketSaleAllow = [
+    'venta de boletos',
+    'venta de boleto',
+    'venta de entradas',
+    'venta de entrada',
+    'ticket sale'
+  ];
+  if (ticketSaleAllow.some((marker) => text.includes(marker))) {
+    return false;
+  }
+
+  const productMarkers = [
+    'gazebo', 'gazebos', 'salon', 'actividades', 'carpa', 'carpas', 'silla', 'sillas', 'mesa', 'mesas',
+    'inflable', 'inflables', 'articulo', 'articulos', 'producto', 'productos', 'mercancia', 'merchandise',
+    'equipo', 'equipos'
+  ];
+  if (productMarkers.some((marker) => new RegExp(`\\b${marker}\\b`, 'i').test(text))) {
+    return true;
+  }
+  return /^\s*venta\b/i.test(text);
 }
 
 function normalizarNombreFocus(valor = '') {

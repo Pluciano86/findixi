@@ -14,7 +14,9 @@ from __future__ import annotations
 import csv
 import json
 import os
+import re
 import sys
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -48,6 +50,77 @@ def load_env_file(path: Path) -> Dict[str, str]:
 
 def clean(value: Any) -> str:
     return str(value or "").strip()
+
+
+def normalize_text(value: str) -> str:
+    value = unicodedata.normalize("NFKD", value or "")
+    value = "".join(ch for ch in value if not unicodedata.combining(ch))
+    value = value.lower()
+    value = re.sub(r"[^a-z0-9\s/]+", " ", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def detect_non_event_reason(*parts: str) -> str:
+    norm = f" {normalize_text(' '.join([p or '' for p in parts]))} "
+    if not norm.strip():
+        return ""
+
+    rental_markers = (
+        " alquiler ",
+        " alquila ",
+        " alquilar ",
+        " renta ",
+        " rent ",
+        " rental ",
+        " for rent ",
+    )
+    if any(marker in norm for marker in rental_markers):
+        return "no_event_alquiler_renta"
+
+    sale_markers = (
+        " venta ",
+        " vende ",
+        " se vende ",
+        " for sale ",
+    )
+    ticket_sale_allow = (
+        " venta de boletos ",
+        " venta de boleto ",
+        " venta de entradas ",
+        " venta de entrada ",
+        " ticket sale ",
+    )
+    if any(marker in norm for marker in sale_markers):
+        if any(marker in norm for marker in ticket_sale_allow):
+            return ""
+        product_markers = (
+            " gazebo ",
+            " gazebos ",
+            " salon ",
+            " actividades ",
+            " carpa ",
+            " carpas ",
+            " silla ",
+            " sillas ",
+            " mesa ",
+            " mesas ",
+            " inflable ",
+            " inflables ",
+            " articulo ",
+            " articulos ",
+            " producto ",
+            " productos ",
+            " mercancia ",
+            " merchandise ",
+            " equipo ",
+            " equipos ",
+        )
+        if any(marker in norm for marker in product_markers):
+            return "no_event_venta_articulo"
+        if norm.strip().startswith("venta "):
+            return "no_event_venta_articulo"
+    return ""
 
 
 def to_bool(value: Any) -> bool:
@@ -210,12 +283,22 @@ def sync() -> int:
     existing_by_source_event_id: Dict[str, int] = {}
 
     temp_to_real_event_id: Dict[int, int] = {}
+    skipped_non_event = 0
 
     # 1) Upsert eventos base
     for row in eventos:
         temp_event_id = to_int(row.get("id"))
         url_evento = clean(row.get("enlaceboletos"))
         if not temp_event_id or not url_evento:
+            continue
+        non_event_reason = detect_non_event_reason(
+            clean(row.get("nombre")),
+            clean(row.get("descripcion")),
+            clean(row.get("lugar")),
+            clean(row.get("direccion")),
+        )
+        if non_event_reason:
+            skipped_non_event += 1
             continue
         url_key = url_evento.lower()
         source_event_id = clean(row.get("source_event_id"))
@@ -440,6 +523,7 @@ def sync() -> int:
         sb.insert("eventos_boleterias", boleterias_payload, returning=False)
 
     print(f"[sync_pietix] eventos_upsert: {len(temp_to_real_event_id)}")
+    print(f"[sync_pietix] eventos_descartados_no_evento: {skipped_non_event}")
     print(f"[sync_pietix] sedes_insertadas: {len(temp_sede_to_real_sede)}")
     print(f"[sync_pietix] fechas_insertadas: {len(fechas_payload)}")
     print(f"[sync_pietix] boleterias_insertadas: {len(boleterias_payload)}")
