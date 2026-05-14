@@ -34,6 +34,7 @@ const eventoImagenFrameEl = document.getElementById('eventoImagenFrame');
 const proximaFechaLabelEl = document.getElementById('proximaFechaLabel');
 const fechaPrincipalDiaEl = document.getElementById('fechaPrincipalDia');
 const fechaPrincipalRestoEl = document.getElementById('fechaPrincipalResto');
+const lugarPrincipalEl = document.getElementById('lugarPrincipal');
 const horaPrincipalEl = document.getElementById('horaPrincipal');
 const municipioPrincipalEl = document.getElementById('municipioPrincipal');
 const otrasFechasHintEl = document.getElementById('otrasFechasHint');
@@ -628,6 +629,7 @@ async function cargarEvento() {
       if (!fechaItem) {
         fechaPrincipalDiaEl.textContent = t('area.sinFecha');
         fechaPrincipalRestoEl.textContent = '';
+        lugarPrincipalEl.textContent = '';
         horaPrincipalEl.textContent = t('area.noDisponible');
         municipioPrincipalEl.textContent = t('area.noDisponible');
         lugarEventoSectionEl.classList.add('hidden');
@@ -635,8 +637,10 @@ async function cargarEvento() {
       }
 
       const fechaDetalle = obtenerPartesFecha(fechaItem.fecha);
+      const lugarTexto = limpiarLugarMostrado(fechaItem.lugar, fechaItem.municipioNombre, fechaItem.direccion) || t('area.noDisponible');
       fechaPrincipalDiaEl.textContent = fechaDetalle?.weekday || t('area.sinFecha');
       fechaPrincipalRestoEl.textContent = fechaDetalle?.resto || '';
+      lugarPrincipalEl.textContent = lugarTexto;
       horaPrincipalEl.textContent = formatearHora(fechaItem.horainicio) || t('area.noDisponible');
       municipioPrincipalEl.textContent = fechaItem.municipioNombre || evento.municipioNombre || t('evento.variosMunicipios');
       await actualizarLugarGpsDesdeFecha(fechaItem);
@@ -697,12 +701,12 @@ async function cargarEvento() {
                   <div class="text-red-600 font-semibold leading-tight text-xl">${fechaDetalle?.resto || ''}</div>
                 </div>
                 <div class="mt-2 rounded-lg border border-sky-100 bg-sky-50/70 px-2 py-2 text-center">
+                  <div class="text-slate-700 font-semibold text-base leading-tight">${lugarTxt}</div>
                   <div class="text-slate-700 font-semibold text-base leading-tight">${horaTxt}</div>
                   <div class="mt-1 flex items-center justify-center gap-1 font-medium" style="color:#23B4E9;">
                     <i class="fa-solid fa-map-pin"></i>
                     <span>${municipioTxt}</span>
                   </div>
-                  <div class="mt-1 text-slate-600 font-medium leading-tight">${lugarTxt}</div>
                 </div>
               </button>
             </li>
