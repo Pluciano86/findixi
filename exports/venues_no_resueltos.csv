@@ -6,12 +6,10 @@ Teatro Shorty Castro en Santurce,65,prticket,https://boletos.prticket.com/events
 Centro de Convenciones P.R.,65,prticket,https://boletos.prticket.com/events/en/asianspringfest2026,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Segundo Nivel de Plaza las Américas (Antiguo Sears),65,prticket,https://boletos.prticket.com/events/en/babyexpo,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Cancha Gelito Ortega,54,prticket,https://boletos.prticket.com/events/en/batallaenlamontana,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
-Coliseito Pedrin Zorrilla,65,prticket,https://boletos.prticket.com/events/en/big-time,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Coliseo Roberto Clemente,65,prticket,https://boletos.prticket.com/events/en/cangrejeras,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Centro de Convenciones de Puerto Rico,65,prticket,https://boletos.prticket.com/events/en/caribbean2026,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Teatro Braulio Castillo,11,prticket,https://boletos.prticket.com/events/en/carlossanchezenpr,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Abracadabra Counter Café en Santurce,65,prticket,https://boletos.prticket.com/events/en/cortaditoocapuchino,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
-Plaza de la Independencia,65,prticket,https://boletos.prticket.com/events/en/dnz26,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Abracadabra Counter Café en Santurce,65,prticket,https://boletos.prticket.com/events/en/dragacadabra,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Centro de Bellas Artes de Santurce,65,prticket,https://boletos.prticket.com/events/en/elaumento,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Teatro de la Universidad Interamericana de Bayamón,11,prticket,https://boletos.prticket.com/events/en/enamoradosdelafe,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
@@ -23,7 +21,6 @@ Abracadabra Counter Café en Santurce,65,prticket,https://boletos.prticket.com/e
 Teatro Municipal José A. Monrouzeau,34,prticket,https://boletos.prticket.com/events/en/lajamonasecasaprena,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Colegio De La Salle,11,prticket,https://boletos.prticket.com/events/en/lasallistadiafamiliar,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Teatro Tapia en Viejo San Juan,65,prticket,https://boletos.prticket.com/events/en/mammamiamusicalsaintjohnsschool,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
-Teatro José M. Lugo Emanuelli,27,prticket,https://boletos.prticket.com/events/en/masturbadoquetu,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Teatro Yagüez,50,prticket,https://boletos.prticket.com/events/en/masturbadoquetu,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Teatro Shorty Castro en Santurce,65,prticket,https://boletos.prticket.com/events/en/mision939,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Teatro Braulio Castillo,11,prticket,https://boletos.prticket.com/events/en/ndi-pantis,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
@@ -42,3 +39,41 @@ Coliseo Pedrín Zorrilla,65,prticket,https://boletos.prticket.com/events/en/wint
 Coliseo Roberto Clemente en San Juan,65,prticket,https://boletos.prticket.com/events/en/wwcaniversario53,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Teatro Tapia en Viejo San Juan,65,prticket,https://boletos.prticket.com/events/en/yaenmitierranoeslomismo,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
 Teatro Yagüez en Mayagüez,50,prticket,https://boletos.prticket.com/events/en/yaenmitierranoeslomismo,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
+Enumerado con 2 precios,65,prticket,https://boletos.prticket.com/events/en/algoextra-9,missing GOOGLE_MAPS_API_KEY
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/asalto,missing GOOGLE_MAPS_API_KEY
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/best-jevas,missing GOOGLE_MAPS_API_KEY
+Camp Explore 360,11,prticket,https://boletos.prticket.com/events/en/campamentoxplore360,missing GOOGLE_MAPS_API_KEY
+First Attack,65,prticket,https://boletos.prticket.com/events/en/firstattack2026,missing GOOGLE_MAPS_API_KEY
+Irving & Darisho,65,prticket,https://boletos.prticket.com/events/en/irvingdarisho,missing GOOGLE_MAPS_API_KEY
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/nochesdeimpro,missing GOOGLE_MAPS_API_KEY
+Sekaiju,36,prticket,https://boletos.prticket.com/events/en/puertoricosekaijucon,missing GOOGLE_MAPS_API_KEY
+"Payment Plan disponible con pagos desde $5 semanales, según el boleto",26,pietix,https://pietix.com/sidepiece2,missing GOOGLE_MAPS_API_KEY
+Enumerado con 2 precios,65,prticket,https://boletos.prticket.com/events/en/algoextra-9,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/asalto,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/best-jevas,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
+Camp Explore 360,11,prticket,https://boletos.prticket.com/events/en/campamentoxplore360,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
+First Attack,65,prticket,https://boletos.prticket.com/events/en/firstattack2026,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
+Irving & Darisho,65,prticket,https://boletos.prticket.com/events/en/irvingdarisho,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/nochesdeimpro,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
+Sekaiju,36,prticket,https://boletos.prticket.com/events/en/puertoricosekaijucon,REQUEST_DENIED: API keys with referer restrictions cannot be used with this API.
+Enumerado con 2 precios,65,prticket,https://boletos.prticket.com/events/en/algoextra-9,REQUEST_DENIED: The provided API key is expired.
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/asalto,REQUEST_DENIED: The provided API key is expired.
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/best-jevas,REQUEST_DENIED: The provided API key is expired.
+Camp Explore 360,11,prticket,https://boletos.prticket.com/events/en/campamentoxplore360,REQUEST_DENIED: The provided API key is expired.
+First Attack,65,prticket,https://boletos.prticket.com/events/en/firstattack2026,REQUEST_DENIED: The provided API key is expired.
+Irving & Darisho,65,prticket,https://boletos.prticket.com/events/en/irvingdarisho,REQUEST_DENIED: The provided API key is expired.
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/nochesdeimpro,REQUEST_DENIED: The provided API key is expired.
+Sekaiju,36,prticket,https://boletos.prticket.com/events/en/puertoricosekaijucon,REQUEST_DENIED: The provided API key is expired.
+Enumerado con 2 precios,65,prticket,https://boletos.prticket.com/events/en/algoextra-9,ZERO_RESULTS
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/asalto,ZERO_RESULTS
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/best-jevas,ZERO_RESULTS
+Camp Explore 360,11,prticket,https://boletos.prticket.com/events/en/campamentoxplore360,ZERO_RESULTS
+First Attack,65,prticket,https://boletos.prticket.com/events/en/firstattack2026,ZERO_RESULTS
+Irving & Darisho,65,prticket,https://boletos.prticket.com/events/en/irvingdarisho,ZERO_RESULTS
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/nochesdeimpro,ZERO_RESULTS
+Sekaiju,36,prticket,https://boletos.prticket.com/events/en/puertoricosekaijucon,ZERO_RESULTS
+"Payment Plan disponible con pagos desde $5 semanales, según el boleto",26,pietix,https://pietix.com/sidepiece2,ZERO_RESULTS
+Enumerado con 2 precios,65,prticket,https://boletos.prticket.com/events/en/algoextra-9,generic_venue_skipped
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/asalto,generic_venue_skipped
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/best-jevas,generic_venue_skipped
+Enumerado con 2 precios+ Vision Limitada,65,prticket,https://boletos.prticket.com/events/en/nochesdeimpro,generic_venue_skipped

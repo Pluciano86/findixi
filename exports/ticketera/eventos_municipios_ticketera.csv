@@ -1,80 +1,80 @@
 id,event_id,source,source_event_id,municipio_id,lugar,localidad_key,direccion,enlaceboletos
-661,205,ticketera,gigantes-bsn-2026-temporada-regular,15,Coliseo Carlos Miguel Mangual,15|coliseo carlos miguel mangual,"Coliseo Carlos Miguel Mangual, Canóvanas",https://www.ticketera.com/events/detail/gigantes-bsn-2026-temporada-regular
-662,206,ticketera,laura-pausini-world-tour,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/laura-pausini-world-tour
-663,207,ticketera,los-tigres-del-norte,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/los-tigres-del-norte
-664,208,ticketera,aterciopelados,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/aterciopelados
-665,209,ticketera,asi-o-mas-vulgar,11,Teatro Braulio Castillo,11|teatro braulio castillo,"Teatro Braulio Castillo, Bayamón",https://www.ticketera.com/events/detail/asi-o-mas-vulgar
-666,210,ticketera,uagm-food-fest-2026,16,"UAGM, Recinto de Carolina",16|uagm recinto de carolina,"UAGM, Recinto de Carolina",https://www.ticketera.com/events/detail/uagm-food-fest-2026
-667,211,ticketera,esto-si-es-un-show,50,Teatro Yagüez,50|teatro yaguez,"Teatro Yagüez, Mayagüez",https://www.ticketera.com/events/detail/esto-si-es-un-show
-668,211,ticketera,esto-si-es-un-show,78,Teatro Ideal,78|teatro ideal,"Teatro Ideal, Yauco",https://www.ticketera.com/events/detail/esto-si-es-un-show
-669,211,ticketera,esto-si-es-un-show,67,Centro de Bellas Artes de San Sebastián,67|centro de bellas artes de san sebastian,Centro de Bellas Artes de San Sebastián,https://www.ticketera.com/events/detail/esto-si-es-un-show
-670,212,ticketera,jonathan-barber-vision-ahead,65,Teatro Inter Metro,65|teatro inter metro,"Teatro Inter Metro, San Juan",https://www.ticketera.com/events/detail/jonathan-barber-vision-ahead
-671,213,ticketera,grupo-mania-the-originals,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/grupo-mania-the-originals
-672,214,ticketera,sr-family-ni-santos-ni-perfectos,67,Teatro Ernesto Ramos Antonini,67|teatro ernesto ramos antonini,"Teatro Ernesto Ramos Antonini, San Sebastián",https://www.ticketera.com/events/detail/sr-family-ni-santos-ni-perfectos
-673,214,ticketera,sr-family-ni-santos-ni-perfectos,67,Centro de Bellas Artes de San Sebastián,67|centro de bellas artes de san sebastian,Centro de Bellas Artes de San Sebastián,https://www.ticketera.com/events/detail/sr-family-ni-santos-ni-perfectos
-674,214,ticketera,sr-family-ni-santos-ni-perfectos,58,"Teatro Monseñor Vicente Murga, Ponce",58|teatro monsenor vicente murga ponce,"Teatro Monseñor Vicente Murga, Ponce",https://www.ticketera.com/events/detail/sr-family-ni-santos-ni-perfectos
-675,215,ticketera,lamb-of-god-in-flames-fit-for-an-autopsy,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/lamb-of-god-in-flames-fit-for-an-autopsy
-676,216,ticketera,nicky-jam-el-regreso-a-casa,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/nicky-jam-el-regreso-a-casa
-677,217,ticketera,jay-wheeler-mundo-rueditas-live,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/jay-wheeler-mundo-rueditas-live
-678,218,ticketera,carlos-vives-la-provincia-tour-al-sol,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/carlos-vives-la-provincia-tour-al-sol
-679,219,ticketera,gaby-alicea-en-el-choli-el-boricua-es-otra-cosa,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/gaby-alicea-en-el-choli-el-boricua-es-otra-cosa
-680,220,ticketera,sin-bandera,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/sin-bandera
-681,221,ticketera,rosalia,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/rosalia
-682,222,ticketera,tercer-cielo,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/tercer-cielo
-683,223,ticketera,ricardo-montaner-el-ultimo-regreso-tour,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/ricardo-montaner-el-ultimo-regreso-tour
-684,224,ticketera,grupo-frontera,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/grupo-frontera
-685,225,ticketera,isabel-pantoja-50-aniversario,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/isabel-pantoja-50-aniversario
-686,226,ticketera,elena-rose,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/elena-rose
-687,227,ticketera,hector-el-torito,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/hector-el-torito
-688,228,ticketera,premios-tu-musica-urbana,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/premios-tu-musica-urbana
-689,229,ticketera,la-iglesia-en-la-calle,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/la-iglesia-en-la-calle
-690,230,ticketera,dante-gebel-1,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/dante-gebel-1
-691,231,ticketera,george-lopez-live,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/george-lopez-live
-692,232,ticketera,elsa-y-elmar,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/elsa-y-elmar
-693,233,ticketera,ub40,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/ub40
-694,234,ticketera,fronti-el-diamond-forever,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/fronti-el-diamond-forever
-695,235,ticketera,el-mentalista,13,Bellas Artes de Caguas,13|bellas artes de caguas,Bellas Artes de Caguas,https://www.ticketera.com/events/detail/el-mentalista
-696,236,ticketera,odilio-gonzalez-la-despedida-1,13,Bellas Artes de Caguas,13|bellas artes de caguas,Bellas Artes de Caguas,https://www.ticketera.com/events/detail/odilio-gonzalez-la-despedida-1
-697,237,ticketera,camerata-coral-con-calle,13,Bellas Artes de Caguas,13|bellas artes de caguas,Bellas Artes de Caguas,https://www.ticketera.com/events/detail/camerata-coral-con-calle
-698,238,ticketera,dancing-queen-abba-tributo-filarmonico,13,Bellas Artes de Caguas,13|bellas artes de caguas,Bellas Artes de Caguas,https://www.ticketera.com/events/detail/dancing-queen-abba-tributo-filarmonico
-699,239,ticketera,el-padre-le-pere,50,Teatro Yagüez,50|teatro yaguez,"Teatro Yagüez, Mayagüez",https://www.ticketera.com/events/detail/el-padre-le-pere
-700,239,ticketera,el-padre-le-pere,13,Bellas Artes de Caguas,13|bellas artes de caguas,Bellas Artes de Caguas,https://www.ticketera.com/events/detail/el-padre-le-pere
-701,240,ticketera,charlie-zaa-nacer-de-nuevo-tour,13,Bellas Artes de Caguas,13|bellas artes de caguas,Bellas Artes de Caguas,https://www.ticketera.com/events/detail/charlie-zaa-nacer-de-nuevo-tour
-702,241,ticketera,puerto-rico-beer-fest-9e1sht,16,Vivo Beach Club,16|vivo beach club,"Vivo Beach Club, Carolina",https://www.ticketera.com/events/detail/puerto-rico-beer-fest-9e1sht
-703,242,ticketera,mario-vi-10-anos-sin-reirme,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/mario-vi-10-anos-sin-reirme
-704,243,ticketera,don-esteban-luis-esteban-perico-ortiz-y-carlos-esteban-fonseca,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/don-esteban-luis-esteban-perico-ortiz-y-carlos-esteban-fonseca
-705,244,ticketera,desde-el-componente-de-mama-musica-risas-y-nostalgia,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/desde-el-componente-de-mama-musica-risas-y-nostalgia
-706,245,ticketera,chucho-avellanet-en-jamas-te-olvidare,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/chucho-avellanet-en-jamas-te-olvidare
-707,246,ticketera,charlie-sepulveda-celebrando-el-buena-vista-social-club,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/charlie-sepulveda-celebrando-el-buena-vista-social-club
-708,247,ticketera,o-brasil-nossa-historia,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/o-brasil-nossa-historia
-709,248,ticketera,gorda,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/gorda
-710,249,ticketera,com-capital-of-motors,65,Puerto Rico Convention Center,65|puerto rico convention center,"Puerto Rico Convention Center, San Juan",https://www.ticketera.com/events/detail/com-capital-of-motors
-711,250,ticketera,inflalandia,65,Puerto Rico Convention Center,65|puerto rico convention center,"Puerto Rico Convention Center, San Juan",https://www.ticketera.com/events/detail/inflalandia
-712,251,ticketera,eliades-ochoa,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/eliades-ochoa
-713,252,ticketera,bee-gees-sinfonico-1,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/bee-gees-sinfonico-1
-714,253,ticketera,hamlet,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/hamlet
-715,254,ticketera,jala-jala-el-combo-filarmonico,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/jala-jala-el-combo-filarmonico
-716,255,ticketera,festival-casals-de-puerto-rico-2026-concierto-inaugural,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/festival-casals-de-puerto-rico-2026-concierto-inaugural
-717,256,ticketera,festival-casals-de-puerto-rico-2026-recital-de-chelo-y-piano,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/festival-casals-de-puerto-rico-2026-recital-de-chelo-y-piano
-718,257,ticketera,festival-casals-de-puerto-rico-2026-las-troyanas,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/festival-casals-de-puerto-rico-2026-las-troyanas
-719,258,ticketera,los-tres-pianistas-one-more-time,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/los-tres-pianistas-one-more-time
-720,259,ticketera,festival-casals-de-puerto-rico-2026-boston-symphony-chamber-players,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/festival-casals-de-puerto-rico-2026-boston-symphony-chamber-players
-721,260,ticketera,radel-ortiz-stand-up-comedy-tour-2026,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/radel-ortiz-stand-up-comedy-tour-2026
-722,261,ticketera,criollos-de-caguas-bsn-2026-temporada-regular,13,Coliseo Roger Mendoza,13|coliseo roger mendoza,"Coliseo Roger Mendoza, Caguas",https://www.ticketera.com/events/detail/criollos-de-caguas-bsn-2026-temporada-regular
-723,262,ticketera,vaqueros-de-bayamon-bsn-2026-temporada-regular,11,Coliseo Rubén Rodríguez,11|coliseo ruben rodriguez,"Coliseo Rubén Rodríguez, Bayamón",https://www.ticketera.com/events/detail/vaqueros-de-bayamon-bsn-2026-temporada-regular
-724,263,ticketera,osos-de-manati-bsn-2026-temporada-regular,47,"Coliseo Juan Aubín Cruz ""Bincito""",47|coliseo juan aubin cruz bincito,"Coliseo Juan Aubín Cruz ""Bincito"", Manatí",https://www.ticketera.com/events/detail/osos-de-manati-bsn-2026-temporada-regular
-725,264,ticketera,choke-de-campeones,50,Palacio de Recreación y Deportes,50|palacio de recreacion y deportes,"Palacio de Recreación y Deportes, Mayagüez",https://www.ticketera.com/events/detail/choke-de-campeones
-726,265,ticketera,tributo-a-las-k-pop,22,Centro de Convenciones de Coamo,22|centro de convenciones de coamo,Centro de Convenciones de Coamo,https://www.ticketera.com/events/detail/tributo-a-las-k-pop
-727,265,ticketera,tributo-a-las-k-pop,36,Centro de Bellas Artes de Humacao,36|centro de bellas artes de humacao,Centro de Bellas Artes de Humacao,https://www.ticketera.com/events/detail/tributo-a-las-k-pop
-728,266,ticketera,noche-de-san-juan,65,Fairmont El San Juan Hotel,65|fairmont el san juan hotel,Fairmont El San Juan Hotel,https://www.ticketera.com/events/detail/noche-de-san-juan
-729,267,ticketera,dino-encounter-jurassic-experience,67,Centro de Bellas Artes de San Sebastián,67|centro de bellas artes de san sebastian,Centro de Bellas Artes de San Sebastián,https://www.ticketera.com/events/detail/dino-encounter-jurassic-experience
-730,268,ticketera,mojito-fest,26,Parque Agroturístico El Dorado,26|parque agroturistico el dorado,Parque Agroturístico El Dorado,https://www.ticketera.com/events/detail/mojito-fest
-731,269,ticketera,el-guaynabito-de-corozal,78,Teatro Ideal,78|teatro ideal,"Teatro Ideal, Yauco",https://www.ticketera.com/events/detail/el-guaynabito-de-corozal
-732,269,ticketera,el-guaynabito-de-corozal,11,Teatro Braulio Castillo,11|teatro braulio castillo,"Teatro Braulio Castillo, Bayamón",https://www.ticketera.com/events/detail/el-guaynabito-de-corozal
-733,269,ticketera,el-guaynabito-de-corozal,50,Teatro Yagüez,50|teatro yaguez,"Teatro Yagüez, Mayagüez",https://www.ticketera.com/events/detail/el-guaynabito-de-corozal
-734,270,ticketera,dear-evan-hansen,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/dear-evan-hansen
-735,271,ticketera,cuca-gomez-la-cenicienta,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/cuca-gomez-la-cenicienta
-736,271,ticketera,cuca-gomez-la-cenicienta,50,Teatro Yagüez,50|teatro yaguez,"Teatro Yagüez, Mayagüez",https://www.ticketera.com/events/detail/cuca-gomez-la-cenicienta
-737,272,ticketera,something-rotten,65,Teatro Francisco Arriví,65|teatro francisco arrivi,"Teatro Francisco Arriví, San Juan",https://www.ticketera.com/events/detail/something-rotten
-738,273,ticketera,la-noche-santa,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/la-noche-santa
-739,274,ticketera,soy-menopausica-y-que,41,Teatro Juventud,41|teatro juventud,"Teatro Juventud, Lajas",https://www.ticketera.com/events/detail/soy-menopausica-y-que
+1046,215,ticketera,gigantes-bsn-2026-temporada-regular,15,Coliseo Carlos Miguel Mangual,15|coliseo carlos miguel mangual,"Coliseo Carlos Miguel Mangual, Canóvanas",https://www.ticketera.com/events/detail/gigantes-bsn-2026-temporada-regular
+1047,216,ticketera,laura-pausini-world-tour,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/laura-pausini-world-tour
+1048,217,ticketera,los-tigres-del-norte,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/los-tigres-del-norte
+1049,218,ticketera,aterciopelados,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/aterciopelados
+1050,219,ticketera,asi-o-mas-vulgar,11,Teatro Braulio Castillo,11|teatro braulio castillo,"Teatro Braulio Castillo, Bayamón",https://www.ticketera.com/events/detail/asi-o-mas-vulgar
+1051,220,ticketera,uagm-food-fest-2026,16,"UAGM, Recinto de Carolina",16|uagm recinto de carolina,"UAGM, Recinto de Carolina",https://www.ticketera.com/events/detail/uagm-food-fest-2026
+1052,221,ticketera,esto-si-es-un-show,50,Teatro Yagüez,50|teatro yaguez,"Teatro Yagüez, Mayagüez",https://www.ticketera.com/events/detail/esto-si-es-un-show
+1053,221,ticketera,esto-si-es-un-show,78,Teatro Ideal,78|teatro ideal,"Teatro Ideal, Yauco",https://www.ticketera.com/events/detail/esto-si-es-un-show
+1054,221,ticketera,esto-si-es-un-show,67,Centro de Bellas Artes de San Sebastián,67|centro de bellas artes de san sebastian,Centro de Bellas Artes de San Sebastián,https://www.ticketera.com/events/detail/esto-si-es-un-show
+1055,222,ticketera,jonathan-barber-vision-ahead,65,Teatro Inter Metro,65|teatro inter metro,"Teatro Inter Metro, San Juan",https://www.ticketera.com/events/detail/jonathan-barber-vision-ahead
+1056,223,ticketera,grupo-mania-the-originals,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/grupo-mania-the-originals
+1057,224,ticketera,sr-family-ni-santos-ni-perfectos,67,Teatro Ernesto Ramos Antonini,67|teatro ernesto ramos antonini,"Teatro Ernesto Ramos Antonini, San Sebastián",https://www.ticketera.com/events/detail/sr-family-ni-santos-ni-perfectos
+1058,224,ticketera,sr-family-ni-santos-ni-perfectos,67,Centro de Bellas Artes de San Sebastián,67|centro de bellas artes de san sebastian,Centro de Bellas Artes de San Sebastián,https://www.ticketera.com/events/detail/sr-family-ni-santos-ni-perfectos
+1059,224,ticketera,sr-family-ni-santos-ni-perfectos,58,"Teatro Monseñor Vicente Murga, Ponce",58|teatro monsenor vicente murga ponce,"Teatro Monseñor Vicente Murga, Ponce",https://www.ticketera.com/events/detail/sr-family-ni-santos-ni-perfectos
+1060,225,ticketera,lamb-of-god-in-flames-fit-for-an-autopsy,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/lamb-of-god-in-flames-fit-for-an-autopsy
+1061,226,ticketera,nicky-jam-el-regreso-a-casa,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/nicky-jam-el-regreso-a-casa
+1062,227,ticketera,jay-wheeler-mundo-rueditas-live,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/jay-wheeler-mundo-rueditas-live
+1063,228,ticketera,carlos-vives-la-provincia-tour-al-sol,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/carlos-vives-la-provincia-tour-al-sol
+1064,229,ticketera,gaby-alicea-en-el-choli-el-boricua-es-otra-cosa,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/gaby-alicea-en-el-choli-el-boricua-es-otra-cosa
+1065,230,ticketera,sin-bandera,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/sin-bandera
+1066,231,ticketera,rosalia,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/rosalia
+1067,232,ticketera,tercer-cielo,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/tercer-cielo
+1068,233,ticketera,ricardo-montaner-el-ultimo-regreso-tour,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/ricardo-montaner-el-ultimo-regreso-tour
+1069,234,ticketera,grupo-frontera,65,Coliseo de Puerto Rico,65|coliseo de puerto rico,"Coliseo de Puerto Rico, San Juan",https://www.ticketera.com/events/detail/grupo-frontera
+1070,235,ticketera,isabel-pantoja-50-aniversario,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/isabel-pantoja-50-aniversario
+1071,236,ticketera,elena-rose,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/elena-rose
+1072,237,ticketera,hector-el-torito,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/hector-el-torito
+1073,238,ticketera,premios-tu-musica-urbana,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/premios-tu-musica-urbana
+1074,239,ticketera,la-iglesia-en-la-calle,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/la-iglesia-en-la-calle
+1075,240,ticketera,dante-gebel-1,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/dante-gebel-1
+1076,241,ticketera,george-lopez-live,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/george-lopez-live
+1077,242,ticketera,elsa-y-elmar,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/elsa-y-elmar
+1078,243,ticketera,ub40,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/ub40
+1079,244,ticketera,fronti-el-diamond-forever,65,Coca-Cola Music Hall,65|coca cola music hall,"Coca-Cola Music Hall, San Juan",https://www.ticketera.com/events/detail/fronti-el-diamond-forever
+1080,245,ticketera,el-mentalista,13,Bellas Artes de Caguas,13|bellas artes de caguas,Bellas Artes de Caguas,https://www.ticketera.com/events/detail/el-mentalista
+1081,246,ticketera,odilio-gonzalez-la-despedida-1,13,Bellas Artes de Caguas,13|bellas artes de caguas,Bellas Artes de Caguas,https://www.ticketera.com/events/detail/odilio-gonzalez-la-despedida-1
+1082,247,ticketera,camerata-coral-con-calle,13,Bellas Artes de Caguas,13|bellas artes de caguas,Bellas Artes de Caguas,https://www.ticketera.com/events/detail/camerata-coral-con-calle
+1083,248,ticketera,dancing-queen-abba-tributo-filarmonico,13,Bellas Artes de Caguas,13|bellas artes de caguas,Bellas Artes de Caguas,https://www.ticketera.com/events/detail/dancing-queen-abba-tributo-filarmonico
+1084,249,ticketera,el-padre-le-pere,50,Teatro Yagüez,50|teatro yaguez,"Teatro Yagüez, Mayagüez",https://www.ticketera.com/events/detail/el-padre-le-pere
+1085,249,ticketera,el-padre-le-pere,13,Bellas Artes de Caguas,13|bellas artes de caguas,Bellas Artes de Caguas,https://www.ticketera.com/events/detail/el-padre-le-pere
+1086,250,ticketera,charlie-zaa-nacer-de-nuevo-tour,13,Bellas Artes de Caguas,13|bellas artes de caguas,Bellas Artes de Caguas,https://www.ticketera.com/events/detail/charlie-zaa-nacer-de-nuevo-tour
+1087,251,ticketera,puerto-rico-beer-fest-9e1sht,16,Vivo Beach Club,16|vivo beach club,"Vivo Beach Club, Carolina",https://www.ticketera.com/events/detail/puerto-rico-beer-fest-9e1sht
+1088,252,ticketera,mario-vi-10-anos-sin-reirme,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/mario-vi-10-anos-sin-reirme
+1089,253,ticketera,don-esteban-luis-esteban-perico-ortiz-y-carlos-esteban-fonseca,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/don-esteban-luis-esteban-perico-ortiz-y-carlos-esteban-fonseca
+1090,254,ticketera,desde-el-componente-de-mama-musica-risas-y-nostalgia,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/desde-el-componente-de-mama-musica-risas-y-nostalgia
+1091,255,ticketera,chucho-avellanet-en-jamas-te-olvidare,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/chucho-avellanet-en-jamas-te-olvidare
+1092,256,ticketera,charlie-sepulveda-celebrando-el-buena-vista-social-club,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/charlie-sepulveda-celebrando-el-buena-vista-social-club
+1093,257,ticketera,o-brasil-nossa-historia,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/o-brasil-nossa-historia
+1094,258,ticketera,gorda,13,Moneró Café Teatro & Bar,13|monero cafe teatro and bar,"Moneró Café Teatro & Bar, Caguas",https://www.ticketera.com/events/detail/gorda
+1095,259,ticketera,com-capital-of-motors,65,Puerto Rico Convention Center,65|puerto rico convention center,"Puerto Rico Convention Center, San Juan",https://www.ticketera.com/events/detail/com-capital-of-motors
+1096,260,ticketera,inflalandia,65,Puerto Rico Convention Center,65|puerto rico convention center,"Puerto Rico Convention Center, San Juan",https://www.ticketera.com/events/detail/inflalandia
+1097,261,ticketera,eliades-ochoa,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/eliades-ochoa
+1098,262,ticketera,bee-gees-sinfonico-1,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/bee-gees-sinfonico-1
+1099,263,ticketera,hamlet,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/hamlet
+1100,264,ticketera,jala-jala-el-combo-filarmonico,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/jala-jala-el-combo-filarmonico
+1101,265,ticketera,festival-casals-de-puerto-rico-2026-concierto-inaugural,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/festival-casals-de-puerto-rico-2026-concierto-inaugural
+1102,266,ticketera,festival-casals-de-puerto-rico-2026-recital-de-chelo-y-piano,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/festival-casals-de-puerto-rico-2026-recital-de-chelo-y-piano
+1103,267,ticketera,festival-casals-de-puerto-rico-2026-las-troyanas,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/festival-casals-de-puerto-rico-2026-las-troyanas
+1104,268,ticketera,los-tres-pianistas-one-more-time,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/los-tres-pianistas-one-more-time
+1105,269,ticketera,festival-casals-de-puerto-rico-2026-boston-symphony-chamber-players,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/festival-casals-de-puerto-rico-2026-boston-symphony-chamber-players
+1106,270,ticketera,radel-ortiz-stand-up-comedy-tour-2026,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/radel-ortiz-stand-up-comedy-tour-2026
+1107,271,ticketera,criollos-de-caguas-bsn-2026-temporada-regular,13,Coliseo Roger Mendoza,13|coliseo roger mendoza,"Coliseo Roger Mendoza, Caguas",https://www.ticketera.com/events/detail/criollos-de-caguas-bsn-2026-temporada-regular
+1108,272,ticketera,vaqueros-de-bayamon-bsn-2026-temporada-regular,11,Coliseo Rubén Rodríguez,11|coliseo ruben rodriguez,"Coliseo Rubén Rodríguez, Bayamón",https://www.ticketera.com/events/detail/vaqueros-de-bayamon-bsn-2026-temporada-regular
+1109,273,ticketera,osos-de-manati-bsn-2026-temporada-regular,47,"Coliseo Juan Aubín Cruz ""Bincito""",47|coliseo juan aubin cruz bincito,"Coliseo Juan Aubín Cruz ""Bincito"", Manatí",https://www.ticketera.com/events/detail/osos-de-manati-bsn-2026-temporada-regular
+1110,274,ticketera,choke-de-campeones,50,Palacio de Recreación y Deportes,50|palacio de recreacion y deportes,"Palacio de Recreación y Deportes, Mayagüez",https://www.ticketera.com/events/detail/choke-de-campeones
+1111,275,ticketera,tributo-a-las-k-pop,22,Centro de Convenciones de Coamo,22|centro de convenciones de coamo,Centro de Convenciones de Coamo,https://www.ticketera.com/events/detail/tributo-a-las-k-pop
+1112,275,ticketera,tributo-a-las-k-pop,36,Centro de Bellas Artes de Humacao,36|centro de bellas artes de humacao,Centro de Bellas Artes de Humacao,https://www.ticketera.com/events/detail/tributo-a-las-k-pop
+1113,276,ticketera,noche-de-san-juan,65,Fairmont El San Juan Hotel,65|fairmont el san juan hotel,Fairmont El San Juan Hotel,https://www.ticketera.com/events/detail/noche-de-san-juan
+1114,277,ticketera,dino-encounter-jurassic-experience,67,Centro de Bellas Artes de San Sebastián,67|centro de bellas artes de san sebastian,Centro de Bellas Artes de San Sebastián,https://www.ticketera.com/events/detail/dino-encounter-jurassic-experience
+1115,278,ticketera,mojito-fest,26,Parque Agroturístico El Dorado,26|parque agroturistico el dorado,Parque Agroturístico El Dorado,https://www.ticketera.com/events/detail/mojito-fest
+1116,279,ticketera,el-guaynabito-de-corozal,78,Teatro Ideal,78|teatro ideal,"Teatro Ideal, Yauco",https://www.ticketera.com/events/detail/el-guaynabito-de-corozal
+1117,279,ticketera,el-guaynabito-de-corozal,11,Teatro Braulio Castillo,11|teatro braulio castillo,"Teatro Braulio Castillo, Bayamón",https://www.ticketera.com/events/detail/el-guaynabito-de-corozal
+1118,279,ticketera,el-guaynabito-de-corozal,50,Teatro Yagüez,50|teatro yaguez,"Teatro Yagüez, Mayagüez",https://www.ticketera.com/events/detail/el-guaynabito-de-corozal
+1119,280,ticketera,dear-evan-hansen,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/dear-evan-hansen
+1120,281,ticketera,cuca-gomez-la-cenicienta,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/cuca-gomez-la-cenicienta
+1121,281,ticketera,cuca-gomez-la-cenicienta,50,Teatro Yagüez,50|teatro yaguez,"Teatro Yagüez, Mayagüez",https://www.ticketera.com/events/detail/cuca-gomez-la-cenicienta
+1122,282,ticketera,something-rotten,65,Teatro Francisco Arriví,65|teatro francisco arrivi,"Teatro Francisco Arriví, San Juan",https://www.ticketera.com/events/detail/something-rotten
+1123,283,ticketera,la-noche-santa,65,CBA Santurce,65|cba santurce,"CBA Santurce, San Juan",https://www.ticketera.com/events/detail/la-noche-santa
+1124,284,ticketera,soy-menopausica-y-que,41,Teatro Juventud,41|teatro juventud,"Teatro Juventud, Lajas",https://www.ticketera.com/events/detail/soy-menopausica-y-que

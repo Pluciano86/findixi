@@ -771,6 +771,28 @@ function getEventosSyncEndpointCandidates() {
   return [...new Set(urls)];
 }
 
+function buildSyncErrorDetail(payload = {}) {
+  if (!payload || typeof payload !== 'object') return '';
+  if (payload.error) return String(payload.error);
+  if (payload.detalle) return String(payload.detalle);
+  if (payload.mensaje && payload.ok === false) return String(payload.mensaje);
+  if (Array.isArray(payload.results)) {
+    const failed = payload.results.filter((item) => item && item.ok === false);
+    if (failed.length) {
+      return failed
+        .map((item) => {
+          const stepError = Array.isArray(item.steps)
+            ? item.steps.find((step) => step && step.ok === false)
+            : null;
+          const stepText = stepError?.stderr || stepError?.script || item?.error || 'Error desconocido';
+          return `${item.source || 'fuente'}: ${stepText}`;
+        })
+        .join(' | ');
+    }
+  }
+  return '';
+}
+
 async function callEventosSyncEndpoint({ token, payload }) {
   const endpoints = getEventosSyncEndpointCandidates();
   let lastError = null;
@@ -797,7 +819,7 @@ async function callEventosSyncEndpoint({ token, payload }) {
 
       if (response.ok) return data || {};
 
-      const detail = data?.detalle || data?.error || `HTTP ${response.status}`;
+      const detail = buildSyncErrorDetail(data) || `HTTP ${response.status}`;
       const canTryNext = response.status === 404 || response.status === 405;
       diagnostics.push({ endpoint, status: response.status, detail: String(detail || '') });
       if (!canTryNext) {
@@ -853,7 +875,7 @@ async function sincronizarEventosManual() {
       payload: { sources: ['prticket', 'ticketera', 'pietix'] }
     });
     if (payload?.ok === false) {
-      throw new Error(payload?.error || payload?.detalle || 'La sincronización devolvió error.');
+      throw new Error(buildSyncErrorDetail(payload) || 'La sincronización devolvió error.');
     }
 
     const resumen = Array.isArray(payload?.results)

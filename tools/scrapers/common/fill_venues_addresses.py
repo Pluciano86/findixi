@@ -235,6 +235,75 @@ def parse_google_error(status: str, error_message: str) -> str:
     return error_message or "unknown_google_error"
 
 
+def is_generic_venue_label(nombre_lugar: str) -> bool:
+    norm = f" {normalize_text(nombre_lugar)} "
+    if not norm.strip():
+        return True
+    exact = {
+        " multiple location ",
+        " multiple locations ",
+        " parking vip ",
+        " enumerado con 2 precios ",
+        " enumerado con 2 precios vision limitada ",
+    }
+    if norm in exact:
+        return True
+    if " general single ticket " in norm or " group pass " in norm:
+        return True
+    if norm.strip().startswith("crc_"):
+        return True
+    return False
+
+
+def build_query_variants(nombre_lugar: str) -> List[str]:
+    base = clean_spaces(nombre_lugar)
+    if not base:
+        return []
+
+    variants: List[str] = [base]
+
+    without_prefix = re.sub(r"^(lugar|venue)\s*:\s*", "", base, flags=re.IGNORECASE).strip()
+    if without_prefix and without_prefix not in variants:
+        variants.append(without_prefix)
+
+    without_parenthesis = re.sub(r"\([^)]*\)", "", without_prefix).strip(" ,")
+    if without_parenthesis and without_parenthesis not in variants:
+        variants.append(without_parenthesis)
+
+    without_en_barrio = re.sub(
+        r"\s+en\s+(santurce|condado|hato rey|old san juan|viejo san juan|puerto rico)$",
+        "",
+        without_parenthesis,
+        flags=re.IGNORECASE,
+    ).strip(" ,")
+    if without_en_barrio and without_en_barrio not in variants:
+        variants.append(without_en_barrio)
+
+    # Variante simplificada (sin símbolos ni dobles espacios)
+    simple = clean_spaces(re.sub(r"[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ/&., -]+", " ", without_en_barrio))
+    if simple and simple not in variants:
+        variants.append(simple)
+
+    alias_map = {
+        "teatro shorty castro en santurce": [
+            "Teatro Shorty Castro",
+            "Café Teatro El Shorty",
+            "El Shorty Santurce",
+        ],
+        "teatro shorty castro": [
+            "Café Teatro El Shorty",
+        ],
+    }
+    base_norm = normalize_text(base)
+    for key, aliases in alias_map.items():
+        if base_norm == key:
+            for alias in aliases:
+                if alias not in variants:
+                    variants.append(alias)
+
+    return variants
+
+
 def google_places_text_search(http: HttpClient, api_key: str, query_text: str) -> Tuple[List[dict], Optional[str]]:
     params = urllib.parse.urlencode(
         {
@@ -302,43 +371,54 @@ def google_places_resolve(
     if not api_key:
         return None, "missing GOOGLE_MAPS_API_KEY"
 
-    # Regla solicitada: "{lugar}, {nombre_municipio}, Puerto Rico"
-    query_text = f"{nombre_lugar}, {municipio_nombre}, Puerto Rico" if municipio_nombre else f"{nombre_lugar}, Puerto Rico"
-    results, search_error = google_places_text_search(http=http, api_key=api_key, query_text=query_text)
-    if search_error:
-        return None, search_error
+    query_variants = build_query_variants(nombre_lugar)
+    if not query_variants:
+        return None, "nombre_lugar_vacio"
 
-    if rate_sleep > 0:
-        time.sleep(rate_sleep)
-
-    # Probar hasta top 3 para maximizar match útil.
-    for result in results[:3]:
-        place_id = clean_spaces(str(result.get("place_id", "")))
-        if not place_id:
-            continue
-        details, details_error = google_place_details(http=http, api_key=api_key, place_id=place_id)
-        if details_error:
-            # Error de permisos/billing debe devolverse directamente.
-            if "REQUEST_DENIED" in details_error or "billing not enabled" in details_error:
-                return None, details_error
+    last_error: Optional[str] = None
+    for venue_candidate in query_variants:
+        query_text = (
+            f"{venue_candidate}, {municipio_nombre}, Puerto Rico"
+            if municipio_nombre
+            else f"{venue_candidate}, Puerto Rico"
+        )
+        results, search_error = google_places_text_search(http=http, api_key=api_key, query_text=query_text)
+        if search_error:
+            last_error = search_error
+            if "REQUEST_DENIED" in search_error or "billing not enabled" in search_error:
+                return None, search_error
             continue
 
-        formatted = clean_spaces(str(details.get("formatted_address", "")))
-        cleaned_address = remove_place_from_address(nombre_lugar, formatted)
-        if not cleaned_address:
-            continue
-        if normalize_text(cleaned_address) == normalize_text(nombre_lugar):
-            continue
+        if rate_sleep > 0:
+            time.sleep(rate_sleep)
 
-        return {
-            "direccion": cleaned_address,
-            "place_id": clean_spaces(details.get("place_id", "")),
-            "latitud": clean_spaces(details.get("latitud", "")),
-            "longitud": clean_spaces(details.get("longitud", "")),
-            "fuente": "google_places",
-        }, None
+        for result in results[:3]:
+            place_id = clean_spaces(str(result.get("place_id", "")))
+            if not place_id:
+                continue
+            details, details_error = google_place_details(http=http, api_key=api_key, place_id=place_id)
+            if details_error:
+                last_error = details_error
+                if "REQUEST_DENIED" in details_error or "billing not enabled" in details_error:
+                    return None, details_error
+                continue
 
-    return None, "Google no devolvió dirección útil"
+            formatted = clean_spaces(str(details.get("formatted_address", "")))
+            cleaned_address = remove_place_from_address(venue_candidate, formatted)
+            if not cleaned_address:
+                continue
+            if normalize_text(cleaned_address) == normalize_text(venue_candidate):
+                continue
+
+            return {
+                "direccion": cleaned_address,
+                "place_id": clean_spaces(details.get("place_id", "")),
+                "latitud": clean_spaces(details.get("latitud", "")),
+                "longitud": clean_spaces(details.get("longitud", "")),
+                "fuente": "google_places",
+            }, None
+
+    return None, last_error or "Google no devolvió dirección útil"
 
 
 def infer_source_name(input_path: Path, explicit: Optional[str]) -> str:
@@ -430,6 +510,17 @@ def main() -> int:
         ):
             cache_hits += 1
             resolved_address = clean_spaces(cache_entry.get("direccion", ""))
+        elif is_generic_venue_label(lugar):
+            fails += 1
+            unresolved_row = {
+                "nombre_lugar": lugar,
+                "municipio_id": municipio_id,
+                "fuente_scraper": source_name,
+                "enlaceboletos": enlaceboletos,
+                "motivo": "generic_venue_skipped",
+            }
+            unresolved_key = "|".join(unresolved_row[h] for h in NO_RESUELTOS_HEADERS)
+            no_resueltos[unresolved_key] = unresolved_row
         else:
             if key in local_resolution_cache:
                 resolved, error = local_resolution_cache[key]

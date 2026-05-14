@@ -820,6 +820,8 @@ def extract_sessions_from_purchase_page(
 
     m_dir = re.search(r"""(?is)var\s+direccionRecinto\s*=\s*(['"])(.*?)\1\s*;""", html_buy)
     direccion_recinto = clean_spaces(html.unescape(m_dir.group(2))) if m_dir else ""
+    m_recinto = re.search(r"""(?is)var\s+litRecinto\s*=\s*(['"])(.*?)\1\s*;""", html_buy)
+    lit_recinto = clean_spaces(html.unescape(m_recinto.group(2))) if m_recinto else ""
 
     buy_data_layer = {}
     m_dl = re.search(r"""(?is)var\s+dataLayerP4\s*=\s*(\{.*?\});""", html_buy)
@@ -849,6 +851,24 @@ def extract_sessions_from_purchase_page(
             "na",
         }
         return norm in generic
+
+    def is_price_tier_label(value: str) -> bool:
+        norm = normalize_text(value or "")
+        if not norm:
+            return False
+        if "enumerado" in norm:
+            return True
+        markers = (
+            "vision limitada",
+            "planta baja",
+            "planta alta",
+            "preventa",
+            "general + enumerado",
+            "general y enumerado",
+            "ticket",
+            "bolet",
+        )
+        return any(marker in norm for marker in markers)
 
     def is_generic_address(value: str) -> bool:
         norm = normalize_text(value or "")
@@ -901,11 +921,13 @@ def extract_sessions_from_purchase_page(
         # Preferir venue detallado de sesión (litSala) sobre label promocional (municipio).
         # Evitar placeholders como "MULTIPLE LOCATION".
         lugar = ""
-        if lit_sala and not is_generic_venue_label(lit_sala):
+        if lit_sala and not is_generic_venue_label(lit_sala) and not is_price_tier_label(lit_sala):
             lugar = lit_sala
-        elif buy_venue and not is_generic_venue_label(buy_venue):
+        elif lit_recinto and not is_generic_venue_label(lit_recinto) and not is_price_tier_label(lit_recinto):
+            lugar = lit_recinto
+        elif buy_venue and not is_generic_venue_label(buy_venue) and not is_price_tier_label(buy_venue):
             lugar = buy_venue
-        elif promo and not is_generic_venue_label(promo):
+        elif promo and not is_generic_venue_label(promo) and not is_price_tier_label(promo):
             lugar = promo
         if not lugar:
             # fallback: intentar extraer texto después de "-" en litSesion

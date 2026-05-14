@@ -2,6 +2,8 @@ import { supabase } from '../shared/supabaseClient.js';
 import { t, getLang } from './i18n.js';
 import { getEventoI18n } from '../shared/eventoI18n.js';
 import { toHorizontalEventImage, withVersion } from '../shared/eventoImage.js';
+import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
+import { calcularDistanciaHaversineKm, calcularTiempoEnVehiculo } from '../shared/utils.js';
 
 const params = new URLSearchParams(window.location.search);
 const idEvento = Number(params.get('id'));
@@ -49,8 +51,11 @@ const eventoImagenBgEl = document.getElementById('eventoImagenBg');
 const lugarEventoSectionEl = document.getElementById('lugarEventoSection');
 const lugarEventoTextoEl = document.getElementById('lugarEventoTexto');
 const direccionEventoTextoEl = document.getElementById('direccionEventoTexto');
+const tiempoVehiculoEventoEl = document.getElementById('tiempoVehiculoEvento');
 const btnEventoGoogleMapsEl = document.getElementById('btnEventoGoogleMaps');
 const btnEventoWazeEl = document.getElementById('btnEventoWaze');
+let userCoordsPromise = null;
+let tiempoVehiculoRequestId = 0;
 
 function scrollToProximasFechas() {
   if (!proximasFechasSectionEl) return;
@@ -77,6 +82,38 @@ function scrollToImagenEvento() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function setTiempoVehiculoEvento(texto = '', visible = true) {
+  if (!tiempoVehiculoEventoEl) return;
+  if (!visible) {
+    tiempoVehiculoEventoEl.classList.add('hidden');
+    return;
+  }
+  tiempoVehiculoEventoEl.innerHTML = `<i class="fas fa-car"></i> ${texto || t('area.noDisponible')}`;
+  tiempoVehiculoEventoEl.classList.remove('hidden');
+}
+
+function formatearTiempoVehiculoEvento(minutosCrudos = null) {
+  const minutos = Number(minutosCrudos);
+  if (!Number.isFinite(minutos) || minutos <= 0) return t('area.noDisponible');
+
+  const total = Math.max(1, Math.round(minutos));
+  const lang = (getLang?.() || localStorage.getItem('lang') || 'es').toLowerCase().split('-')[0];
+
+  if (lang !== 'es') {
+    return `a ${formatTiempo(total * 60)}`;
+  }
+
+  if (total < 60) {
+    return `a ${total} minuto${total === 1 ? '' : 's'}`;
+  }
+
+  const horas = Math.floor(total / 60);
+  const minutosRestantes = total % 60;
+  const horasTexto = `${horas} hora${horas === 1 ? '' : 's'}`;
+  if (!minutosRestantes) return `a ${horasTexto}`;
+  return `a ${horasTexto} y ${minutosRestantes} minuto${minutosRestantes === 1 ? '' : 's'}`;
+}
+
 function mostrarLoader() {
   loader?.classList.remove('hidden');
   loader?.classList.add('flex');
@@ -85,6 +122,22 @@ function mostrarLoader() {
 function ocultarLoader() {
   loader?.classList.add('hidden');
   loader?.classList.remove('flex');
+}
+
+function obtenerCoordenadasUsuario() {
+  if (userCoordsPromise) return userCoordsPromise;
+  userCoordsPromise = new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  });
+  return userCoordsPromise;
 }
 
 function normalizeText(value = '') {
@@ -323,6 +376,41 @@ async function resolverCoordenadasEvento(municipioId, lugar, direccion) {
   }
 }
 
+async function calcularTiempoVehiculoEvento(destinoLat, destinoLon) {
+  const requestId = ++tiempoVehiculoRequestId;
+  if (!Number.isFinite(destinoLat) || !Number.isFinite(destinoLon)) {
+    setTiempoVehiculoEvento('', false);
+    return;
+  }
+
+  setTiempoVehiculoEvento(t('common.cargando'));
+  const origen = await obtenerCoordenadasUsuario();
+  if (requestId !== tiempoVehiculoRequestId) return;
+  if (!origen || !Number.isFinite(origen.lat) || !Number.isFinite(origen.lon)) {
+    setTiempoVehiculoEvento(t('area.noDisponible'));
+    return;
+  }
+
+  let minutosEstimados = null;
+  const osrm = await getDrivingDistance(
+    { lat: origen.lat, lng: origen.lon },
+    { lat: destinoLat, lng: destinoLon }
+  );
+
+  if (osrm?.duracion != null) {
+    minutosEstimados = Math.round(osrm.duracion / 60);
+  } else {
+    const distanciaKm = calcularDistanciaHaversineKm(origen.lat, origen.lon, destinoLat, destinoLon);
+    if (Number.isFinite(distanciaKm) && distanciaKm >= 0) {
+      const fallback = calcularTiempoEnVehiculo(distanciaKm);
+      minutosEstimados = fallback?.minutos ?? null;
+    }
+  }
+
+  if (requestId !== tiempoVehiculoRequestId) return;
+  setTiempoVehiculoEvento(formatearTiempoVehiculoEvento(minutosEstimados));
+}
+
 async function cargarEvento() {
   if (!Number.isFinite(idEvento) || idEvento <= 0) {
     nombreEventoEl.textContent = 'Evento no encontrado';
@@ -519,17 +607,20 @@ async function cargarEvento() {
       const lugarTexto = limpiarLugarMostrado(fechaItem.lugar, fechaItem.municipioNombre, fechaItem.direccion) || t('area.noDisponible');
       const direccionTexto = limpiarDireccionMostrada(fechaItem.direccion, fechaItem.municipioNombre, lugarTexto);
       lugarEventoTextoEl.textContent = lugarTexto;
-      direccionEventoTextoEl.textContent = direccionTexto;
+      direccionEventoTextoEl.textContent = '';
+      direccionEventoTextoEl.classList.add('hidden');
 
       const coords = await resolverCoordenadasEvento(fechaItem.municipio_id, lugarTexto, direccionTexto || fechaItem.direccion);
       if (coords) {
         btnEventoGoogleMapsEl.href = `https://www.google.com/maps?q=${coords.lat},${coords.lon}`;
         btnEventoWazeEl.href = `https://waze.com/ul?ll=${coords.lat},${coords.lon}&navigate=yes`;
+        await calcularTiempoVehiculoEvento(coords.lat, coords.lon);
       } else {
         const queryText = construirTextoGps(lugarTexto, fechaItem.municipioNombre, direccionTexto || fechaItem.direccion);
         const encoded = encodeURIComponent(queryText || `${evento.nombre || 'Evento'} Puerto Rico`);
         btnEventoGoogleMapsEl.href = `https://www.google.com/maps/search/?api=1&query=${encoded}`;
         btnEventoWazeEl.href = `https://waze.com/ul?q=${encoded}&navigate=yes`;
+        setTiempoVehiculoEvento('', false);
       }
     };
 

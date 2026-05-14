@@ -30,6 +30,7 @@ EVENTOS_CSV = EXPORT_DIR / "eventos_ticketera.csv"
 SEDES_CSV = EXPORT_DIR / "eventos_municipios_ticketera.csv"
 FECHAS_CSV = EXPORT_DIR / "eventoFechas_ticketera.csv"
 BOLETERIAS_CSV = EXPORT_DIR / "eventos_boleterias_ticketera.csv"
+CACHE_VENUES_CSV = Path("exports/event_venues_cache.csv")
 
 
 def load_env_file(path: Path) -> Dict[str, str]:
@@ -59,6 +60,29 @@ def normalize_text(value: str) -> str:
     value = re.sub(r"[^a-z0-9\s/]+", " ", value)
     value = re.sub(r"\s+", " ", value).strip()
     return value
+
+
+def make_localidad_key(nombre_lugar: str, municipio_id: int) -> str:
+    return f"{normalize_text(nombre_lugar)}|{str(municipio_id).strip()}"
+
+
+def load_venues_cache(path: Path) -> Dict[str, dict]:
+    cache: Dict[str, dict] = {}
+    if not path.exists():
+        return cache
+    with path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            key = clean(row.get("key"))
+            if not key:
+                continue
+            cache[key] = {
+                "direccion": clean(row.get("direccion")),
+                "latitud": clean(row.get("latitud")),
+                "longitud": clean(row.get("longitud")),
+                "fuente": clean(row.get("fuente")),
+            }
+    return cache
 
 
 def detect_non_event_reason(*parts: str) -> str:
@@ -169,6 +193,38 @@ def has_explicit_non_pr_marker(*parts: str) -> bool:
         " peru ",
     )
     return any(marker in norm for marker in non_pr_markers)
+
+
+def should_skip_localidad_upsert(lugar: str, direccion: str) -> Tuple[bool, str]:
+    nombre_norm = normalize_text(lugar)
+    direccion_norm = normalize_text(direccion)
+    merged = f" {nombre_norm} {direccion_norm} "
+
+    exact_generic_labels = {
+        "multiple location",
+        "multiple locations",
+        "parking vip",
+        "enumerado con 2 precios",
+        "enumerado con 2 precios vision limitada",
+    }
+    if nombre_norm in exact_generic_labels:
+        return True, "label_generico"
+
+    starts_generic_labels = (
+        "general single ticket",
+        "group pass",
+        "crc_",
+    )
+    if any(nombre_norm.startswith(prefix) for prefix in starts_generic_labels):
+        return True, "label_placeholder"
+
+    if "general single ticket" in merged or "group pass" in merged:
+        return True, "label_placeholder"
+
+    if has_explicit_non_pr_marker(lugar, direccion):
+        return True, "outside_pr_marker"
+
+    return False, ""
 
 
 def to_bool(value: Any) -> bool:
@@ -330,12 +386,13 @@ def sync() -> int:
     existing_by_url = {clean(r.get("url_evento")).lower(): to_int(r.get("evento_id")) for r in existing_boleterias if clean(r.get("url_evento"))}
     existing_by_source_event_id: Dict[str, int] = {}
     existing_categoria_by_event_id: Dict[int, Optional[int]] = {}
+    existing_activo_by_event_id: Dict[int, Optional[bool]] = {}
     existing_event_ids = sorted({event_id for event_id in existing_by_url.values() if event_id > 0})
     if existing_event_ids:
         existing_events_rows = sb.select(
             "eventos",
             {
-                "select": "id,categoria",
+                "select": "id,categoria,activo",
                 "id": f"in.{build_in_filter(existing_event_ids)}",
                 "limit": "5000",
             },
@@ -345,6 +402,7 @@ def sync() -> int:
             categoria_id = to_int(item.get("categoria")) or None
             if event_id > 0:
                 existing_categoria_by_event_id[event_id] = categoria_id
+                existing_activo_by_event_id[event_id] = None if item.get("activo") is None else bool(item.get("activo"))
 
     def obtener_categoria_existente(event_id: int) -> Optional[int]:
         if event_id <= 0:
@@ -354,7 +412,7 @@ def sync() -> int:
         rows = sb.select(
             "eventos",
             {
-                "select": "id,categoria",
+                "select": "id,categoria,activo",
                 "id": f"eq.{event_id}",
                 "limit": "1",
             },
@@ -364,10 +422,31 @@ def sync() -> int:
         existing_categoria_by_event_id[event_id] = categoria_final
         return categoria_final
 
+    def obtener_activo_existente(event_id: int) -> Optional[bool]:
+        if event_id <= 0:
+            return None
+        if event_id in existing_activo_by_event_id:
+            return existing_activo_by_event_id[event_id]
+        rows = sb.select(
+            "eventos",
+            {
+                "select": "id,activo",
+                "id": f"eq.{event_id}",
+                "limit": "1",
+            },
+        )
+        activo_val = None if not rows else (None if rows[0].get("activo") is None else bool(rows[0].get("activo")))
+        existing_activo_by_event_id[event_id] = activo_val
+        return activo_val
+
     temp_to_real_event_id: Dict[int, int] = {}
     skipped_non_event = 0
     skipped_non_pr = 0
+    sedes_sin_localidad_generica = 0
+    sedes_sin_localidad_non_pr = 0
+    sedes_localidad_con_coords = 0
     categorias_manual_preservadas = 0
+    venues_cache = load_venues_cache(CACHE_VENUES_CSV)
 
     # 1) Upsert eventos base
     for row in eventos:
@@ -477,6 +556,9 @@ def sync() -> int:
                 if categoria_manual != categoria_csv:
                     categorias_manual_preservadas += 1
                 payload["categoria"] = categoria_manual
+            activo_manual = obtener_activo_existente(existing_event_id)
+            if activo_manual is False:
+                payload["activo"] = False
             updated = sb.patch("eventos", {"id": f"eq.{existing_event_id}"}, payload)
             if not updated:
                 raise RuntimeError(f"No se pudo actualizar evento id={existing_event_id} url={url_evento}")
@@ -491,6 +573,7 @@ def sync() -> int:
             raise RuntimeError(f"Evento sin id retornado para url={url_evento}")
         temp_to_real_event_id[temp_event_id] = real_event_id
         existing_categoria_by_event_id[real_event_id] = payload.get("categoria")
+        existing_activo_by_event_id[real_event_id] = None if payload.get("activo") is None else bool(payload.get("activo"))
         existing_by_url[url_key] = real_event_id
         if source_event_id:
             existing_by_source_event_id[source_event_id.lower()] = real_event_id
@@ -531,24 +614,47 @@ def sync() -> int:
         if not municipio_id or not lugar:
             continue
 
-        localidad_upsert = {
-            "nombre": lugar,
-            "municipio_id": municipio_id,
-            "direccion_formateada": direccion or None,
-            "fuente_geocoding": "sync_ticketera",
-            "estado_geocoding": "pendiente",
-            "metadata": {"source": SOURCE_NAME},
-        }
-        localidad_rows = sb.insert(
-            "evento_localidades",
-            [localidad_upsert],
-            on_conflict="municipio_id,nombre_normalizado",
-            merge_duplicates=True,
-            returning=True,
-        )
-        if not localidad_rows:
-            raise RuntimeError(f"No se pudo upsert localidad {municipio_id}|{lugar}")
-        localidad_id = to_int(localidad_rows[0].get("id"))
+        skip_localidad, skip_reason = should_skip_localidad_upsert(lugar, direccion)
+        localidad_id = 0
+        if skip_localidad:
+            if skip_reason == "outside_pr_marker":
+                sedes_sin_localidad_non_pr += 1
+            else:
+                sedes_sin_localidad_generica += 1
+        else:
+            cache_key = make_localidad_key(lugar, municipio_id)
+            cache_hit = venues_cache.get(cache_key, {})
+            cache_lat = to_float(cache_hit.get("latitud"))
+            cache_lng = to_float(cache_hit.get("longitud"))
+            cache_dir = clean(cache_hit.get("direccion"))
+            cache_fuente = clean(cache_hit.get("fuente")) or "google_places"
+
+            localidad_upsert = {
+                "nombre": lugar,
+                "municipio_id": municipio_id,
+                "direccion_formateada": (direccion or cache_dir or None),
+                "fuente_geocoding": "sync_ticketera",
+                "estado_geocoding": "pendiente",
+                "metadata": {"source": SOURCE_NAME},
+            }
+            if cache_lat is not None and cache_lng is not None:
+                localidad_upsert["latitud"] = cache_lat
+                localidad_upsert["longitud"] = cache_lng
+                localidad_upsert["fuente_geocoding"] = cache_fuente
+                localidad_upsert["estado_geocoding"] = "resuelto"
+                localidad_upsert["confianza"] = 95
+                sedes_localidad_con_coords += 1
+
+            localidad_rows = sb.insert(
+                "evento_localidades",
+                [localidad_upsert],
+                on_conflict="municipio_id,nombre_normalizado",
+                merge_duplicates=True,
+                returning=True,
+            )
+            if not localidad_rows:
+                raise RuntimeError(f"No se pudo upsert localidad {municipio_id}|{lugar}")
+            localidad_id = to_int(localidad_rows[0].get("id"))
 
         sede_payload = {
             "event_id": real_event_id,
@@ -624,6 +730,9 @@ def sync() -> int:
     print(f"[sync_ticketera] eventos_upsert: {len(temp_to_real_event_id)}")
     print(f"[sync_ticketera] eventos_descartados_no_evento: {skipped_non_event}")
     print(f"[sync_ticketera] eventos_descartados_no_pr: {skipped_non_pr}")
+    print(f"[sync_ticketera] sedes_sin_localidad_generica: {sedes_sin_localidad_generica}")
+    print(f"[sync_ticketera] sedes_sin_localidad_no_pr: {sedes_sin_localidad_non_pr}")
+    print(f"[sync_ticketera] sedes_localidad_con_coords: {sedes_localidad_con_coords}")
     print(f"[sync_ticketera] categorias_manual_preservadas: {categorias_manual_preservadas}")
     print(f"[sync_ticketera] sedes_insertadas: {len(temp_sede_to_real_sede)}")
     print(f"[sync_ticketera] fechas_insertadas: {len(fechas_payload)}")
