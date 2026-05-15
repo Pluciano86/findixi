@@ -227,6 +227,9 @@ def has_explicit_non_pr_marker(text: str) -> bool:
     norm = f" {normalize_text(text)} "
     if not norm.strip():
         return False
+    # Regla de negocio: descartar cualquier evento que mencione "Florida".
+    if " florida " in norm:
+        return True
 
     pr_markers = (
         " puerto rico ",
@@ -234,9 +237,6 @@ def has_explicit_non_pr_marker(text: str) -> bool:
         " san juan puerto rico ",
     )
     if any(marker in norm for marker in pr_markers):
-        return False
-    # Evitar falso positivo con el municipio Florida (PR).
-    if " florida pr " in norm or " florida puerto rico " in norm or " municipio florida " in norm:
         return False
 
     non_pr_markers = (
@@ -296,6 +296,23 @@ def detect_non_event_reason(*parts: str) -> str:
     )
     if any(marker in norm for marker in rental_markers):
         return "Descartado: no es evento (alquiler/renta)"
+
+    non_event_markers = (
+        " parking ",
+        " parking vip ",
+        " vip parking ",
+        " valet parking ",
+        " estacionamiento ",
+        " estacionamientos ",
+        " alquiler de salon ",
+        " alquiler de salones ",
+        " alquiler de venue ",
+        " renta de salon ",
+        " renta de salones ",
+        " renta de venue ",
+    )
+    if any(marker in norm for marker in non_event_markers):
+        return "Descartado: no es evento (parking/venue)"
 
     sale_markers = (
         " venta ",
