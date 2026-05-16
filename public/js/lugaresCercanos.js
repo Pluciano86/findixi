@@ -6,6 +6,29 @@ import { calcularTiempoEnVehiculo } from '../shared/utils.js';
 import { calcularDistancia } from './distanciaLugar.js';
 
 let ultimoCercanos = null;
+const PLACEHOLDER_LUGAR =
+  'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/imgagenLugarNoDisponible.jpg';
+
+function normalizarTexto(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function resolverImagenLugar(rawPath = '') {
+  const raw = String(rawPath || '').trim();
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const sanitized = raw.replace(/^public\//i, '').replace(/^\/+/, '');
+  if (!sanitized) return null;
+  if (/^galerialugares\//i.test(sanitized)) {
+    const path = sanitized.replace(/^galerialugares\//i, '');
+    return supabase.storage.from('galerialugares').getPublicUrl(path).data.publicUrl || null;
+  }
+  return supabase.storage.from('galerialugares').getPublicUrl(sanitized).data.publicUrl || null;
+}
 
 function renderizarLugaresCercanos(cercanos, comercioOrigen) {
   const container = document.getElementById('cercanosLugaresContainer');
@@ -52,7 +75,7 @@ function renderizarLugaresCercanos(cercanos, comercioOrigen) {
       centeredSlides: false,
       slidesPerView: 1.25,
       spaceBetween: 1,
-      loop: true,
+      loop: numSlides > 3,
       speed: 900,
       grabCursor: true,
       autoplay: {
@@ -102,11 +125,15 @@ export async function mostrarLugaresCercanos(comercioOrigen) {
 
     if (errorImg) throw errorImg;
 
-    const lugaresConImagen = lugaresConCoords.map(l => {
-      const portada = imagenes?.find(img => img.idLugar === l.id);
+    const lugaresConImagen = lugaresConCoords
+      .filter((l) => Number(l.id) !== Number(comercioOrigen.id))
+      .map(l => {
+      const portada = imagenes?.find(img => Number(img.idLugar) === Number(l.id));
+      const imagenDirecta = resolverImagenLugar(l.imagen);
+      const imagenPortada = resolverImagenLugar(portada?.imagen);
       return {
         ...l,
-        imagen: portada?.imagen || null
+        imagen: imagenDirecta || imagenPortada || PLACEHOLDER_LUGAR
       };
     });
 
@@ -161,8 +188,15 @@ export async function mostrarLugaresCercanos(comercioOrigen) {
     );
 
     // 🔹 Filtrar lugares dentro de 20 min (ajustable)
+    const seen = new Set();
     const cercanos = lugaresConTiempos
       .filter(l => l.minutosCrudos !== null && l.minutosCrudos <= 20)
+      .filter((l) => {
+        const key = `${normalizarTexto(l.nombre)}__${normalizarTexto(l.municipio)}__${Number(l.latitud).toFixed(5)}__${Number(l.longitud).toFixed(5)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
       .sort((a, b) => a.minutosCrudos - b.minutosCrudos);
 
     ultimoCercanos = { cercanos, comercioOrigen };

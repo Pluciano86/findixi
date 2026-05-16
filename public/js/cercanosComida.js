@@ -36,10 +36,11 @@ function renderizarCercanos(cercanos) {
 
     container.classList.remove("hidden");
     const swiperEl = slider.querySelector(".cercanosSwiper");
+    const totalSlides = swiperEl.querySelectorAll('.swiper-slide').length;
     new Swiper(swiperEl, {
       slidesPerView: 2.3,
       spaceBetween: 1,
-      loop: true,
+      loop: totalSlides > 3,
       autoplay: { delay: 3000, disableOnInteraction: false },
       speed: 900,
     });

@@ -19,9 +19,27 @@ const tiempoEl = document.getElementById('tiempoVehiculo');
 const btnFavorito = document.getElementById('btnFavorito');
 const estadoHorarioIcono = document.querySelector('#estadoHorarioContainer i');
 const estadoHorarioTexto = document.querySelector('#estadoHorarioContainer p');
+const fuenteDatosLugarEl = document.getElementById('fuenteDatosLugar');
+const btnSugerirCambioLugar = document.getElementById('btnSugerirCambioLugar');
+const modalSugerenciaLugar = document.getElementById('modalSugerenciaLugar');
+const formSugerenciaLugar = document.getElementById('formSugerenciaLugar');
+const btnCerrarSugerenciaLugar = document.getElementById('btnCerrarSugerenciaLugar');
+const btnCancelarSugerenciaLugar = document.getElementById('btnCancelarSugerenciaLugar');
+const btnEnviarSugerenciaLugar = document.getElementById('btnEnviarSugerenciaLugar');
+const sugerenciaLugarEstado = document.getElementById('sugerenciaLugarEstado');
+
+const sugerenciaCategoriaEl = document.getElementById('sugerenciaCategoria');
+const sugerenciaValorActualEl = document.getElementById('sugerenciaValorActual');
+const sugerenciaValorSugeridoEl = document.getElementById('sugerenciaValorSugerido');
+const sugerenciaComentarioEl = document.getElementById('sugerenciaComentario');
+const sugerenciaNombreContactoEl = document.getElementById('sugerenciaNombreContacto');
+const sugerenciaEmailContactoEl = document.getElementById('sugerenciaEmailContacto');
+const sugerenciaTelefonoContactoEl = document.getElementById('sugerenciaTelefonoContacto');
 
 let usuarioId = null;
 let lugarFavorito = false;
+let lugarActual = null;
+let sugerenciaEnviando = false;
 
 function mostrarLoader() {
   loader?.classList.remove('hidden');
@@ -31,6 +49,140 @@ function mostrarLoader() {
 function ocultarLoader() {
   loader?.classList.add('hidden');
   loader?.classList.remove('flex');
+}
+
+function mostrarEstadoSugerencia(texto, tipo = 'info') {
+  if (!sugerenciaLugarEstado) return;
+  const colors = {
+    info: 'text-gray-700',
+    error: 'text-red-600',
+    success: 'text-emerald-600',
+  };
+  sugerenciaLugarEstado.className = `text-sm ${colors[tipo] || colors.info}`;
+  sugerenciaLugarEstado.textContent = texto;
+  sugerenciaLugarEstado.classList.remove('hidden');
+}
+
+function limpiarEstadoSugerencia() {
+  if (!sugerenciaLugarEstado) return;
+  sugerenciaLugarEstado.textContent = '';
+  sugerenciaLugarEstado.classList.add('hidden');
+}
+
+function abrirModalSugerencia() {
+  if (!modalSugerenciaLugar || !lugarActual?.id) return;
+  limpiarEstadoSugerencia();
+  modalSugerenciaLugar.classList.remove('hidden');
+  modalSugerenciaLugar.classList.add('flex');
+  document.getElementById('bodyLugar')?.classList.add('overflow-hidden');
+}
+
+function cerrarModalSugerencia() {
+  if (!modalSugerenciaLugar) return;
+  modalSugerenciaLugar.classList.add('hidden');
+  modalSugerenciaLugar.classList.remove('flex');
+  document.getElementById('bodyLugar')?.classList.remove('overflow-hidden');
+}
+
+function validarEmailOpcional(email) {
+  if (!email) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+async function enviarSugerenciaLugar(event) {
+  event.preventDefault();
+  if (sugerenciaEnviando) return;
+  if (!lugarActual?.id) {
+    mostrarEstadoSugerencia('No pudimos identificar este lugar para guardar la sugerencia.', 'error');
+    return;
+  }
+
+  const categoria = String(sugerenciaCategoriaEl?.value || 'otro').trim() || 'otro';
+  const valorActual = String(sugerenciaValorActualEl?.value || '').trim();
+  const valorSugerido = String(sugerenciaValorSugeridoEl?.value || '').trim();
+  const comentario = String(sugerenciaComentarioEl?.value || '').trim();
+  const nombreContacto = String(sugerenciaNombreContactoEl?.value || '').trim();
+  const emailContacto = String(sugerenciaEmailContactoEl?.value || '').trim().toLowerCase();
+  const telefonoContacto = String(sugerenciaTelefonoContactoEl?.value || '').trim();
+
+  if (comentario.length < 8) {
+    mostrarEstadoSugerencia('Escribe más detalle en el comentario (mínimo 8 caracteres).', 'error');
+    return;
+  }
+  if (!validarEmailOpcional(emailContacto)) {
+    mostrarEstadoSugerencia('El email no parece válido.', 'error');
+    return;
+  }
+
+  sugerenciaEnviando = true;
+  if (btnEnviarSugerenciaLugar) {
+    btnEnviarSugerenciaLugar.disabled = true;
+    btnEnviarSugerenciaLugar.classList.add('opacity-60', 'cursor-not-allowed');
+  }
+  mostrarEstadoSugerencia('Enviando sugerencia...', 'info');
+
+  let authUserId = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    authUserId = data?.user?.id || null;
+  } catch {
+    authUserId = null;
+  }
+
+  const payload = {
+    id_lugar: lugarActual.id,
+    nombre_lugar: lugarActual.nombre || null,
+    categoria_sugerencia: categoria,
+    campo: categoria,
+    valor_actual: valorActual || null,
+    valor_sugerido: valorSugerido || null,
+    comentario,
+    nombre_contacto: nombreContacto || null,
+    email_contacto: emailContacto || null,
+    telefono_contacto: telefonoContacto || null,
+    fuente: 'perfilLugar',
+    user_id: authUserId,
+    metadata: {
+      perfil_url: window.location.href,
+      municipio: lugarActual.municipio || null,
+    },
+  };
+
+  const { error } = await supabase
+    .from('sugerencias_cambios_lugares')
+    .insert([payload]);
+
+  sugerenciaEnviando = false;
+  if (btnEnviarSugerenciaLugar) {
+    btnEnviarSugerenciaLugar.disabled = false;
+    btnEnviarSugerenciaLugar.classList.remove('opacity-60', 'cursor-not-allowed');
+  }
+
+  if (error) {
+    console.error('Error enviando sugerencia de lugar:', error);
+    mostrarEstadoSugerencia('No pudimos guardar la sugerencia. Inténtalo de nuevo.', 'error');
+    return;
+  }
+
+  mostrarEstadoSugerencia('Gracias. Tu sugerencia fue enviada correctamente.', 'success');
+  formSugerenciaLugar?.reset();
+  setTimeout(() => {
+    cerrarModalSugerencia();
+    limpiarEstadoSugerencia();
+  }, 1200);
+}
+
+function inicializarSugerenciasLugar() {
+  if (!btnSugerirCambioLugar || !modalSugerenciaLugar || !formSugerenciaLugar) return;
+
+  btnSugerirCambioLugar.addEventListener('click', abrirModalSugerencia);
+  btnCerrarSugerenciaLugar?.addEventListener('click', cerrarModalSugerencia);
+  btnCancelarSugerenciaLugar?.addEventListener('click', cerrarModalSugerencia);
+  formSugerenciaLugar.addEventListener('submit', enviarSugerenciaLugar);
+
+  modalSugerenciaLugar.addEventListener('click', (event) => {
+    if (event.target === modalSugerenciaLugar) cerrarModalSugerencia();
+  });
 }
 
 function actualizarDescripcion(nombre, descripcion) {
@@ -52,6 +204,46 @@ function actualizarDescripcion(nombre, descripcion) {
     descripcionEl.classList.toggle('line-clamp-5', !expandido);
     toggleBtn.textContent = expandido ? 'Ocultar información' : 'Ver toda la información';
   });
+}
+
+function pareceTextoEnIngles(texto = '') {
+  const normalized = String(texto || '').toLowerCase();
+  if (!normalized) return false;
+  const pistas = [
+    ' this ',
+    ' and ',
+    ' with ',
+    ' open ',
+    ' closed ',
+    ' place ',
+    ' located ',
+    ' rating ',
+    ' reviews ',
+  ];
+  const hits = pistas.reduce((acc, token) => acc + (normalized.includes(token) ? 1 : 0), 0);
+  return hits >= 2;
+}
+
+async function traducirTextoAlEspanol(texto = '') {
+  const content = String(texto || '').trim();
+  if (!content) return '';
+  if (!pareceTextoEnIngles(content)) return content;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 2500);
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=es&dt=t&q=${encodeURIComponent(content)}`;
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) return content;
+    const data = await response.json();
+    const traducido = Array.isArray(data?.[0]) ? data[0].map((chunk) => chunk?.[0] || '').join('') : '';
+    return traducido?.trim() || content;
+  } catch (error) {
+    console.warn('⚠️ No se pudo traducir la descripción automáticamente:', error?.message || error);
+    return content;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function obtenerCoordenadasUsuario() {
@@ -239,8 +431,12 @@ async function cargarPerfilLugar() {
     if (lugar.nombre) {
       document.title = `${lugar.nombre} | Findixi`;
     }
+    lugarActual = lugar;
 
     nombreEl.textContent = lugar.nombre || 'Lugar sin nombre';
+    if (fuenteDatosLugarEl) {
+      fuenteDatosLugarEl.textContent = 'Fuente principal: Google Places. Si ves errores, envía una sugerencia.';
+    }
 
     const categorias = await cargarCategoriasLugar(lugar.id);
     renderCategorias(categorias);
@@ -264,6 +460,9 @@ async function cargarPerfilLugar() {
           : `$${String(lugar.precioEntrada).replace(/^[^0-9]+/, '')}`;
         precioEl.className = 'flex items-center justify-center gap-2 text-2xl text-green-500';
         precioEl.innerHTML = `<i class="fas fa-ticket text-green-500"></i><span>Entrada: ${precioFormat}</span>`;
+      } else {
+        precioEl.className = 'flex items-center justify-center gap-2 text-base text-gray-500';
+        precioEl.innerHTML = `<i class="fas fa-ticket text-gray-400"></i><span>Precio no disponible</span>`;
       }
     }
 
@@ -303,9 +502,10 @@ async function cargarPerfilLugar() {
       document.getElementById('btnWaze').href = '#';
     }
 
-    actualizarDescripcion(lugar.nombre || 'Lugar', lugar.descripcion);
+    const descripcionTraducida = await traducirTextoAlEspanol(lugar.descripcion);
+    actualizarDescripcion(lugar.nombre || 'Lugar', descripcionTraducida);
 
-    await cargarGaleriaLugar(lugar.id);
+    await cargarGaleriaLugar(lugar.id, lugar.imagen);
     await renderHorariosLugar(lugar.id, lugar.nombre || 'Lugar');
 
     if (!lugar.activo) {
@@ -347,3 +547,4 @@ async function cargarPerfilLugar() {
 }
 
 document.addEventListener('DOMContentLoaded', cargarPerfilLugar);
+document.addEventListener('DOMContentLoaded', inicializarSugerenciasLugar);

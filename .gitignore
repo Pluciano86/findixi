@@ -10,3 +10,5 @@ public/shared/localMapsConfig.js
 
 .DS_Store
 **/.DS_Store
+busquedas/node_modules/
+busquedas/salidas/

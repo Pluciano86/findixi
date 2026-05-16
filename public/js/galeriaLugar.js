@@ -146,7 +146,7 @@ function abrirModal(index) {
   document.getElementById('bodyLugar')?.classList.add('overflow-hidden');
 }
 
-export async function cargarGaleriaLugar(idLugar) {
+export async function cargarGaleriaLugar(idLugar, imagenPrincipal = null) {
   if (!galeriaContenedor) return;
 
   limpiarGaleria();
@@ -167,7 +167,10 @@ export async function cargarGaleriaLugar(idLugar) {
     .map((item) => buildPublicUrl(item.imagen))
     .filter(Boolean);
 
-  if (imagenes.length === 0) {
+  const principalUrl = buildPublicUrl(imagenPrincipal);
+  const imagenesUnicas = Array.from(new Set([principalUrl, ...imagenes].filter(Boolean)));
+
+  if (imagenesUnicas.length === 0) {
     const placeholder = document.createElement('img');
     placeholder.src = 'https://placehold.co/800x400?text=Lugar';
     placeholder.alt = 'Imagen no disponible';
@@ -176,7 +179,7 @@ export async function cargarGaleriaLugar(idLugar) {
     return;
   }
 
-  imagenesGaleria = imagenes;
+  imagenesGaleria = imagenesUnicas;
 
   imagenesGaleria.forEach((url, index) => {
     const img = document.createElement('img');

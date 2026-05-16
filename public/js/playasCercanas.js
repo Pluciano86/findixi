@@ -146,11 +146,12 @@ export async function mostrarPlayasCercanas(comercio) {
 
 // 🔹 Inicializar Swiper ajustado al ancho móvil
 const swiperEl = contenedor.querySelector('.playasSwiper');
+const totalSlides = swiperEl.querySelectorAll('.swiper-slide').length;
 
   new Swiper(swiperEl, {
     slidesPerView: 2.3,
     spaceBetween: 1,
-    loop: true,
+    loop: totalSlides > 3,
     autoplay: { delay: 3000, disableOnInteraction: false },
     speed: 900,
   });

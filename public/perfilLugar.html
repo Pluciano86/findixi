@@ -110,6 +110,27 @@
     </div>
   </section>
 
+  <!-- Aviso de calidad de datos -->
+  <section class="px-6 md:px-10 mt-4 text-center">
+    <div class="mx-auto max-w-md rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+      <p class="font-semibold">Aviso sobre la información</p>
+      <p class="mt-1">
+        La información de este lugar puede cambiar (horarios, precios, servicios o dirección).
+      </p>
+      <p id="fuenteDatosLugar" class="mt-1 text-sky-800">
+        Fuente principal: Google Places.
+      </p>
+      <button
+        id="btnSugerirCambioLugar"
+        type="button"
+        class="mt-3 inline-flex items-center gap-2 rounded-md bg-sky-600 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-700"
+      >
+        <i class="fa-regular fa-pen-to-square"></i>
+        Sugerir un cambio
+      </button>
+    </div>
+  </section>
+
   <!-- Horarios -->
   <section class="px-4 py-6 flex justify-center">
     <div class="bg-white rounded-lg shadow-sm p-6 w-full max-w-md">
@@ -159,6 +180,74 @@
   <!-- Loader -->
   <div id="loader" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
     <div class="bg-white px-4 py-3 rounded shadow text-sm font-medium">Cargando información...</div>
+  </div>
+
+  <!-- Modal sugerencias -->
+  <div id="modalSugerenciaLugar" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-xl bg-white shadow-2xl">
+      <div class="flex items-center justify-between border-b px-4 py-3">
+        <h3 class="text-base font-semibold text-sky-900">Sugerir corrección</h3>
+        <button id="btnCerrarSugerenciaLugar" type="button" class="text-2xl leading-none text-gray-500 hover:text-gray-700">&times;</button>
+      </div>
+      <form id="formSugerenciaLugar" class="space-y-3 p-4">
+        <p class="text-xs text-gray-600">
+          Cuéntanos qué dato está incorrecto y qué valor debería tener.
+        </p>
+
+        <label class="block text-sm">
+          <span class="mb-1 block font-medium text-gray-700">Tipo de corrección</span>
+          <select id="sugerenciaCategoria" required class="w-full rounded border border-gray-300 px-3 py-2 text-sm">
+            <option value="horario">Horario</option>
+            <option value="precio">Precio</option>
+            <option value="descripcion">Descripción</option>
+            <option value="direccion">Dirección</option>
+            <option value="telefono">Teléfono</option>
+            <option value="otro">Otro</option>
+          </select>
+        </label>
+
+        <label class="block text-sm">
+          <span class="mb-1 block font-medium text-gray-700">Valor actual (opcional)</span>
+          <input id="sugerenciaValorActual" type="text" class="w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+        </label>
+
+        <label class="block text-sm">
+          <span class="mb-1 block font-medium text-gray-700">Valor sugerido (opcional)</span>
+          <input id="sugerenciaValorSugerido" type="text" class="w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+        </label>
+
+        <label class="block text-sm">
+          <span class="mb-1 block font-medium text-gray-700">Comentario</span>
+          <textarea id="sugerenciaComentario" required minlength="8" rows="4" class="w-full rounded border border-gray-300 px-3 py-2 text-sm" placeholder="Ejemplo: El horario de domingo está cerrado, no abre 24h."></textarea>
+        </label>
+
+        <label class="block text-sm">
+          <span class="mb-1 block font-medium text-gray-700">Nombre (opcional)</span>
+          <input id="sugerenciaNombreContacto" type="text" class="w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+        </label>
+
+        <label class="block text-sm">
+          <span class="mb-1 block font-medium text-gray-700">Email (opcional)</span>
+          <input id="sugerenciaEmailContacto" type="email" class="w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+        </label>
+
+        <label class="block text-sm">
+          <span class="mb-1 block font-medium text-gray-700">Teléfono (opcional)</span>
+          <input id="sugerenciaTelefonoContacto" type="text" class="w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+        </label>
+
+        <p id="sugerenciaLugarEstado" class="hidden text-sm"></p>
+
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <button id="btnCancelarSugerenciaLugar" type="button" class="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            Cancelar
+          </button>
+          <button id="btnEnviarSugerenciaLugar" type="submit" class="rounded bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">
+            Enviar sugerencia
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Footer -->

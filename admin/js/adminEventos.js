@@ -3,6 +3,7 @@ import { supabase } from '../shared/supabaseClient.js';
 const tablaEventos = document.getElementById('tablaEventos');
 const listaEventosMobile = document.getElementById('listaEventosMobile');
 const contadorEventos = document.getElementById('contadorEventos');
+const resumenSyncEventos = document.getElementById('resumenSyncEventos');
 
 const filtroBusqueda = document.getElementById('filtroBusqueda');
 const filtroMunicipio = document.getElementById('filtroMunicipio');
@@ -40,6 +41,7 @@ let eventos = [];
 let eventoEnEdicion = null;
 const sedesUI = [];
 let municipioOptionsHtml = '<option value="">Selecciona...</option>';
+const LAST_SYNC_STORAGE_KEY = 'admin_eventos_last_sync_meta_v1';
 
 function capitalizarPalabra(texto = '') {
   if (!texto) return '';
@@ -89,6 +91,47 @@ function formatHora(hora) {
     timeZone: 'UTC'
   });
   return base.toLowerCase().replace(/\s+/g, '').replace(/\./g, '');
+}
+
+function formatFechaHoraSync(iso = '') {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('es-PR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
+function readLastSyncMeta() {
+  try {
+    const raw = localStorage.getItem(LAST_SYNC_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeLastSyncMeta(meta = {}) {
+  try {
+    localStorage.setItem(LAST_SYNC_STORAGE_KEY, JSON.stringify(meta));
+  } catch (error) {
+    console.warn('No se pudo guardar metadata de sincronización:', error);
+  }
+}
+
+function renderSyncResumen({ totalEventos = 0, lastSyncAt = '', nuevos = 0 } = {}) {
+  if (!resumenSyncEventos) return;
+  const fechaTexto = formatFechaHoraSync(lastSyncAt);
+  resumenSyncEventos.textContent =
+    `Última sincronización: ${fechaTexto} · Total eventos: ${totalEventos} · Nuevos en última actualización: ${nuevos}`;
 }
 
 function formatFechasListado(fechas) {
@@ -670,6 +713,12 @@ async function cargarEventos() {
     if (errorEventos) throw errorEventos;
 
     eventos = (eventosData ?? []).map((evento) => normalizarEvento(evento));
+    const lastMeta = readLastSyncMeta();
+    renderSyncResumen({
+      totalEventos: eventos.length,
+      lastSyncAt: lastMeta?.lastSyncAt || '',
+      nuevos: Number(lastMeta?.nuevos || 0)
+    });
     aplicarFiltros();
   } catch (error) {
     console.error('Error cargando eventos:', error);
@@ -869,6 +918,7 @@ async function sincronizarEventosManual() {
   if (typeof mostrarLoader === 'function') await mostrarLoader();
 
   try {
+    const beforeIds = new Set((eventos || []).map((item) => Number(item.id)).filter((id) => Number.isFinite(id) && id > 0));
     const token = await obtenerTokenSesion();
     const payload = await callEventosSyncEndpoint({
       token,
@@ -886,6 +936,18 @@ async function sincronizarEventosManual() {
 
     alert(`Sincronización completada.\n\n${resumen}`);
     await cargarEventos();
+    const afterIds = new Set((eventos || []).map((item) => Number(item.id)).filter((id) => Number.isFinite(id) && id > 0));
+    let nuevos = 0;
+    afterIds.forEach((id) => {
+      if (!beforeIds.has(id)) nuevos += 1;
+    });
+    const syncMeta = {
+      lastSyncAt: new Date().toISOString(),
+      totalEventos: eventos.length,
+      nuevos
+    };
+    writeLastSyncMeta(syncMeta);
+    renderSyncResumen(syncMeta);
   } catch (error) {
     console.error('Error en sincronización manual de eventos:', error);
     alert(`No se pudo completar la sincronización.\n${error.message || error}`);
