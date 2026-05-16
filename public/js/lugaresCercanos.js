@@ -30,6 +30,17 @@ function resolverImagenLugar(rawPath = '') {
   return supabase.storage.from('galerialugares').getPublicUrl(sanitized).data.publicUrl || null;
 }
 
+function esLugarTipoMall(lugar) {
+  const nombre = normalizarTexto(lugar?.nombre || '');
+  const categoria = normalizarTexto(lugar?.categoria || '');
+  return (
+    /\bmall\b/.test(nombre) ||
+    nombre.includes('shopping mall') ||
+    categoria.includes('shopping_mall') ||
+    categoria.includes('shopping mall')
+  );
+}
+
 function renderizarLugaresCercanos(cercanos, comercioOrigen) {
   const container = document.getElementById('cercanosLugaresContainer');
   const slider = document.getElementById('sliderCercanosLugares');
@@ -127,6 +138,7 @@ export async function mostrarLugaresCercanos(comercioOrigen) {
 
     const lugaresConImagen = lugaresConCoords
       .filter((l) => Number(l.id) !== Number(comercioOrigen.id))
+      .filter((l) => !esLugarTipoMall(l))
       .map(l => {
       const portada = imagenes?.find(img => Number(img.idLugar) === Number(l.id));
       const imagenDirecta = resolverImagenLugar(l.imagen);

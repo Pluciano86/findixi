@@ -87,6 +87,45 @@ function formatPrecioListado(lugar) {
   return raw;
 }
 
+function esLugarTipoMall(lugar) {
+  const nombre = normalizarTexto(lugar?.nombre || '');
+  const categoria = normalizarTexto(lugar?.categoria || '');
+  if (!nombre && !categoria) return false;
+  return (
+    /\bmall\b/.test(nombre) ||
+    nombre.includes('shopping mall') ||
+    categoria.includes('shopping_mall') ||
+    categoria.includes('shopping mall')
+  );
+}
+
+function dedupeKeyLugar(lugar) {
+  const nombre = normalizarTexto(lugar?.nombre || '');
+  const municipio = normalizarTexto(lugar?.municipio || '');
+  const lat = Number(lugar?.latitud);
+  const lon = Number(lugar?.longitud);
+  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    return `${nombre}__${municipio}__${lat.toFixed(5)}__${lon.toFixed(5)}`;
+  }
+  const direccion = normalizarTexto(lugar?.direccion || '');
+  return `${nombre}__${municipio}__${direccion}`;
+}
+
+function depurarLugaresListado(lista = []) {
+  const seen = new Set();
+  const filtrados = [];
+
+  for (const lugar of lista) {
+    if (esLugarTipoMall(lugar)) continue;
+    const key = dedupeKeyLugar(lugar);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    filtrados.push(lugar);
+  }
+
+  return filtrados;
+}
+
 function buildNoImageOverlay() {
   return `
     <div class="playa-no-image-overlay absolute inset-0 flex flex-col items-center justify-center text-center text-white font-semibold text-sm leading-tight">
@@ -189,7 +228,8 @@ function crearCardLugar(lugar) {
   }
 
   link.innerHTML = `
-    <div class="relative overflow-hidden">
+    <div>
+      <div class="relative h-40 overflow-hidden" data-lugar-image-wrap>
       ${
         lugar.favorito
           ? `<div class="absolute top-2 right-2 z-50">
@@ -201,8 +241,9 @@ function crearCardLugar(lugar) {
             </div>`
           : ''
       }
-      <img src="${portadaUrl}" alt="Portada de ${lugar.nombre}" class="w-full h-40 object-cover" data-lugar-image />
+      <img src="${portadaUrl}" alt="Portada de ${lugar.nombre}" class="w-full h-full object-cover" data-lugar-image />
       ${usaPlaceholder ? buildNoImageOverlay() : ''}
+      </div>
       <div class="relative w-full flex flex-col items-center no-underline">
         <div class="relative h-12 w-full">
           <div class="absolute inset-0 flex items-center justify-center px-2 text-center">
@@ -230,7 +271,7 @@ function crearCardLugar(lugar) {
     </div>
   `;
 
-  const imageWrapper = link.querySelector('.relative.overflow-hidden');
+  const imageWrapper = link.querySelector('[data-lugar-image-wrap]');
   const imageEl = link.querySelector('[data-lugar-image]');
   ensureNoImageOverlay(imageWrapper, usaPlaceholder);
   if (imageEl) {
@@ -279,12 +320,13 @@ async function cargarLugares({ municipioFiltro = null } = {}) {
     ...lugar,
     favorito: user ? favoritosSet.has(lugar.id) : false,
   }));
+  const baseDepurada = depurarLugaresListado(baseLugares);
   console.log(
     'Primeros items con favorito (lugares):',
-    baseLugares.slice(0, 5).map((l) => ({ id: l.id, favorito: l.favorito }))
+    baseDepurada.slice(0, 5).map((l) => ({ id: l.id, favorito: l.favorito }))
   );
 
-  lugares = baseLugares.filter(l => l.latitud && l.longitud);
+  lugares = baseDepurada.filter(l => l.latitud && l.longitud);
 
   const { data: categoriasRel, error: errorCategoriasRel } = await supabase
     .from('lugarCategoria')
