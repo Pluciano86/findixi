@@ -112,7 +112,10 @@ function applyFooterNavStates() {
 
     const icon = link.querySelector('.footer-icon');
     if (icon) {
-      icon.className = `footer-icon w-7 h-7${key === 'cuenta' ? ' object-cover rounded-full' : ''}`;
+      const hasProfilePhoto = key === 'cuenta' && icon.dataset.profilePhoto === 'true';
+      icon.className = `footer-icon w-7 h-7${key === 'cuenta'
+        ? (hasProfilePhoto ? ' object-cover rounded-full' : ' object-contain')
+        : ''}`;
     }
 
     const label = link.querySelector('.footer-label');
@@ -283,7 +286,8 @@ function renderFooter() {
             <img 
               id="footerImagen"
               src="${defaultCuentaImg}"
-              class="footer-icon w-7 h-7 object-cover rounded-full"
+              data-profile-photo="false"
+              class="footer-icon w-7 h-7 object-contain"
               alt="Cuenta">
             <span
               id="footerMensajesBadge"
@@ -350,7 +354,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!perfilError && perfil) {
         if (perfil.imagen) {
           cuentaImagen.src = perfil.imagen;
-          cuentaImagen.classList.add('rounded-full', 'object-cover');
+          cuentaImagen.dataset.profilePhoto = 'true';
         }
         cuentaTexto.textContent = perfil.nombre || user.email.split('@')[0];
       } else {
@@ -366,7 +370,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       setFooterDisabled('cuenta', false);
     } else {
       cuentaImagen.src = defaultCuentaImg;
-      cuentaImagen.classList.add('rounded-full', 'object-cover');
+      cuentaImagen.dataset.profilePhoto = 'false';
       cuentaTexto.textContent = defaultCuentaTexto;
       enlaceMiCuenta.href = loginPath;
       setFooterMensajesBadge(0);
@@ -376,7 +380,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (error) {
     console.error('Error verificando sesión:', error);
     cuentaImagen.src = defaultCuentaImg;
-    cuentaImagen.classList.add('rounded-full', 'object-cover');
+    cuentaImagen.dataset.profilePhoto = 'false';
     cuentaTexto.textContent = defaultCuentaTexto;
     enlaceMiCuenta.href = loginPath;
     setFooterMensajesBadge(0);
