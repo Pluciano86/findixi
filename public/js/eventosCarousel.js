@@ -7,6 +7,8 @@ import {
   getNearestUpcomingISODate,
 } from "../shared/utils.js";
 
+const MAX_EVENTOS_CAROUSEL = 20;
+
 function getPuertoRicoISODate(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Puerto_Rico",
@@ -158,9 +160,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
           eventoFechas (fecha, horainicio, mismahora)
         )
       `)
-      .eq("activo", true)
-      .order("creado", { ascending: false })
-      .limit(20);
+      .eq("activo", true);
 
     // 🔸 Filtro principal
     if (idMunicipio) {
@@ -173,7 +173,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
     if (error) throw error;
 
     console.log("🎟️ Eventos obtenidos (municipio/área):", eventos);
-    eventos = normalizarEventos(eventos, municipioNombreById);
+    eventos = normalizarEventos(eventos, municipioNombreById).slice(0, MAX_EVENTOS_CAROUSEL);
 
     let mensajeFallback = "";
 
@@ -202,12 +202,10 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
           )
         `)
         .eq("activo", true)
-        .in("eventos_municipios.municipio_id", municipiosIds)
-        .order("creado", { ascending: false })
-        .limit(20);
+        .in("eventos_municipios.municipio_id", municipiosIds);
 
       if (areaError) throw areaError;
-      eventos = normalizarEventos(eventosArea || [], municipioNombreById);
+      eventos = normalizarEventos(eventosArea || [], municipioNombreById).slice(0, MAX_EVENTOS_CAROUSEL);
 
       // Mostrar mensaje visual
       if (nombreMunicipio && nombreArea) {
@@ -272,13 +270,22 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
       loopedSlides: canLoop ? totalSlides : 0,
       loopAdditionalSlides: canLoop ? totalSlides : 0,
       autoplay: canLoop
-        ? { delay: 2500, disableOnInteraction: false, waitForTransition: false }
+        ? {
+            delay: 3500,
+            disableOnInteraction: false,
+            pauseOnMouseEnter: true,
+            waitForTransition: true,
+          }
         : false,
-      speed: 900,
+      speed: 650,
       slidesPerView: usarLayoutIndex ? 2 : 1.2,
       slidesPerGroup: 1,
       spaceBetween: usarLayoutIndex ? 10 : 8, // pequeño espacio entre tarjetas
       centeredSlides: false,
+      grabCursor: true,
+      threshold: 4,
+      longSwipesRatio: 0.2,
+      keyboard: { enabled: true, onlyInViewport: true },
       watchSlidesProgress: true,
     });
 
