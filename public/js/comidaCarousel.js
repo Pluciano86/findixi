@@ -246,14 +246,23 @@ export async function renderComidaCarousel(containerId) {
       loopedSlides: canLoop ? totalSlides : 0,
       loopAdditionalSlides: canLoop ? totalSlides : 0,
       autoplay: canLoop
-        ? { delay: 3000, disableOnInteraction: false, waitForTransition: false }
+        ? {
+            delay: 3500,
+            disableOnInteraction: false,
+            pauseOnMouseEnter: true,
+            waitForTransition: true,
+          }
         : false,
-      speed: 900,
+      speed: 650,
       slidesPerView: 1.4,
       slidesPerGroup: 1,
       spaceBetween: 8, // pequeño espacio entre tarjetas
       direction: "horizontal",
       centeredSlides: false,
+      grabCursor: true,
+      threshold: 4,
+      longSwipesRatio: 0.2,
+      keyboard: { enabled: true, onlyInViewport: true },
       watchSlidesProgress: true,
     });
   } catch (err) {
