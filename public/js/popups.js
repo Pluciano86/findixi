@@ -62,17 +62,17 @@ export function showPopup(html) {
     container.classList.add("hidden");
 }
 
-// Determina la ruta correcta hacia login.html según el entorno
+// Determina la ruta correcta hacia logearse.html según el entorno
 function getLoginUrl() {
   const { hostname, protocol, pathname } = window.location;
   const isLiveServer = hostname === "localhost" || protocol === "file:";
 
   if (isLiveServer) {
-    return "login.html";
+    return "logearse.html";
   }
 
   const inPublicPath = pathname.includes("/public/");
-  return inPublicPath ? "/public/logearse.html" : "/login.html";
+  return inPublicPath ? "/public/logearse.html" : "/logearse.html";
 }
 
 export function showPopupFavoritosVacios(tipo) {
@@ -294,10 +294,29 @@ export function mostrarPopupUbicacionDenegada(forceShow = false) {
 // POPUP AUTOMÁTICO: INVITAR A CREAR CUENTA
 // ─────────────────────────────────────────────
 
+const DAILY_BETA_POPUP_ID = "findixi-daily-popup-overlay";
+const POPUP_RETRY_DELAY_MS = 1000;
+
+function waitForDailyBetaPopupToClose() {
+  return new Promise((resolve) => {
+    const check = () => {
+      if (!document.getElementById(DAILY_BETA_POPUP_ID)) {
+        resolve();
+        return;
+      }
+      setTimeout(check, POPUP_RETRY_DELAY_MS);
+    };
+    check();
+  });
+}
+
 async function popupCrearCuenta() {
   const { data: user } = await supabase.auth.getUser();
 
   if (user?.user) return;
+
+  // Si el aviso Beta abrió primero, esperar a que cierre para no superponer overlays.
+  await waitForDailyBetaPopupToClose();
 
   // evitar mostrarlo más de una vez por día
   const lastShown = localStorage.getItem("popupCrearCuentaShown");
