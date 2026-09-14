@@ -595,33 +595,60 @@ if (total === 0) {
   }
   mensajesContainer.innerHTML = '';
 
-  // 🔹 Mensaje principal genérico (sin repetir municipio)
-  const mensajePrincipal = esBusquedaManual
-    ? `No se encontraron ${categoria.toLowerCase()} en el municipio seleccionado.`
-    : `No se encontraron ${categoria.toLowerCase()} en tu ubicación actual.`;
-
+  // Mostrar el crecimiento de Findixi como contexto, no como un error.
   const mensajeBase = document.createElement("div");
-  mensajeBase.className = "mensaje-no-resultados text-center mt-6 mb-4 px-4";
-  mensajeBase.innerHTML = `<p class="text-gray-700 font-medium mb-3">${mensajePrincipal}</p>`;
-  mensajesContainer.appendChild(mensajeBase);
+  mensajeBase.className =
+    "mensaje-no-resultados mt-6 mb-5 mx-4 rounded-2xl border border-cyan-200 bg-gradient-to-br from-cyan-50 to-sky-100 px-5 py-5 shadow-sm";
 
-  // 🔹 Botón azul con municipio activo
+  const tituloCrecimiento = document.createElement("h3");
+  tituloCrecimiento.className = "text-xl font-semibold text-[#023047] mb-2";
+  tituloCrecimiento.textContent = municipioActivo
+    ? `¡Estamos llegando a ${municipioActivo}!`
+    : "¡Findixi está creciendo cerca de ti!";
+
+  const detalleCrecimiento = document.createElement("p");
+  detalleCrecimiento.className = "text-sm leading-relaxed text-gray-700";
+  detalleCrecimiento.textContent =
+    "Estamos sumando negocios, lugares y experiencias para que muy pronto puedas descubrir todo lo que hay cerca de ti.";
+
+  const accionesCrecimiento = document.createElement("div");
+  accionesCrecimiento.className = "mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center";
+
   if (municipioActivo) {
-    const btnMunicipio = document.createElement("button");
-    btnMunicipio.innerHTML = `✕ ${municipioActivo}`;
-    btnMunicipio.className =
-      "ml-2 bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-200 transition";
-    btnMunicipio.addEventListener("click", () => {
-      // ✅ Reiniciar filtro, limpiar mensajes y recargar lista completa
+    const explorarOtros = document.createElement("button");
+    explorarOtros.type = "button";
+    explorarOtros.className =
+      "rounded-xl bg-[#023047] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#012737]";
+    explorarOtros.textContent = "Explorar otros municipios";
+    explorarOtros.addEventListener("click", () => {
       filtrosActivos.municipio = "";
       const selectMunicipio = document.getElementById("filtro-municipio");
       if (selectMunicipio) selectMunicipio.value = "";
-      const mensajesContainerExistente = document.getElementById('mensajesContainer');
-      if (mensajesContainerExistente) mensajesContainerExistente.remove();
+      document.getElementById("mensajesContainer")?.remove();
       cargarComerciosConOrden();
     });
-    mensajeBase.appendChild(btnMunicipio);
+    accionesCrecimiento.appendChild(explorarOtros);
   }
+
+  const registrarNegocio = document.createElement("a");
+  registrarNegocio.href = "registroComercio.html";
+  registrarNegocio.className =
+    "rounded-xl border border-[#023047] bg-white px-4 py-2 text-sm font-medium text-[#023047] transition hover:bg-slate-50";
+  registrarNegocio.textContent = "Registrar un negocio";
+  accionesCrecimiento.appendChild(registrarNegocio);
+
+  const invitacionNegocio = document.createElement("p");
+  invitacionNegocio.className = "mt-3 text-xs text-gray-600";
+  invitacionNegocio.textContent =
+    "¿Tienes o conoces un negocio en este municipio? Ayúdanos a sumarlo a Findixi.";
+
+  mensajeBase.append(
+    tituloCrecimiento,
+    detalleCrecimiento,
+    accionesCrecimiento,
+    invitacionNegocio
+  );
+  mensajesContainer.appendChild(mensajeBase);
 
   // ⚡ Mostrar comercios cercanos automáticamente
   try {
