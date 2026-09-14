@@ -46,6 +46,30 @@ function hasCategoria(comercio, categoriaId, aliases = []) {
   return tokens.some((token) => aliases.some((alias) => token.includes(alias)));
 }
 
+function groupMediaByCommerce(rows = []) {
+  const grouped = new Map();
+
+  for (const row of rows) {
+    const idComercio = Number(row?.idComercio);
+    if (!Number.isFinite(idComercio) || !row?.imagen) continue;
+
+    if (!grouped.has(idComercio)) {
+      grouped.set(idComercio, { portada: null, primeraImagen: null, logo: null });
+    }
+
+    const media = grouped.get(idComercio);
+    if (row.logo === true) {
+      if (!media.logo) media.logo = row;
+      continue;
+    }
+
+    if (!media.primeraImagen) media.primeraImagen = row;
+    if (row.portada === true && !media.portada) media.portada = row;
+  }
+
+  return grouped;
+}
+
 async function loadComerciosConCategorias() {
   const embeddedQuery = await supabase
     .from("Comercios")
@@ -145,7 +169,7 @@ export async function renderComidaCarousel(containerId) {
       return;
     }
 
-    // 🔸 Obtener imágenes (no logos)
+    // 🔸 Obtener portadas y logos en una sola consulta
     const idsComercios = comerciosAleatorios.map((c) => c.id).filter(Boolean);
     if (idsComercios.length === 0) {
       console.warn("⚠️ Comercios sin IDs válidos.");
@@ -156,8 +180,7 @@ export async function renderComidaCarousel(containerId) {
     const { data: imagenes, error: imgError } = await supabase
       .from("imagenesComercios")
       .select("imagen, idComercio, logo, portada")
-      .in("idComercio", idsComercios)
-      .neq("logo", true);
+      .in("idComercio", idsComercios);
 
     if (imgError) throw imgError;
 
@@ -166,11 +189,16 @@ export async function renderComidaCarousel(containerId) {
       return;
     }
 
-    // 🔸 Tomar una imagen por comercio (priorizar portada)
-    const imagenesPorComercio = idsComercios.map((id) => {
-      const imgs = imagenes.filter((img) => Number(img.idComercio) === Number(id));
-      return imgs.find((img) => img.portada) || imgs[0];
-    }).filter(Boolean);
+    // 🔸 Preparar una tarjeta por comercio (priorizar portada y reutilizar el logo ya cargado)
+    const mediaPorComercio = groupMediaByCommerce(imagenes);
+    const tarjetas = idsComercios
+      .map((id) => {
+        const media = mediaPorComercio.get(Number(id));
+        const imagen = media?.portada || media?.primeraImagen;
+        const comercio = comerciosAleatorios.find((item) => Number(item.id) === Number(id));
+        return imagen && comercio ? { comercio, imagen, logo: media?.logo || null } : null;
+      })
+      .filter(Boolean);
 
     // 🔸 Base URL del bucket
     const baseURL =
@@ -180,27 +208,16 @@ export async function renderComidaCarousel(containerId) {
     container.innerHTML = `
       <div class="swiper comida-swiper">
         <div class="swiper-wrapper">
-          ${await Promise.all(
-            imagenesPorComercio.map(async (img) => {
-              const comercio = comerciosAleatorios.find((c) => c.id === img.idComercio);
-              if (!comercio) return "";
-
-              // 🔹 Buscar logo del comercio
-              const { data: logoData } = await supabase
-                .from("imagenesComercios")
-                .select("imagen")
-                .eq("idComercio", comercio.id)
-                .eq("logo", true)
-                .maybeSingle();
-
-              const logoURL = logoData
-                ? `${baseURL}${logoData.imagen}`
+          ${tarjetas
+            .map(({ comercio, imagen, logo }) => {
+              const logoURL = logo
+                ? `${baseURL}${logo.imagen}`
                 : "https://placehold.co/40x40?text=Logo";
 
               return `
                 <div class="swiper-slide cursor-pointer">
                   <a href="perfilComercio.html?id=${comercio.id}" class="block relative w-full aspect-[3/2] overflow-hidden rounded-lg bg-gray-100 shadow">
-                    <img src="${baseURL + img.imagen}"
+                    <img src="${baseURL + imagen.imagen}"
                          alt="${comercio.nombre}"
                          class="w-full h-full object-cover" />
 
@@ -216,13 +233,13 @@ export async function renderComidaCarousel(containerId) {
                 </div>
               `;
             })
-          ).then((slides) => slides.join(""))}
+            .join("")}
         </div>
       </div>
     `;
 
     // 🔸 Inicializar Swiper (loop suave, sin salto brusco en reinicio)
-    const totalSlides = imagenesPorComercio.length;
+    const totalSlides = tarjetas.length;
     const canLoop = totalSlides > 1;
     new Swiper(container.querySelector(".comida-swiper"), {
       loop: canLoop,
