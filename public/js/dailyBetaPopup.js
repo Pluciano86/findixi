@@ -2,6 +2,7 @@ const POPUP_STORAGE_KEY = 'findixi_daily_beta_popup_seen_date';
 const POPUP_CONTAINER_ID = 'findixi-daily-popup-overlay';
 const LOGO_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/logoFindixi.png';
 const POPUP_DELAY_AFTER_SPLASH_MS = 10000;
+const POPUP_RETRY_DELAY_MS = 1000;
 
 function getLocalDateKey() {
   const now = new Date();
@@ -131,6 +132,12 @@ function closePopup() {
 function showPopup() {
   if (!document.body) return;
   if (document.getElementById(POPUP_CONTAINER_ID)) return;
+
+  const accountPopup = document.getElementById('popupContainer');
+  if (accountPopup && !accountPopup.classList.contains('hidden')) {
+    setTimeout(showPopup, POPUP_RETRY_DELAY_MS);
+    return;
+  }
 
   markShownToday();
   injectStyles();
