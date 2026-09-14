@@ -7,8 +7,19 @@ import {
   getNearestUpcomingISODate,
 } from "../shared/utils.js";
 
+function getPuertoRicoISODate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Puerto_Rico",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 const normalizarEventos = (lista = [], municipioNombreById = new Map()) => {
-  const hoyISO = new Date().toISOString().slice(0, 10);
+  const hoyISO = getPuertoRicoISODate();
     return (lista || [])
       .map((evento) => {
         const sedes = (evento.eventos_municipios || []).map((sede) => {

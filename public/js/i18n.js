@@ -390,7 +390,7 @@ const DICTS = {
     'home.comidaTitulo': "¡Aquí sí, se come Brutal!",
     'home.jangueoTitulo': '¿Nos Fuimos pal Jangueo?',
     'home.exploraLocalTitle': 'Explora Lo Local',
-    'home.exploraLocalSubtitle': 'Descrubre todo lo que puedes hacer hoy',
+    'home.exploraLocalSubtitle': 'Descubre todo lo que puedes hacer hoy',
     'home.quickComercios': 'Comercios',
     'home.quickEventos': 'Eventos',
     'home.quickPlayas': 'Playas',
