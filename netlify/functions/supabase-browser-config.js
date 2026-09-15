@@ -11,7 +11,7 @@ function envFirst(keys = []) {
   return '';
 }
 
-exports.handler = async function handler(event) {
+export const handler = async function handler(event) {
   const origin = normalizeOrigin(
     event?.headers?.origin || event?.headers?.Origin || event?.headers?.referer || event?.headers?.Referer || ''
   );
