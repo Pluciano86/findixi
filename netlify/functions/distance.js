@@ -1,4 +1,4 @@
-exports.handler = async function (event) {
+export const handler = async function (event) {
   const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
   if (!GOOGLE_MAPS_API_KEY) {
