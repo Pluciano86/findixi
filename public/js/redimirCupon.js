@@ -1,4 +1,4 @@
-import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/supabaseClient.js';
+import { supabase, SUPABASE_ANON_KEY } from '../shared/supabaseClient.js';
 
 // Elementos vista de validación
 const vistaValidacionEl = document.getElementById('vistaValidacion');
@@ -639,41 +639,6 @@ const redimirCupon = async () => {
 
       cuponUsuarioActual.redimido = true;
       cuponUsuarioActual.fechaRedimido = fechaRedimido;
-      const telefonoUsuario = usuarioDelCupon?.telefono
-        ? usuarioDelCupon.telefono.startsWith('+1')
-          ? usuarioDelCupon.telefono
-          : `+1${usuarioDelCupon.telefono}`
-        : null;
-      const nombreUsuario = usuarioDelCupon?.nombre || '';
-      const nombreComercio = comercioActual?.nombre || '';
-      const fechaFormateada = formatearFecha(fechaRedimido);
-      const horaFormateada = formatearHora(fechaRedimido);
-
-      if (
-        telefonoUsuario &&
-        nombreUsuario &&
-        nombreComercio &&
-        fechaFormateada &&
-        fechaFormateada !== '--' &&
-        horaFormateada
-      ) {
-        const funcionesUrl = `${SUPABASE_URL}/functions/v1/send-sms-cupon`;
-        try {
-          await fetch(funcionesUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              telefono: telefonoUsuario,
-              nombreUsuario,
-              nombreComercio,
-              fecha: fechaFormateada,
-              hora: horaFormateada
-            })
-          });
-        } catch (smsError) {
-          console.warn('No se pudo enviar el SMS de cupón:', smsError);
-        }
-      }
     } else {
       const { error } = await supabase
         .from('cupones')

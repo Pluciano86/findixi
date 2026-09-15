@@ -53,7 +53,6 @@ const otpCodeInput = document.getElementById('otpCodeInput');
 const btnOtpVerify = document.getElementById('btnOtpVerify');
 const otpActionsRow = document.getElementById('otpActionsRow');
 const btnOtpResend = document.getElementById('btnOtpResend');
-const btnOtpVoice = document.getElementById('btnOtpVoice');
 const btnOtpNoRecibi = document.getElementById('btnOtpNoRecibi');
 const otpFeedback = document.getElementById('otpFeedback');
 const otpVerifiedSummary = document.getElementById('otpVerifiedSummary');
@@ -1127,7 +1126,6 @@ function restoreOtpStateFromSession() {
         btnOtpVerify.textContent = 'Verificado';
       }
       if (btnOtpResend) btnOtpResend.disabled = true;
-      if (btnOtpVoice) btnOtpVoice.disabled = true;
       setOtpAssistanceVisibility(false);
       showOtpVerifiedSummary(otpState.comercioNombre || getComercioNombreActual());
       setOtpFeedback('success', 'OTP ya verificado en esta sesión.');
@@ -1153,7 +1151,6 @@ function hideOtpVerificationBox({ clearSession = true } = {}) {
     btnOtpVerify.disabled = false;
     btnOtpVerify.textContent = 'Verificar';
   }
-  if (btnOtpVoice) btnOtpVoice.disabled = false;
   setOtpAssistanceVisibility(true);
   otpVerifiedSummary?.classList.add('hidden');
   if (otpMetaText) otpMetaText.textContent = 'Código expira en 10 minutos.';
@@ -3378,7 +3375,6 @@ function wireEvents() {
         otpMetaText.textContent = `Verificado por ${result?.metodo_verificacion || otpState.channelUsed || 'otp'}.`;
       }
       if (btnOtpResend) btnOtpResend.disabled = true;
-      if (btnOtpVoice) btnOtpVoice.disabled = true;
       if (otpCodeInput) otpCodeInput.disabled = true;
     } catch (error) {
       setOtpFeedback('error', humanizeOtpError(error));
@@ -3414,27 +3410,8 @@ function wireEvents() {
     }
   });
 
-  btnOtpVoice?.addEventListener('click', async () => {
-    clearOtpFeedback();
-    btnOtpVoice.disabled = true;
-    const prevText = btnOtpVoice.textContent;
-    btnOtpVoice.textContent = 'Llamando...';
-    let success = false;
-    try {
-      const result = await sendOtp({ channelPreference: 'voice', resend: true });
-      applyOtpSendResult(result);
-      setOtpFeedback('info', 'Se envió OTP por llamada de voz.');
-      success = true;
-    } catch (error) {
-      setOtpFeedback('error', humanizeOtpError(error));
-    } finally {
-      btnOtpVoice.disabled = false;
-      btnOtpVoice.textContent = success ? 'Probar llamada' : prevText;
-    }
-  });
-
   btnOtpNoRecibi?.addEventListener('click', () => {
-    setOtpFeedback('warning', 'Si no te llega por SMS, usa "Probar llamada" o vuelve a reenviar al terminar el cooldown.');
+    setOtpFeedback('warning', 'Verifica que el teléfono mostrado sea correcto y vuelve a reenviar al terminar el cooldown.');
   });
 
   btnOtpContinue?.addEventListener('click', () => {
