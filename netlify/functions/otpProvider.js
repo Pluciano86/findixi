@@ -3,12 +3,6 @@ function sanitizeText(value) {
 }
 
 function readEnv(name) {
-  try {
-    const netlifyValue = globalThis.Netlify?.env?.get?.(name);
-    if (netlifyValue) return sanitizeText(netlifyValue);
-  } catch (_error) {
-    // Node-based local tests do not expose the Netlify runtime global.
-  }
   return sanitizeText(process.env[name]);
 }
 
