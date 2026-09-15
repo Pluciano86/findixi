@@ -3,7 +3,7 @@
   "scripts": {
     "sync:shared": "node tools/sync-shared-package.mjs",
     "qa:web-public": "node tools/check-web-public-smoke.mjs",
-    "test:messaging": "node --test netlify/functions/messaging-security.test.js",
+    "test:messaging": "node --test tests/messaging-security.test.js",
     "test:projections": "node --test shared/projectionsCalculator.test.js",
     "sync:eventos:prticket:scrape": "python3 tools/scrapers/prticket/scrape_prticket.py",
     "sync:eventos:prticket:import": "python3 tools/scrapers/prticket/sync_prticket_to_supabase.py",

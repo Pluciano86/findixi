@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { handler as dispatchNotifications } from './dispatch_notifications.js';
-import { createOtpProvider } from './otpProvider.js';
-import { resolveDestinationPhone } from './otpShared.js';
+import { handler as dispatchNotifications } from '../netlify/functions/dispatch_notifications.js';
+import { createOtpProvider } from '../netlify/functions/otpProvider.js';
+import { resolveDestinationPhone } from '../netlify/functions/otpShared.js';
 
 const ENV_KEYS = [
   'CONTEXT',
