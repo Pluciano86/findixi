@@ -74,7 +74,7 @@ async function verifyUserPhoneWithPrompt({ phoneRaw, accessToken }) {
   const challengeId = sendResponse?.challenge_id;
   if (!challengeId) throw new Error('No se recibió challenge_id en envío OTP.');
 
-  const code = window.prompt('Ingresa el código que recibiste por WhatsApp/SMS para verificar tu teléfono:');
+  const code = window.prompt('Ingresa el código que recibiste por SMS para verificar tu teléfono:');
   const normalized = String(code || '').replace(/\D/g, '').slice(0, 6);
   if (normalized.length !== 6) return { ok: false, cancelled: true };
 

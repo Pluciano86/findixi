@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'node:crypto';
 import { createOtpProvider } from './otpProvider.js';
 
 const MAX_BATCH = Number(process.env.NOTIFICATIONS_BATCH_SIZE || 50);
@@ -9,9 +10,6 @@ function json(statusCode, payload) {
     statusCode,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-cron-secret',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
     },
     body: JSON.stringify(payload),
   };
@@ -26,9 +24,15 @@ function isAuthorized(event) {
   const secret = String(process.env.NOTIFICATIONS_CRON_SECRET || '').trim();
   const isNetlifyScheduled = String(getHeader(event, 'x-nf-event') || '').toLowerCase() === 'schedule';
   if (isNetlifyScheduled) return true;
-  if (!secret) return true;
+  if (!secret) return false;
   const incoming = String(getHeader(event, 'x-cron-secret') || '').trim();
-  return incoming && incoming === secret;
+  if (!incoming) return false;
+  const expectedBuffer = Buffer.from(secret);
+  const incomingBuffer = Buffer.from(incoming);
+  return (
+    expectedBuffer.length === incomingBuffer.length &&
+    crypto.timingSafeEqual(expectedBuffer, incomingBuffer)
+  );
 }
 
 function safeText(value) {
@@ -43,49 +47,7 @@ function resolveDestination(phoneRaw) {
 async function sendWithFallback({ provider, channel, phone, message }) {
   const normalizedChannel = safeText(channel).toLowerCase();
 
-  if (normalizedChannel === 'whatsapp') {
-    if (provider.name === 'twilio' && typeof provider.sendWhatsApp === 'function') {
-      const waResult = await provider.sendWhatsApp({ phone, message });
-      if (waResult?.ok) return { ok: true, channelUsed: 'whatsapp', result: waResult };
-
-      const smsResult = await provider.sendSMS({ phone, message });
-      if (smsResult?.ok) return { ok: true, channelUsed: 'sms', result: smsResult };
-
-      return {
-        ok: false,
-        channelUsed: 'sms',
-        result: {
-          ...(smsResult || {}),
-          fallback_error: waResult?.error || null,
-          fallback_provider_response: waResult?.provider_response || null,
-        },
-      };
-    }
-
-    const smsResult = await provider.sendSMS({ phone, message });
-    if (smsResult?.ok) return { ok: true, channelUsed: 'sms', result: smsResult };
-    return { ok: false, channelUsed: 'sms', result: smsResult };
-  }
-
-  if (normalizedChannel === 'sms') {
-    if (provider.name === 'twilio' && typeof provider.sendWhatsApp === 'function') {
-      const waResult = await provider.sendWhatsApp({ phone, message });
-      if (waResult?.ok) return { ok: true, channelUsed: 'whatsapp', result: waResult };
-
-      const smsResult = await provider.sendSMS({ phone, message });
-      if (smsResult?.ok) return { ok: true, channelUsed: 'sms', result: smsResult };
-
-      return {
-        ok: false,
-        channelUsed: 'sms',
-        result: {
-          ...(smsResult || {}),
-          fallback_error: waResult?.error || null,
-          fallback_provider_response: waResult?.provider_response || null,
-        },
-      };
-    }
-
+  if (normalizedChannel === 'sms' || normalizedChannel === 'whatsapp') {
     const smsResult = await provider.sendSMS({ phone, message });
     return { ok: !!smsResult?.ok, channelUsed: 'sms', result: smsResult };
   }
@@ -157,7 +119,7 @@ async function processCitaNotifications({ supabase, provider, nowIso }) {
             ...payload,
             delivered_channel: delivery.channelUsed,
             provider: provider.name,
-            provider_result: delivery.result?.provider_response || null,
+            provider_message_id: delivery.result?.message_id || null,
           },
         })
         .eq('id', row.id);
@@ -175,7 +137,7 @@ async function processCitaNotifications({ supabase, provider, nowIso }) {
         payload: {
           ...payload,
           provider: provider.name,
-          provider_result: delivery.result?.provider_response || null,
+          provider_error: delivery.result?.error || null,
         },
       })
       .eq('id', row.id);
@@ -238,7 +200,7 @@ async function processOrderNotifications({ supabase, provider, nowIso }) {
           payload: {
             ...payload,
             delivered_channel: delivery.channelUsed,
-            provider_result: delivery.result?.provider_response || null,
+            provider_message_id: delivery.result?.message_id || null,
           },
         })
         .eq('id', row.id);
@@ -256,7 +218,7 @@ async function processOrderNotifications({ supabase, provider, nowIso }) {
         error_text: delivery.result?.error || 'No se pudo enviar notificación de orden.',
         payload: {
           ...payload,
-          provider_result: delivery.result?.provider_response || null,
+          provider_error: delivery.result?.error || null,
         },
       })
       .eq('id', row.id);
@@ -273,10 +235,6 @@ export const config = {
 };
 
 export const handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return json(204, {});
-  }
-
   if (event.httpMethod !== 'POST') {
     return json(405, { error: 'Método no permitido. Usa POST.' });
   }
@@ -310,10 +268,10 @@ export const handler = async (event) => {
       ordenes,
     });
   } catch (error) {
-    console.error('[dispatch_notifications] error', error);
+    console.error('[dispatch_notifications] error', error?.message || String(error));
     return json(500, {
       ok: false,
-      error: error?.message || String(error),
+      error: 'No se pudo completar el despacho de notificaciones.',
     });
   }
 };

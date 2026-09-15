@@ -12,7 +12,7 @@ const OTP_LIMIT_IP_HOUR = 10;
 const OTP_LIMIT_USER_HOUR = 10;
 
 const VALID_PURPOSES = new Set(['owner_verification', 'phone_change', 'user_login']);
-const VALID_CHANNEL_PREFS = new Set(['auto', 'sms', 'voice', 'whatsapp']);
+const VALID_CHANNEL_PREFS = new Set(['auto', 'sms']);
 
 export function buildHeaders(extra = {}) {
   return {
@@ -159,7 +159,10 @@ export function generateOtpCode() {
 }
 
 export function hashOtpCode(challengeId, code) {
-  const secret = envText('OTP_HASH_SECRET', 'findixi-otp-secret-change-me');
+  const secret = envText('OTP_HASH_SECRET');
+  if (secret.length < 32) {
+    throw new Error('OTP_HASH_SECRET debe existir y tener al menos 32 caracteres.');
+  }
   return crypto
     .createHash('sha256')
     .update(`${challengeId}:${code}:${secret}`)
@@ -278,16 +281,14 @@ async function fetchComercioForOtp(supabaseAdmin, idComercio) {
   return null;
 }
 
-function resolveDestinationPhone({ comercio, purpose, explicitPhone }) {
+export function resolveDestinationPhone({ comercio, purpose, explicitPhone }) {
   if (purpose === 'phone_change') {
     return normalizePhone(explicitPhone || comercio?.telefono_publico);
   }
   if (purpose === 'user_login') {
     return normalizePhone(explicitPhone);
   }
-  return normalizePhone(
-    comercio?.telefono_referencia_google || explicitPhone || comercio?.telefono_publico || comercio?.telefono
-  );
+  return normalizePhone(comercio?.telefono_referencia_google);
 }
 
 function otpMessage(code) {
@@ -494,94 +495,13 @@ export async function issueOtpChallenge({
   if (insertError) throw insertError;
 
   const smsMessage = otpMessage(otpCode);
-  let channelUsed = channelPreference;
-  let providerResult = null;
-
-  if (channelPreference === 'auto') {
-    const shouldUseSmsVoiceFlow = purpose === 'owner_verification';
-
-    if (provider.name === 'twilio' && typeof provider.sendWhatsApp === 'function' && !shouldUseSmsVoiceFlow) {
-      const waResult = await provider.sendWhatsApp({
-        phone: destinationPhone,
-        message: smsMessage,
-        code: otpCode,
-      });
-      channelUsed = 'whatsapp';
-      providerResult = waResult;
-
-      if (!waResult?.ok) {
-        const smsResult = await provider.sendSMS({
-          phone: destinationPhone,
-          message: smsMessage,
-          code: otpCode,
-        });
-        channelUsed = 'sms';
-        providerResult = smsResult?.ok
-          ? smsResult
-          : {
-              ...(smsResult || {}),
-              fallback_error: waResult?.error || null,
-              fallback_provider_response: waResult?.provider_response || null,
-            };
-      }
-    } else {
-      const smsResult = await provider.sendSMS({
-        phone: destinationPhone,
-        message: smsMessage,
-        code: otpCode,
-      });
-      providerResult = smsResult;
-      channelUsed = 'sms';
-
-      if (shouldUseSmsVoiceFlow && !smsResult?.ok) {
-        const voiceResult = await provider.sendVoiceOTP({
-          phone: destinationPhone,
-          code: otpCode,
-        });
-        channelUsed = 'voice';
-        providerResult = voiceResult?.ok
-          ? voiceResult
-          : {
-              ...(voiceResult || {}),
-              fallback_error: smsResult?.error || null,
-              fallback_provider_response: smsResult?.provider_response || null,
-            };
-      }
-    }
-  } else if (channelPreference === 'sms') {
-    providerResult = await provider.sendSMS({
-      phone: destinationPhone,
-      message: smsMessage,
-      code: otpCode,
-    });
-    channelUsed = 'sms';
-  } else if (channelPreference === 'whatsapp') {
-    if (provider.name !== 'twilio' || typeof provider.sendWhatsApp !== 'function') {
-      return {
-        ok: false,
-        statusCode: 400,
-        error: 'Canal WhatsApp no disponible para el proveedor actual.',
-        code: 'channel_not_available',
-      };
-    }
-
-    providerResult = await provider.sendWhatsApp({
-      phone: destinationPhone,
-      message: smsMessage,
-      code: otpCode,
-    });
-    channelUsed = 'whatsapp';
-  } else {
-    providerResult = await provider.sendVoiceOTP({
-      phone: destinationPhone,
-      code: otpCode,
-    });
-    channelUsed = 'voice';
-  }
-
-  // `otp_challenges.channel_used` puede estar en esquema legacy con enum sms/voice.
-  // Persistimos whatsapp como sms para mantener compatibilidad sin romper inserts.
-  const persistedChannel = channelUsed === 'whatsapp' ? 'sms' : channelUsed;
+  const channelUsed = 'sms';
+  const providerResult = await provider.sendSMS({
+    phone: destinationPhone,
+    message: smsMessage,
+    code: otpCode,
+  });
+  const persistedChannel = 'sms';
 
   if (!providerResult?.ok) {
     await supabaseAdmin
@@ -592,7 +512,7 @@ export async function issueOtpChallenge({
         channel_used: persistedChannel,
         last_error: providerResult?.error || 'No se pudo enviar OTP',
         metadata: {
-          send_error: providerResult?.provider_response || providerResult?.error || null,
+          send_error: providerResult?.error || null,
           delivery_channel: channelUsed,
           failed_at: nowIso(),
         },
@@ -615,7 +535,7 @@ export async function issueOtpChallenge({
       metadata: {
         sent_at: nowIso(),
         delivery_channel: channelUsed,
-        provider_result: providerResult?.provider_response || null,
+        provider_message_id: providerResult?.message_id || null,
       },
     })
     .eq('id', challengeId);

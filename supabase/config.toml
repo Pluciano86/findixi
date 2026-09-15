@@ -102,7 +102,13 @@ file_size_limit = "50MiB"
 # objects_path = "./images"
 
 [functions.send-sms-cupon]
-verify_jwt = false
+verify_jwt = true
+
+[functions.enviar_sms]
+verify_jwt = true
+
+[functions.limpiar_eventos_expirados]
+verify_jwt = true
 
 [auth]
 enabled = true
@@ -221,14 +227,6 @@ verify_jwt = false
 # [auth.hook.custom_access_token]
 # enabled = true
 # uri = "pg-functions://<database>/<schema>/<hook_name>"
-
-# Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
-[auth.sms.twilio]
-enabled = false
-account_sid = ""
-message_service_sid = ""
-# DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
-auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 
 # Multi-factor-authentication is available to Supabase Pro plan.
 [auth.mfa]
