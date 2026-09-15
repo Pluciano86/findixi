@@ -3,7 +3,7 @@ function normalizeOrigin(value) {
   return value.trim().replace(/\/+$/, '');
 }
 
-exports.handler = async function handler(event) {
+export const handler = async function handler(event) {
   const origin = normalizeOrigin(
     event?.headers?.origin || event?.headers?.Origin || event?.headers?.referer || event?.headers?.Referer || ''
   );
