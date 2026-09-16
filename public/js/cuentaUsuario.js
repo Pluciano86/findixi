@@ -2553,7 +2553,9 @@ formEditar?.addEventListener('submit', async (e) => {
       } catch (otpError) {
         console.warn('No se pudo completar verificación OTP del nuevo teléfono:', otpError);
         const status = Number(otpError?.status || 0);
-        const referencia = status ? ` (referencia ${status})` : '';
+        const backendCode = String(otpError?.payload?.code || '').trim();
+        const referenceParts = [status || null, backendCode || null].filter(Boolean);
+        const referencia = referenceParts.length ? ` (referencia ${referenceParts.join('/')})` : '';
         alert(`Perfil actualizado. No se pudo completar la verificación de teléfono en este momento${referencia}.`);
       }
     }
