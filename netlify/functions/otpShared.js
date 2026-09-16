@@ -41,7 +41,14 @@ export function parseBody(event) {
   }
 }
 
-function envText(key, fallback = '') {
+export function envText(key, fallback = '') {
+  try {
+    const netlifyValue = String(globalThis.Netlify?.env?.get?.(key) || '').trim();
+    if (netlifyValue) return netlifyValue;
+  } catch (_error) {
+    // Local tests and non-Netlify runtimes do not expose the Netlify global.
+  }
+
   const runtimeValue = String(process.env[key] || '').trim();
   if (runtimeValue) return runtimeValue;
 

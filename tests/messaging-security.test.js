@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { handler as dispatchNotifications } from '../netlify/functions/dispatch_notifications.js';
 import { createOtpProvider } from '../netlify/functions/otpProvider.js';
-import { resolveDestinationPhone } from '../netlify/functions/otpShared.js';
+import { envText, resolveDestinationPhone } from '../netlify/functions/otpShared.js';
 
 const ENV_KEYS = [
   'CONTEXT',
@@ -40,6 +40,26 @@ test('defaults to Telnyx and fails closed when credentials are absent', async ()
       error: 'Telnyx no está configurado para SMS.',
     });
   });
+});
+
+test('reads protected runtime values from Netlify.env before process.env', () => {
+  const previousNetlify = globalThis.Netlify;
+  const previousValue = process.env.OTP_HASH_SECRET;
+  process.env.OTP_HASH_SECRET = 'process-value';
+  globalThis.Netlify = {
+    env: {
+      get: (key) => (key === 'OTP_HASH_SECRET' ? 'netlify-runtime-value' : ''),
+    },
+  };
+
+  try {
+    assert.equal(envText('OTP_HASH_SECRET'), 'netlify-runtime-value');
+  } finally {
+    if (previousNetlify === undefined) delete globalThis.Netlify;
+    else globalThis.Netlify = previousNetlify;
+    if (previousValue === undefined) delete process.env.OTP_HASH_SECRET;
+    else process.env.OTP_HASH_SECRET = previousValue;
+  }
 });
 
 test('rejects a retired provider instead of falling back to it', async () => {

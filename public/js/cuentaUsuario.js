@@ -1651,7 +1651,7 @@ async function cargarPerfil(uid) {
   console.log('Ejecutando operación select en tabla usuarios', { filtro: { id: uid } });
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio, notificartext')
+    .select('id, nombre, apellido, telefono, telefono_verificado, email, imagen, creado_en, municipio, notificartext')
     .eq('id', uid)
     .maybeSingle();
 
@@ -1772,7 +1772,7 @@ async function crearPerfilSiNoExiste(user) {
         .from('usuarios')
         .update(updatePayload)
         .eq('id', user.id)
-        .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio, notificartext')
+        .select('id, nombre, apellido, telefono, telefono_verificado, email, imagen, creado_en, municipio, notificartext')
         .maybeSingle();
 
       if (error) {
@@ -1809,7 +1809,7 @@ async function crearPerfilSiNoExiste(user) {
   const { data, error } = await supabase
     .from('usuarios')
     .insert([payload])
-    .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio, notificartext')
+    .select('id, nombre, apellido, telefono, telefono_verificado, email, imagen, creado_en, municipio, notificartext')
     .maybeSingle();
 
   if (error) {
@@ -2477,6 +2477,7 @@ formEditar?.addEventListener('submit', async (e) => {
   const telefonoPrevio = normalizePhoneForCompare(perfilOriginal?.telefono);
   const telefonoNuevo = normalizePhoneForCompare(nuevoTelefono);
   const telefonoCambio = telefonoNuevo !== telefonoPrevio;
+  const telefonoNecesitaVerificacion = !!telefonoNuevo && perfilOriginal?.telefono_verificado !== true;
 
   if (nuevaFoto) {
     const extension = nuevaFoto.name.split('.').pop();
@@ -2537,7 +2538,7 @@ formEditar?.addEventListener('submit', async (e) => {
       return;
     }
 
-    if (telefonoCambio && telefonoNuevo) {
+    if ((telefonoCambio || telefonoNecesitaVerificacion) && telefonoNuevo) {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData?.session?.access_token || '';
@@ -2551,7 +2552,9 @@ formEditar?.addEventListener('submit', async (e) => {
         }
       } catch (otpError) {
         console.warn('No se pudo completar verificación OTP del nuevo teléfono:', otpError);
-        alert('Perfil actualizado. No se pudo completar la verificación de teléfono en este momento.');
+        const status = Number(otpError?.status || 0);
+        const referencia = status ? ` (referencia ${status})` : '';
+        alert(`Perfil actualizado. No se pudo completar la verificación de teléfono en este momento${referencia}.`);
       }
     }
 
