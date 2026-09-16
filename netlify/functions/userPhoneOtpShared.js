@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import {
   buildHeaders,
   createSupabaseAdmin,
+  envText,
   extractRequesterIp,
   jsonResponse,
   maskPhone,
@@ -35,7 +36,7 @@ function generateOtpCode() {
 }
 
 function hashOtpCode(challengeId, code) {
-  const secret = String(process.env.OTP_HASH_SECRET || '').trim();
+  const secret = envText('OTP_HASH_SECRET');
   if (secret.length < 32) {
     throw new Error('OTP_HASH_SECRET debe existir y tener al menos 32 caracteres.');
   }
