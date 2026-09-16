@@ -87,6 +87,7 @@ async function callUserPhoneOtpEndpoint(paths, payload, accessToken) {
       if (response.status !== 404) throw error;
     } catch (error) {
       lastError = error;
+      if (Number(error?.status || 0) !== 404) throw error;
     }
   }
 
