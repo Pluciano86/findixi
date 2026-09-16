@@ -35,6 +35,12 @@ function generateOtpCode() {
   return crypto.randomInt(0, 1000000).toString().padStart(6, '0');
 }
 
+function otpStageError(code, error) {
+  const taggedError = error instanceof Error ? error : new Error(String(error));
+  taggedError.otpCode = code;
+  return taggedError;
+}
+
 function hashOtpCode(challengeId, code) {
   const secret = envText('OTP_HASH_SECRET');
   if (secret.length < 32) {
@@ -125,7 +131,12 @@ export async function issueUserPhoneOtp({
 
   const provider = createOtpProvider();
 
-  const latestPending = await findLatestPendingChallenge(supabaseAdmin, { userId });
+  let latestPending;
+  try {
+    latestPending = await findLatestPendingChallenge(supabaseAdmin, { userId });
+  } catch (error) {
+    throw otpStageError('challenge_lookup_failed', error);
+  }
   if (latestPending) {
     const cooldownUntil = latestPending.cooldown_until ? new Date(latestPending.cooldown_until) : null;
     const expired = latestPending.expires_at ? new Date(latestPending.expires_at) < now : false;
@@ -143,7 +154,18 @@ export async function issueUserPhoneOtp({
   }
 
   const oneHourAgo = new Date(now.getTime() - 3600 * 1000).toISOString();
-  const userCount = await countRecentChallenges(supabaseAdmin, { user_id: userId }, oneHourAgo);
+  let userCount;
+  let phoneCount;
+  try {
+    userCount = await countRecentChallenges(supabaseAdmin, { user_id: userId }, oneHourAgo);
+    phoneCount = await countRecentChallenges(
+      supabaseAdmin,
+      { destination_phone: destinationPhone },
+      oneHourAgo
+    );
+  } catch (error) {
+    throw otpStageError('rate_limit_lookup_failed', error);
+  }
   if (userCount >= OTP_LIMIT_USER_HOUR) {
     return {
       ok: false,
@@ -154,11 +176,6 @@ export async function issueUserPhoneOtp({
     };
   }
 
-  const phoneCount = await countRecentChallenges(
-    supabaseAdmin,
-    { destination_phone: destinationPhone },
-    oneHourAgo
-  );
   if (phoneCount >= OTP_LIMIT_PHONE_HOUR) {
     return {
       ok: false,
@@ -175,7 +192,12 @@ export async function issueUserPhoneOtp({
 
   const challengeId = crypto.randomUUID();
   const otpCode = generateOtpCode();
-  const hashedCode = hashOtpCode(challengeId, otpCode);
+  let hashedCode;
+  try {
+    hashedCode = hashOtpCode(challengeId, otpCode);
+  } catch (error) {
+    throw otpStageError('otp_secret_invalid', error);
+  }
   const expiresAt = addMinutes(now, OTP_EXPIRY_MINUTES);
   const cooldownUntil = addSeconds(now, OTP_COOLDOWN_SECONDS);
 
@@ -198,16 +220,21 @@ export async function issueUserPhoneOtp({
     created_at: nowIso(),
   });
 
-  if (insertError) throw insertError;
+  if (insertError) throw otpStageError('challenge_insert_failed', insertError);
 
   const smsMessage = otpMessage(otpCode);
-  const sendResult = await sendOtpByPreference({
-    provider,
-    channelPreference,
-    destinationPhone,
-    otpCode,
-    message: smsMessage,
-  });
+  let sendResult;
+  try {
+    sendResult = await sendOtpByPreference({
+      provider,
+      channelPreference,
+      destinationPhone,
+      otpCode,
+      message: smsMessage,
+    });
+  } catch (error) {
+    throw otpStageError('provider_transport_failed', error);
+  }
 
   if (!sendResult.ok) {
     await supabaseAdmin
@@ -364,17 +391,20 @@ export async function withUserPhoneOtpRequest(event, processor) {
     return jsonResponse(400, { error: 'Body inválido. Debe ser JSON.' });
   }
 
+  let stage = 'backend_initialization_failed';
   try {
     const supabaseAdmin = createSupabaseAdmin();
+    stage = 'auth_validation_failed';
     const user = await requireAuthUser(event, supabaseAdmin);
     if (!user) return jsonResponse(401, { error: 'No autorizado.' });
 
+    stage = 'otp_processing_failed';
     return await processor({ supabaseAdmin, user, body });
   } catch (error) {
     console.error('[user-phone-otp] error', error);
     return jsonResponse(500, {
       error: 'Error interno en OTP de teléfono.',
-      detalle: error?.message || String(error),
+      code: error?.otpCode || stage,
     });
   }
 }
