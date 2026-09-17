@@ -1,3 +1,5 @@
+import { experienceListing, filterExperienceRows, filterExperienceDates } from '../shared/experienceListingFilter.js';
+import { formatearFecha, formatearHora } from '../shared/eventDateFormat.js';
 // listadoEventos.js
 import { supabase } from '../shared/supabaseClient.js';
 import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
@@ -421,11 +423,11 @@ async function cargarEventos() {
 
   const hoyISO = new Date().toISOString().slice(0, 10);
 
-  eventos = (data ?? [])
+  eventos = filterExperienceRows(data ?? [])
     .map((evento) => {
       const sedes = (evento.eventos_municipios || []).map((sede) => {
         const municipioNombre = municipios[sede.municipio_id] || '';
-        const fechas = (sede.eventoFechas || []).map((item) => ({
+        const fechas = filterExperienceDates(sede.eventoFechas || []).map((item) => ({
           id: item.id,
           fecha: item.fecha,
           horainicio: item.horainicio,
@@ -447,6 +449,7 @@ async function cargarEventos() {
         };
       });
 
+      if (experienceListing) for(let i=sedes.length-1;i>=0;i--)if(!sedes[i].fechas.length)sedes.splice(i,1);
       const municipioIds = Array.from(new Set(sedes.map((sede) => sede.municipio_id).filter(Boolean)));
       const municipioNombre =
         municipioIds.length > 1
@@ -473,6 +476,7 @@ async function cargarEventos() {
       };
       return eventoNormalizado;
     })
+    .filter((evento) => !experienceListing || evento.fechas.length>0)
     .filter((evento) => !isBlockedNonEventEntry(evento))
     .filter((evento) => !evento.ultimaFecha || evento.ultimaFecha >= hoyISO);
 
@@ -1071,72 +1075,6 @@ async function renderizarEventos() {
   lista.appendChild(fragment);
 }
 
-function capitalizarPalabra(texto = '') {
-  if (!texto) return '';
-  return texto.charAt(0).toUpperCase() + texto.slice(1);
-}
-
-function estilizarFechaExtendida(fechaLocale = '') {
-  if (!fechaLocale) return '';
-  const [primeraParte, ...resto] = fechaLocale.split(', ');
-  const primera = capitalizarPalabra(primeraParte);
-  let restoTexto = resto.join(', ');
-
-  if (restoTexto) {
-    restoTexto = restoTexto.replace(/ de ([a-záéíóúñ]+)/gi, (_, palabra) => ` de ${capitalizarPalabra(palabra)}`);
-    restoTexto = restoTexto.replace(/\sde\s(\d{4})$/i, ' $1');
-  }
-
-  return restoTexto ? `${primera}, ${restoTexto}` : primera;
-}
-
-function resolveLocale(langValue) {
-  const lang = (langValue || 'es').toLowerCase().split('-')[0];
-  const map = {
-    es: 'es-PR',
-    en: 'en-US',
-    fr: 'fr-FR',
-    pt: 'pt-PT',
-    de: 'de-DE',
-    it: 'it-IT',
-    zh: 'zh-CN',
-    ko: 'ko-KR',
-    ja: 'ja-JP'
-  };
-  return map[lang] || 'es-PR';
-}
-
-function formatearFecha(fechaStr) {
-  if (!fechaStr) return t('evento.sinFecha');
-  const [year, month, day] = fechaStr.split('-').map(Number);
-  if ([year, month, day].some((value) => Number.isNaN(value))) return t('evento.sinFecha');
-  const fecha = new Date(Date.UTC(year, month - 1, day));
-  const base = fecha.toLocaleDateString(resolveLocale(getLang()), {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC'
-  });
-  return estilizarFechaExtendida(base);
-}
-
-function formatearHora(horaStr) {
-  if (!horaStr) return '';
-  const [hourPart, minutePart] = horaStr.split(':');
-  const hour = Number(hourPart);
-  const minute = Number(minutePart);
-  if (Number.isNaN(hour) || Number.isNaN(minute)) return '';
-  const fecha = new Date(Date.UTC(1970, 0, 1, hour, minute));
-  const base = fecha.toLocaleTimeString(resolveLocale(getLang()), {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: 'UTC'
-  });
-  return base.toLowerCase().replace(/\s+/g, '').replace(/\./g, '');
-}
-
 function obtenerPartesFecha(fechaStr) {
   const completa = formatearFecha(fechaStr);
   if (!completa || completa === t('evento.sinFecha')) return null;
@@ -1174,6 +1112,7 @@ async function cargarCategorias() {
     categorias[c.id] = { nombre: nombreTraducido || '', icono: c.icono || '' };
     filtroCategoria.innerHTML += `<option value="${c.id}">${nombreTraducido}</option>`;
   });
+  if(experienceListing?.categoryIds?.length===1)filtroCategoria.value=String(experienceListing.categoryIds[0]);
 }
 
 // Listeners

@@ -1,3 +1,4 @@
+import { experienceListing, filterExperienceRows, filterExperienceDates } from '../shared/experienceListingFilter.js';
 // listadoPlayas.js
 import { obtenerClima } from "./obtenerClima.js";
 import { supabase } from '../shared/supabaseClient.js';
@@ -294,7 +295,7 @@ async function renderizarPlayas() {
     const filtrarSnorkel = checkSnorkel.checked;
 
 
-    let filtradas = todasLasPlayas.filter((p) => {
+    let filtradas = filterExperienceRows(todasLasPlayas).filter((p) => {
       const coincideNombre = p.nombre.toLowerCase().includes(texto);
       const costaNormalizada = (costa || '')
         .normalize("NFD")

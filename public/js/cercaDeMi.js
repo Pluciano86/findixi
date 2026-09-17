@@ -1,8 +1,10 @@
+import { obtenerClima } from './obtenerClima.js';
+import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
+import { formatearTelefonoDisplay, formatearTelefonoHref } from '../shared/pkg/utils/formatters.js';
 // public/js/cercaDeMi.js
 import { supabase } from '../shared/supabaseClient.js';
 import { t, getLang } from './i18n.js';
-import { cardComercio } from './CardComercio.js';
-import { cardComercioNoActivo } from './CardComercioNoActivo.js';
+import { resolverPlanComercio } from '../shared/planes.js';
 import { fetchCercanosParaCoordenadas } from './buscarComerciosListado.js';
 import { mostrarPopupUbicacionDenegada, showPopupFavoritosVacios } from './popups.js';
 import { requireAuthSilent, showAuthModal, ACTION_MESSAGES } from './authGuard.js';
@@ -233,13 +235,193 @@ let userLat = null;
 let userLon = null;
 let userAccuracyCircle = null;
 let geoWatchId = null;
-let mapInteractionsBound = false;
-let followControlAdded = false;
+
+
 let siguiendoUsuario = true;
 let ultimaPosicion = null;
 let userIconSrc = null;
 let userHeadingDeg = null;
 let lastHeadingApplied = null;
+let searchCenter = null;
+let nearbyRequest = 0;
+const mapStatus = document.getElementById('mapStatus');
+let placeType = 'all';
+let listMode = false;
+let selectedPlaceKey = null;
+let currentPlaces = [];
+const placeKey = p => `${p.isBeach ? 'beach' : 'commerce'}:${p.id}`;
+function syncPlaceControls() {
+  document.querySelectorAll('[data-place-type]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.placeType === placeType)));
+  $btnToggleFiltros.hidden = placeType === 'beach';
+  if (placeType === 'beach') { $panelFiltros.classList.add('hidden'); $btnToggleFiltros.setAttribute('aria-expanded', 'false'); }
+  $search.placeholder = 'Busca un comercio o una playa';
+}
+function renderPlaceList() {
+  const list = document.getElementById('nearbyList');
+  list.replaceChildren();
+  if (!currentPlaces.length) { list.textContent = mapStatus.textContent; return; }
+  currentPlaces.forEach(p => {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'place-list-card';
+    const photo = document.createElement('img'); photo.src = p.portada || p.imagen || p.logo || PLACEHOLDER_LOGO; photo.alt = ''; photo.loading = 'lazy';
+    photo.onerror = () => { photo.hidden = true; };
+    const text = document.createElement('span'); text.textContent = `${p.nombre} · ${p.municipio || p.pueblo || ''}`;
+    button.append(photo,text);
+    button.onclick = () => {
+      listMode = false; list.hidden = true; document.getElementById('togglePlaceList').textContent = 'Ver lista';
+      const marker = markersLayer.getLayers().find(m => m.placeKey === placeKey(p));
+      if (marker) showCommerce(p,marker);
+    };
+    list.append(button);
+  });
+}
+function saveMapView() {
+  try { sessionStorage.setItem('findixi-map-view', JSON.stringify({center:map.getCenter(),zoom:map.getZoom(),placeType,search:$search.value,radio:$radio.value,category:$filtroCategoria.value,open:$filtroAbierto.checked,favorites:$filtroFavoritos.checked})); } catch {}
+}
+let beaches = [];
+let beachesError = false;
+async function loadBeaches() {
+  try {
+    const { data, error } = await supabase.from('playas')
+      .select('id,nombre,municipio,imagen,latitud,longitud,acceso').limit(1000);
+    if (error) throw error;
+    beaches = (data || []).filter(p => p.latitud != null && p.longitud != null &&
+      Number(p.latitud) >= 17 && Number(p.latitud) <= 19 &&
+      Number(p.longitud) >= -68 && Number(p.longitud) <= -65)
+      .map(p => ({ ...p, isBeach: true, logo: p.imagen }));
+  } catch (error) { beachesError = true; console.warn('No se pudieron cargar las playas', error); }
+  aplicarFiltros();
+}
+function renderPlaces(comercios) {
+  const term = normalizarTextoPlano($search?.value || '');
+  const visibleBeaches = placeType === 'commerce' ? [] : beaches.filter(p =>
+    map.getBounds().contains([Number(p.latitud), Number(p.longitud)]) &&
+    (!term || normalizarTextoPlano(`${p.nombre} ${p.municipio}`).includes(term)));
+  const visibleComercios = placeType === 'beach' ? [] : comercios;
+  currentPlaces = [...visibleComercios, ...visibleBeaches];
+  renderMarkers(currentPlaces);
+  const parts = [];
+  if (placeType !== 'beach') parts.push(`${visibleComercios.length} comercios`);
+  if (placeType !== 'commerce') parts.push(beachesError ? 'Playas no disponibles' : `${visibleBeaches.length} playas`);
+  setMapStatus(visibleComercios.length || visibleBeaches.length || beachesError
+    ? parts.join(' · ') + ' en esta zona'
+    : (term || (placeType !== 'beach' && ($filtroCategoria.value || $filtroAbierto.checked || $filtroFavoritos.checked)) ? 'No encontramos coincidencias con estos filtros' : 'Estamos ampliando la lista de lugares en esa zona…'));
+  renderPlaceList();
+}
+let viewportSearchTimer;
+let loadedViewport = null;
+function scheduleViewportSearch() {
+  clearTimeout(viewportSearchTimer);
+  if (!map._userMovedManually) return;
+  viewportSearchTimer = setTimeout(() => {
+    const center = map.getCenter();
+    const threshold = Math.max(300, Math.min(1200, map.distance(map.getBounds().getSouthWest(), map.getBounds().getNorthEast()) * 0.2));
+    if (loadedViewport && map.distance(center, loadedViewport.center) < threshold && map.getZoom() >= loadedViewport.zoom) {
+      aplicarFiltros();
+      return;
+    }
+    searchCenter = center;
+    loadNearby({ background: true });
+  }, 750);
+}
+
+function setMapStatus(message) {
+  if (mapStatus) mapStatus.textContent = message;
+}
+let selectedMarker = null;
+function closeCommerce() {
+  document.getElementById('selectedCommerce').hidden = true;
+  mapStatus.hidden = false;
+  selectedMarker?.getElement()?.classList.remove('place-selected');
+  selectedPlaceKey = null;
+  selectedMarker?.getElement()?.focus();
+  selectedMarker = null;
+}
+
+function showCommerce(comercio, marker) {
+  siguiendoUsuario = false;
+  map._userMovedManually = true;
+  selectedMarker?.getElement()?.classList.remove('place-selected');
+  selectedPlaceKey = placeKey(comercio);
+  selectedMarker = marker;
+  marker.getElement()?.classList.add('place-selected');
+  const content = document.getElementById('selectedCommerceContent');
+  content.replaceChildren();
+  content.classList.toggle('merchant-horizontal', !comercio.isBeach);
+  content.classList.toggle('beach-horizontal', !!comercio.isBeach);
+  if (!comercio.isBeach) {
+    const cover = document.createElement('img');
+    cover.className = 'nearby-cover';
+    cover.src = comercio.portada || 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/lugarnodisponible.jpg';
+    cover.alt = comercio.nombre || 'Portada del comercio';
+    cover.onerror = () => { cover.hidden = true; };
+    content.append(cover);
+  }
+  const summary = document.createElement('div');
+  summary.className = 'nearby-summary';
+  const img = document.createElement('img');
+  img.src = comercio.logo || PLACEHOLDER_LOGO;
+  img.alt = '';
+  img.onerror = () => { img.onerror = null; img.src = PLACEHOLDER_LOGO; };
+  const info = document.createElement('div');
+  const title = document.createElement('h3');
+  title.textContent = comercio.nombre || 'Comercio';
+  title.style.fontWeight = '600';
+  const detail = document.createElement('p');
+  detail.textContent = comercio.municipio || comercio.pueblo || '';
+  const status = document.createElement('p');
+  const open = comercio.abierto ?? comercio.abiertoAhora ?? comercio.abierto_ahora;
+  status.textContent = comercio.isBeach ? (comercio.acceso || 'Consulta los detalles de acceso en su perfil') : (open === true ? 'Abierto ahora' : 'Consulta el horario en el perfil');
+  status.className = open === true ? 'nearby-open' : 'nearby-closed';
+  if (!comercio.isBeach && open === false) status.textContent = 'Cerrado ahora';
+  info.append(title, detail, status);
+  if (comercio.isBeach) {
+    status.textContent = 'Consultando clima actual…';
+    obtenerClima(Number(comercio.latitud), Number(comercio.longitud)).then(weather => {
+      if (!status.isConnected) return;
+      if (weather?.iconoURL) { const icon = document.createElement('img'); icon.src = weather.iconoURL; icon.alt = ''; icon.className = 'map-weather-icon'; info.append(icon); }
+      status.textContent = weather ? `${weather.temperatura} · ${weather.estado}` : 'Clima no disponible ahora';
+    }).catch(() => { if (status.isConnected) status.textContent = 'Clima no disponible ahora'; });
+  }
+  if (!comercio.isBeach && comercio.telefono) {
+    const phone = document.createElement('a');
+    phone.className = 'nearby-phone';
+    phone.href = formatearTelefonoHref(comercio.telefono);
+    phone.textContent = '☎ ' + formatearTelefonoDisplay(comercio.telefono);
+    info.append(phone);
+  }
+  {
+    const travel = document.createElement('p');
+    travel.className = 'nearby-travel';
+    travel.textContent = userMarker ? 'Calculando tiempo de viaje…' : 'Activa tu ubicación para ver el tiempo de viaje';
+    info.append(travel);
+    if (userMarker && Number.isFinite(userLat) && Number.isFinite(userLon)) {
+      getDrivingDistance({lat:userLat, lng:userLon}, {lat:marker.getLatLng().lat,lng:marker.getLatLng().lng})
+        .then(route => {
+          if (!travel.isConnected) return;
+          travel.textContent = Number.isFinite(route?.duracion) && Number.isFinite(route?.distancia)
+            ? `🚗 ${formatTiempo(route.duracion)} · ${(route.distancia / 1609.344).toFixed(1)} mi · estimado`
+            : 'Tiempo de viaje no disponible';
+        }).catch(() => { if (travel.isConnected) travel.textContent = 'Tiempo de viaje no disponible'; });
+    }
+  }
+  summary.append(img, info);
+  const actions = document.createElement('div');
+  actions.className = 'nearby-actions';
+  const profile = document.createElement('a');
+  profile.href = `${comercio.isBeach ? 'perfilPlaya' : 'perfilComercio'}.html?id=${encodeURIComponent(comercio.id)}`;
+  profile.textContent = comercio.isBeach ? 'Ver playa' : 'Ver comercio';
+  const gps = document.createElement('button');
+  gps.type = 'button';
+  gps.textContent = 'Cómo llegar';
+  gps.onclick = () => showNavigationPicker({lat: marker.getLatLng().lat, lon: marker.getLatLng().lng});
+  if (comercio.isBeach || resolverPlanComercio(comercio).permite_perfil) actions.append(profile);
+  if (!comercio.isBeach) actions.append(gps);
+  content.append(summary, actions);
+  document.getElementById('selectedCommerce').hidden = false;
+  mapStatus.hidden = false;
+  document.getElementById('closeCommerce').focus({preventScroll: true});
+}
 
 
 
@@ -621,6 +803,7 @@ async function applyFallbackMunicipio() {
 
   userLat = coords.lat;
   userLon = coords.lon;
+  searchCenter = { lat: coords.lat, lng: coords.lon };
   map.setView([coords.lat, coords.lon], 12, { animate: true });
   await loadNearby();
 
@@ -847,11 +1030,15 @@ function obtenerCategoriasOriginales(comercio = {}) {
 
 function aplicarFiltros() {
   if (!Array.isArray(comerciosOriginales) || !comerciosOriginales.length) {
-    markersLayer?.clearLayers();
+    renderPlaces([]);
     return;
   }
 
-  let resultado = [...comerciosOriginales];
+  let resultado = comerciosOriginales.filter(c => {
+    const lat = Number(c.latitud ?? c.lat ?? c.latitude);
+    const lng = Number(c.longitud ?? c.lon ?? c.longitude);
+    return Number.isFinite(lat) && Number.isFinite(lng) && map.getBounds().contains([lat, lng]);
+  });
 
   // 🔍 Búsqueda por nombre o descripción
   const termino = normalizarTextoPlano($search?.value || '');
@@ -884,7 +1071,7 @@ function aplicarFiltros() {
   }
 
   // 🗺️ Renderizar resultados en el mapa
-  renderMarkers(resultado);
+  renderPlaces(resultado);
 }
 
 async function obtenerIdUsuarioActual() {
@@ -961,14 +1148,34 @@ function initMap() {
   }).setView([18.2208, -66.5901], 15); // Zoom inicial
 
   // ✅ Capa de mapa (Carto Voyager o OpenStreetMap)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  const basemap = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     maxZoom: 22,
+    maxNativeZoom: 20,
     attribution:
       '&copy; <a href="https://carto.com/">CartoDB</a> | &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
   }).addTo(map);
 
+  fetch('/.netlify/functions/carto-browser-config')
+    .then(response => {
+      if (!response.ok) throw new Error('Basemap configuration unavailable');
+      return response.json();
+    })
+    .then(({ key }) => {
+      if (typeof key !== 'string' || !key.trim()) return;
+      basemap.setUrl('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=' + encodeURIComponent(key));
+    })
+    .catch(() => { /* Keep the existing basemap available, with CARTO notices intact. */ });
+
   // ✅ Capa para los marcadores
-  markersLayer = L.layerGroup().addTo(map);
+  markersLayer = (L.markerClusterGroup ? L.markerClusterGroup({
+    maxClusterRadius: 55,
+    showCoverageOnHover: false,
+    iconCreateFunction: cluster => L.divIcon({
+      className: 'nearby-cluster',
+      html: String(cluster.getChildCount()),
+      iconSize: [44, 44],
+    }),
+  }) : L.layerGroup()).addTo(map);
 
 }
 
@@ -1036,73 +1243,32 @@ async function renderMarkers(comercios = []) {
 
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
 
+    if (selectedMarker && selectedPlaceKey === placeKey(comercio)) { markersLayer.addLayer(selectedMarker); return; }
     const marker = L.marker([lat, lon], {
-      icon: createComercioIcon(comercio),
+      icon: comercio.isBeach ? L.divIcon({className: 'beach-marker', html: '<span aria-hidden="true">🏖</span>', iconSize: [42,42], iconAnchor: [21,42]}) : createComercioIcon(comercio),
+      title: comercio.nombre || 'Comercio',
     });
-
-    const cardFactory = comercio.activo === true ? cardComercio : cardComercioNoActivo;
-    const cardNode = cardFactory({
-      ...comercio,
-      abierto: Boolean(comercio.abierto ?? comercio.abiertoAhora ?? comercio.abierto_ahora),
-      tiempoVehiculo: comercio.tiempoVehiculo || comercio.tiempoTexto,
-      pueblo: comercio.municipio || comercio.pueblo || '',
-    });
-    attachGpsAction(cardNode, comercio);
-
-    cardNode.querySelector('div[class*="text-[#3ea6c4]"]')?.remove();
-    cardNode.querySelector('.municipio-info')?.remove();
-
-    const municipioTexto = typeof comercio.municipio === 'string' ? comercio.municipio.trim() : '';
-    if (municipioTexto) {
-      const municipioEl = document.createElement('div');
-      municipioEl.className =
-        'flex items-center gap-1 justify-center text-[#3ea6c4] text-sm font-medium municipio-info';
-      municipioEl.innerHTML = `<i class="fas fa-map-pin"></i> ${municipioTexto}`;
-
-      const anchorNombre = cardNode.querySelector('a[href*="perfilComercio.html"]');
-      if (anchorNombre) {
-        anchorNombre.insertAdjacentElement('afterend', municipioEl);
-      } else {
-        cardNode.insertBefore(municipioEl, cardNode.firstChild);
-      }
-    }
-
-    const wrapper = document.createElement('div');
-    wrapper.style.width = '340px';
-    wrapper.appendChild(cardNode);
-
-    marker.bindPopup(wrapper, {
-      maxWidth: 360,
-      className: 'popup-card--clean',
-      autoPan: true,
-      keepInView: true,
-    });
-
-    marker.on('popupopen', (e) => {
-      const popupEl = e.popup._contentNode;
-      if (!popupEl) return;
-      const telButtons = popupEl.querySelectorAll('a[href^="tel:"], button[href^="tel:"]');
-      telButtons.forEach((btn) => {
-        btn.style.color = '#ffffff';
-        btn.style.backgroundColor = '#dc2626';
-        btn.style.border = 'none';
-      });
-      const telIcons = popupEl.querySelectorAll('a[href^="tel:"] i, a[href^="tel:"] span');
-      telIcons.forEach((icon) => (icon.style.color = '#ffffff'));
-    });
-
+    marker.placeKey = placeKey(comercio);
+    marker.on('click', () => showCommerce(comercio, marker));
     markersLayer.addLayer(marker);
   });
+  selectedMarker?.getElement()?.classList.add('place-selected');
 }
 
 /* ------------------------------ CARGA ------------------------------ */
 
-async function loadNearby() {
+async function loadNearby({ background = false } = {}) {
   if (typeof userLat !== 'number' || typeof userLon !== 'number') return;
+  if (!background) closeCommerce();
+  const request = ++nearbyRequest;
+  const requestedZoom = map.getZoom();
+  const center = searchCenter || { lat: userLat, lng: userLon };
+  clearTimeout(viewportSearchTimer);
+  if (!background) setMapStatus('Buscando comercios…');
 
   const radioMiles = Number($radio?.value ?? 5) || 5;
   const radioKm = Math.max(0.5, radioMiles) * 1.60934;
-  toggleLoader(true);
+  if (!background) toggleLoader(true);
 
   const abiertoAhoraFiltro = $filtroAbierto?.checked ? true : null;
   const categoriaSeleccionada = ($filtroCategoria?.value ?? '').trim();
@@ -1111,27 +1277,35 @@ async function loadNearby() {
 
   try {
     const lista = await fetchCercanosParaCoordenadas({
-      latitud: userLat,
-      longitud: userLon,
+      latitud: center.lat,
+      longitud: center.lng,
       radioKm,
       categoriaOpcional,
       abiertoAhora: abiertoAhoraFiltro,
       incluirInactivos,
+      throwOnError: true,
     });
 
     const favoritosIds = await obtenerFavoritosUsuarioIds();
+    if (request !== nearbyRequest) return;
 
     const listaConFavoritos = lista.map((c) => {
       const esFavorito = favoritosIds.has(c.id) || favoritosIds.has(String(c.id));
       return { ...c, favorito: esFavorito };
     });
 
+    loadedViewport = { center: { lat: center.lat, lng: center.lng }, zoom: requestedZoom };
     comerciosOriginales = listaConFavoritos;
     aplicarFiltros();
   } catch (err) {
+    if (request !== nearbyRequest) return;
+    comerciosOriginales = [];
+    markersLayer.clearLayers();
+    setMapStatus('No pudimos cargar los comercios. Mueve el mapa para volver a intentar.');
+
     console.error('❌ Error al cargar comercios cercanos:', err);
   } finally {
-    toggleLoader(false);
+    if (request === nearbyRequest) toggleLoader(false);
   }
 }
 
@@ -1163,18 +1337,6 @@ async function locateUser() {
   // marca si el usuario tocó el mapa (para no re-centrar a la fuerza)
   map._userMovedManually = false;
 
-  // si el usuario mueve o hace zoom, pausamos seguimiento automático
-  if (!mapInteractionsBound) {
-    map.on('dragstart zoomstart', (e) => {
-      // Solo desactivar seguimiento si fue una interacción del usuario
-      if (e && e.originalEvent) {
-        map._userMovedManually = true;
-        siguiendoUsuario = false;
-      }
-    });
-    mapInteractionsBound = true;
-  }
-
   // util distancia (metros)
   const getDistanceMeters = (p1, p2) => {
     const R = 6371e3, toRad = d => (d * Math.PI) / 180;
@@ -1190,7 +1352,7 @@ async function locateUser() {
       userLat = pos.coords.latitude;
       userLon = pos.coords.longitude;
       if (!map || !Number.isFinite(userLat) || !Number.isFinite(userLon)) return;
-      hideGeoFallbackPanel();
+    hideGeoFallbackPanel();
 
       // velocidad → mph
       const speed = pos.coords.speed || 0; // m/s
@@ -1233,7 +1395,7 @@ async function locateUser() {
         // 2) si aún no recorrió 3 m, no cambiamos el zoom (solo seguimos el pin)
         if (dist >= 3) {
           // 3) calcular zoom según velocidad
-          let zoomDeseado = (mph > 45) ? 13 : (mph >= 20 ? 15 : 20);
+          let zoomDeseado = map.getZoom();
 
           // si el usuario acercó más, no lo alejamos
           const zActual = map.getZoom();
@@ -1253,8 +1415,8 @@ async function locateUser() {
 
       // cargar comercios la primera vez
       if (!map._comerciosCargados) {
-        await loadNearby();
         map._comerciosCargados = true;
+        await loadNearby();
       }
 
       // elimina círculo de precisión si existiera
@@ -1291,43 +1453,50 @@ async function locateUser() {
     timeout: 10000,
   });
 
-  // botón para re-centrar (reactiva seguimiento y respeta zoom por velocidad)
-  if (!followControlAdded) {
-    const btnSeguir = L.control({ position: 'bottomright' });
-    btnSeguir.onAdd = () => {
-      const btn = L.DomUtil.create('button', 'seguir-usuario-btn');
-      btn.innerHTML = '<i class="fas fa-location-arrow"></i>';
-      btn.title = 'Volver a centrar en tu ubicación';
-      btn.style.cssText = `
-        background: white;
-        border: none;
-        border-radius: 50%;
-        width: 44px;
-        height: 44px;
-        font-size: 18px;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-      `;
-      btn.onclick = () => {
-        map._userMovedManually = false;
-        siguiendoUsuario = true;
-        if (typeof userLat === 'number' && typeof userLon === 'number') {
-          map.setView([userLat, userLon], Math.max(15, map.getZoom() || 13), { animate: true });
-        }
-      };
-      return btn;
-    };
-    btnSeguir.addTo(map);
-    followControlAdded = true;
-  }
+
 }
 
 /* ------------------------------ INIT ------------------------------ */
 
 (function init() {
   initMap();
+  syncPlaceControls();
+  document.getElementById('togglePlaceList').onclick = () => {
+    listMode = !listMode; closeCommerce(); document.getElementById('nearbyList').hidden = !listMode;
+    document.getElementById('togglePlaceList').textContent = listMode ? 'Ver mapa' : 'Ver lista'; renderPlaceList();
+  };
+  window.addEventListener('pagehide', saveMapView);
+  loadBeaches();
+  document.querySelectorAll('[data-place-type]').forEach(button => button.addEventListener('click', () => {
+    placeType = button.dataset.placeType;
+    syncPlaceControls();
+    document.querySelectorAll('[data-place-type]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+    aplicarFiltros();
+  }));
+  map.on('dragstart', () => {
+    map._userMovedManually = true;
+    siguiendoUsuario = false;
+    clearTimeout(viewportSearchTimer);
+  });
+  map.on('moveend', scheduleViewportSearch);
+  map.on('zoomstart', () => { map._userMovedManually = true; siguiendoUsuario = false; });
+  document.getElementById('centrarMapa').addEventListener('click', () => {
+    searchCenter = null;
+    clearTimeout(viewportSearchTimer);
+    map._userMovedManually = false;
+    siguiendoUsuario = true;
+    if (typeof userLat === 'number' && typeof userLon === 'number') {
+      map.setView([userLat, userLon], Math.max(15, map.getZoom() || 13), { animate: true });
+      loadNearby();
+    } else {
+      locateUser();
+    }
+  });
+  new ResizeObserver(() => map.invalidateSize({ pan: false })).observe(document.getElementById('map'));
+  document.getElementById('closeCommerce').addEventListener('click', closeCommerce);
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeCommerce(); });
   updateRadioLabel();
-  cargarCategoriasDropdown();
+  const categoriesReady = cargarCategoriasDropdown();
   cargarMunicipiosFallback();
 
   $radio?.addEventListener('input', updateRadioLabel);
@@ -1343,7 +1512,7 @@ async function locateUser() {
   $btnToggleFiltros?.addEventListener('click', togglePanelFiltros);
   $filtroCategoria?.addEventListener('change', () => loadNearby());
   window.addEventListener('lang:changed', () => {
-    cargarCategoriasDropdown();
+    const categoriesReady = cargarCategoriasDropdown();
     cargarMunicipiosFallback({ force: true });
   });
 
@@ -1376,13 +1545,23 @@ async function locateUser() {
         aplicarFiltros();
       });
     } else {
-      toggle?.addEventListener('change', aplicarFiltros);
+      toggle?.addEventListener('change', () => loadNearby());
     }
   });
 
  // renderCategoryButtons();
 
-  locateUser();
+  let saved;
+  try { saved = JSON.parse(sessionStorage.getItem('findixi-map-view')); } catch {}
+  if (saved && Number.isFinite(saved.center?.lat) && Number.isFinite(saved.center?.lng) && Number.isFinite(saved.zoom)) {
+    placeType = ['all','commerce','beach'].includes(saved.placeType) ? saved.placeType : 'all';
+    $search.value = saved.search || ''; $radio.value = saved.radio || '5';
+    $filtroAbierto.checked = !!saved.open; $filtroFavoritos.checked = !!saved.favorites;
+    userLat = saved.center.lat; userLon = saved.center.lng; searchCenter = saved.center;
+    map.setView(saved.center,saved.zoom); map._userMovedManually = true; siguiendoUsuario = false;
+    syncPlaceControls(); updateRadioLabel();
+    categoriesReady.then(() => { $filtroCategoria.value = saved.category || ''; loadNearby(); });
+  } else locateUser();
 })();
 
 // Asegurar color blanco en popup al abrirlo

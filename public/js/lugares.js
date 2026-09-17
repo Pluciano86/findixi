@@ -1,3 +1,4 @@
+import { experienceListing, filterExperienceRows, filterExperienceDates } from '../shared/experienceListingFilter.js';
 import { supabase } from '../shared/supabaseClient.js';
 import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
 import { calcularTiemposParaLugares } from './distanciaLugar.js';
@@ -425,7 +426,7 @@ async function renderizarLugares() {
     restaurarContenedor();
     cleanupCarousels(contenedor);
     contenedor.innerHTML = '';
-    let filtrados = [...lugares];
+    let filtrados = filterExperienceRows(lugares);
 
     const texto = inputBuscar.value.toLowerCase();
     if (texto) filtrados = filtrados.filter(l => l.nombre.toLowerCase().includes(texto));
@@ -663,7 +664,7 @@ async function inicializarLugares({ lat, lon } = {}) {
     }
 
     await cargarMunicipios();
-    const municipioDefault = resolverMunicipioSelectValue(municipioInicialDetectado);
+    const municipioDefault = experienceListing?'':resolverMunicipioSelectValue(municipioInicialDetectado);
     if (municipioDefault) {
       selectMunicipio.value = municipioDefault;
     }

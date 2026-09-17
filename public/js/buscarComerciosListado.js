@@ -1,3 +1,5 @@
+import { evaluarHorarioActual } from '../shared/pkg/perfil/comercio.js';
+import { experienceListing, filterExperienceRows, filterExperienceDates } from '../shared/experienceListingFilter.js';
 import { supabase } from '../shared/supabaseClient.js';
 import { getLang, t, interpolate } from './i18n.js';
 import { calcularTiempoEnVehiculo, getPublicBase } from '../shared/utils.js';
@@ -1437,6 +1439,7 @@ async function asegurarOrdenCercania({ forzarPopup = false } = {}) {
 }
 
 async function asegurarMunicipioInicial() {
+  if(experienceListing)return;
   if (estado.filtros.municipio?.trim()) return;
   const lat = Number(estado.coordsUsuario?.lat);
   const lon = Number(estado.coordsUsuario?.lon);
@@ -1491,9 +1494,17 @@ function construirPayloadRPC() {
 }
 
 async function ejecutarRPC(payload, referenciaDistancia = obtenerReferenciaUsuarioParaCalculos()) {
-  const { data, error } = await supabase.rpc('buscar_comercios_filtrados', payload);
+  const { data, error } = await (experienceListing?supabase.from('Comercios').select('*').in('id',experienceListing.ids).eq('activo',true).eq('estado_listing','publicado').order('id').range(payload.p_offset||0,(payload.p_offset||0)+(payload.p_limit||30)-1):supabase.rpc('buscar_comercios_filtrados', payload));
   if (error) throw error;
-  return (data || []).map((record) => normalizarComercio(record, referenciaDistancia));
+  let rows=data||[];
+  if(experienceListing&&rows.length){
+    const {data:hours,error:hoursError}=await supabase.from('Horarios').select('idComercio,diaSemana,apertura,cierre,cerrado').in('idComercio',rows.map(r=>r.id));
+    if(hoursError)throw hoursError;
+    const now=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Puerto_Rico'}));
+    const time=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    rows=rows.map(r=>({...r,abierto_ahora:evaluarHorarioActual((hours||[]).filter(h=>h.idComercio===r.id),now.getDay(),time).abierto}));
+  }
+  return rows.map((record) => normalizarComercio(record, referenciaDistancia));
 }
 
 async function enriquecerSucursales(lista = []) {
@@ -1698,7 +1709,7 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false, s
   const listaOrdenada = ordenarLocalmente(lista);
   console.log('[main] renderizado final:', listaOrdenada.length, 'tarjetas');
 
-  let filtrados = skipFilter ? [...lista] : [...listaOrdenada];
+  let filtrados = filterExperienceRows(skipFilter ? [...lista] : [...listaOrdenada]);
 
   const textoBusquedaRaw = estado.filtros.textoBusqueda?.trim() || '';
   const hayBusquedaNombre = textoBusquedaRaw.length >= 3;
@@ -1944,6 +1955,7 @@ export async function fetchCercanosParaCoordenadas({
   categoriaOpcional = null,
   abiertoAhora = null,
   incluirInactivos = false,
+  throwOnError = false,
 } = {}) {
   const lat = Number(latitud);
   const lon = Number(longitud);
@@ -1976,6 +1988,7 @@ export async function fetchCercanosParaCoordenadas({
     return normalizados.filter((c) => resolverPlanComercio(c).aparece_en_cercanos);
   } catch (error) {
     console.error('❌ Error en fetchCercanosParaCoordenadas:', error);
+    if (throwOnError) throw error;
     return [];
   }
 }

@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Findixi</title>
+  <link rel="stylesheet" href="css/home-experience.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
@@ -51,37 +52,23 @@ video::-webkit-media-controls-overlay-play-button {
 <div id="bannerHomeTop"></div>
 
 <section id="exploraFindixiSection" class="px-4 mt-2 mb-4">
-  <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-cyan-50 p-4 shadow-sm">
-    <h1 class="text-[26px] leading-tight text-gray-900 font-semibold text-center" data-i18n="home.exploraLocalTitle">Explora Lo Local</h1>
-    <p class="text-[15px] font-normal text-gray-600 text-center mt-1" data-i18n="home.exploraLocalSubtitle">Descubre todo lo que puedes hacer hoy</p>
-    <div class="grid grid-cols-3 gap-2 mt-4">
-      <a href="listadoComercios.html?scope=all" class="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center">
-        <p class="text-xl leading-none text-[#023047]"><i class="fa-solid fa-store" aria-hidden="true"></i></p>
-        <p class="text-[13px] font-normal text-gray-700 mt-1" data-i18n="home.quickComercios">Comercios</p>
-      </a>
-      <a href="listadoEventos.html" class="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center">
-        <p class="text-xl leading-none text-[#023047]"><i class="fa-solid fa-ticket" aria-hidden="true"></i></p>
-        <p class="text-[13px] font-normal text-gray-700 mt-1" data-i18n="home.quickEventos">Eventos</p>
-      </a>
-      <a href="listadoPlayas.html" class="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center">
-        <p class="text-xl leading-none text-[#023047]"><i class="fa-solid fa-umbrella-beach" aria-hidden="true"></i></p>
-        <p class="text-[13px] font-normal text-gray-700 mt-1" data-i18n="home.quickPlayas">Playas</p>
-      </a>
-      <a href="listadoLugares.html" class="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center">
-        <p class="text-xl leading-none text-[#023047]"><i class="fa-solid fa-location-dot" aria-hidden="true"></i></p>
-        <p class="text-[13px] font-normal text-gray-700 mt-1" data-i18n="home.quickLugares">Lugares</p>
-      </a>
-      <a href="lodehoy.html" class="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center">
-        <p class="text-xl leading-none text-[#023047]"><i class="fa-solid fa-fire-flame-curved" aria-hidden="true"></i></p>
-        <p class="text-[13px] font-normal text-gray-700 mt-1" data-i18n="home.quickLodehoy">Lo de Hoy</p>
-      </a>
-      <a href="cercaDeMi.html" class="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center">
-        <p class="text-xl leading-none text-[#023047]"><i class="fa-solid fa-compass" aria-hidden="true"></i></p>
-        <p class="text-[13px] font-normal text-gray-700 mt-1" data-i18n="home.quickCerca">Cerca de mí</p>
-      </a>
+  <div class="fe-home">
+    <div class="fe-home-intro">
+      <p class="fe-home-brand"><i class="fa-solid fa-compass" aria-hidden="true"></i> Findixi <span>Experience</span></p>
+      <h1 id="homeExperienceTitle">Pregúntame qué hacer o a dónde ir.</h1>
+      <form id="homeExperienceForm" class="fe-home-form" action="experience.html">
+        <label for="homeExperienceQuestion" class="sr-only">¿Qué te gustaría encontrar?</label>
+        <input id="homeExperienceQuestion" maxlength="1000" placeholder="¿Dónde comer en Ponce?" autocomplete="off">
+        <button type="submit" aria-label="Buscar con Findixi Experience"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+      </form>
+      <div id="homeExperienceHistory" hidden>
+        <p class="fe-home-history-label">Tus búsquedas recientes</p>
+        <div id="homeExperienceTags" class="fe-home-ideas" aria-label="Búsquedas anteriores"></div>
+      </div>
     </div>
   </div>
 </section>
+<script type="module" src="js/homeExperience.js"></script>
 
 <section id="categoriasSection" class="text-center px-4">
   <h2 class="text-2xl font-medium mb-4" data-i18n="home.categoriasTitulo">Categorías más Buscadas</h2>

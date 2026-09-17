@@ -1,0 +1,69 @@
+body{margin:0;background:#121212;font-family:'Kanit',sans-serif}.experience-shell{max-width:28rem;min-height:100dvh;margin:auto;background:#f6f9fa;color:#133b49;padding-bottom:calc(140px + env(safe-area-inset-bottom))}.experience-brand{font-weight:600;color:#07566b;margin-bottom:18px}.experience-main p{margin:12px 0}.experience-main h1{font-weight:700}.experience-main h2{font-weight:600;font-size:22px}.experience-main{max-width:448px;margin:auto;padding:32px 20px}.experience-main h1{font-size:clamp(28px,5vw,42px);margin:8px 0}.experience-main .eyebrow{font-size:12px;letter-spacing:2px;color:#337f91}.experience-main .notice{font-size:14px;color:#51646b}.experience-main label{display:block;font-weight:600;margin:24px 0 8px}.experience-main textarea{width:100%;border:1px solid #a7bdc4;border-radius:16px;padding:16px;font:inherit;resize:vertical}.experience-main button,.experience-main .action{display:inline-block;border:0;background:#07566b;color:white;border-radius:24px;padding:12px 18px;font:inherit;text-decoration:none;margin:10px 6px 0 0;cursor:pointer}.experience-main .secondary{background:#e0ecef;color:#07566b}.experience-main button:disabled{opacity:.5;cursor:wait}.experience-main #answer{white-space:pre-wrap;line-height:1.6}.experience-main #cards{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}.experience-main .card{background:white;border-radius:20px;overflow:hidden;box-shadow:0 3px 16px #123b4912}.experience-main .cover{width:100%;height:150px;object-fit:cover}.experience-main .details{padding:20px}.experience-main .logo{width:70px;height:70px;object-fit:contain;border-radius:50%;background:white}.experience-main .details h2{margin:8px 0}.experience-main .details p{line-height:1.5}.experience-main .price-note{font-size:12px;color:#51646b}.experience-main :focus-visible{outline:3px solid #ef8024;outline-offset:3px}
+
+.experience-main [hidden]{display:none}.experience-main .chat-user{margin:14px 0 14px 28px;padding:12px 16px;border-radius:18px 18px 4px 18px;background:#07566b;color:white;overflow-wrap:anywhere}.experience-main .chat-assistant{margin:16px 0;padding:4px 0;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}.experience-main #question-form{margin-top:20px}.experience-main #question{min-height:90px}.experience-main #conversation:empty{display:none}
+
+.experience-shell{height:100dvh;min-height:0;display:flex;flex-direction:column;padding-bottom:var(--chat-footer-height,110px);overflow:hidden}.experience-main{width:100%;flex:1;min-height:0;margin:0;padding:0;display:flex;flex-direction:column}.chat-heading{display:flex;align-items:center;gap:10px;padding:12px 16px;background:white;border-bottom:1px solid #dce7e9}.chat-heading-avatar{width:40px;height:40px;object-fit:contain}.experience-main .chat-heading h1{font-size:18px;line-height:1.2;margin:0}.experience-main .chat-heading p{font-size:12px;color:#56757d;margin:3px 0 0}.experience-main #reset{margin:0 0 0 auto;padding:4px 10px;background:#e5f0f2;color:#07566b;font-size:24px}#chat-scroll{flex:1;min-height:0;overflow-y:auto;padding:16px;background:linear-gradient(145deg,#f0f7f7,#faf8f2);overscroll-behavior:contain}.chat-row{display:flex;align-items:flex-end;gap:8px;margin:14px 0}.chat-row-user{flex-direction:row-reverse}.chat-avatar{width:29px;height:29px;object-fit:cover;border-radius:50%;background:#07566b;flex-shrink:0}.chat-row-assistant .chat-avatar{object-fit:contain;background:white;padding:3px}.experience-main .chat-bubble{max-width:calc(100% - 37px);padding:10px 13px;margin:0;border-radius:16px;box-shadow:0 1px 3px #02304712;overflow-wrap:anywhere}.experience-main .chat-user{background:#07566b;color:white;border-bottom-right-radius:4px}.experience-main .chat-assistant{background:white;color:#133b49;border-bottom-left-radius:4px}.experience-main .chat-bubble p{margin:0;font-size:15px;line-height:1.55;white-space:pre-wrap}.chat-time{display:block;text-align:right;font-size:10px;opacity:.65;margin-top:5px}.experience-main .welcome{background:white;padding:16px;border-radius:16px;line-height:1.6}.experience-main #question-form{display:flex;align-items:flex-end;gap:9px;margin:0;padding:10px 12px;background:white;border-top:1px solid #dce7e9;flex-shrink:0}.experience-main #question{min-height:44px;max-height:120px;border-radius:22px;background:#f1f6f7;padding:10px 15px;resize:none;font-size:16px;line-height:24px;flex:1}.experience-main #send{width:44px;height:44px;flex-shrink:0;border-radius:50%;margin:0;padding:0;background:#ec7f25;color:white;font-size:20px}.experience-main #answer:empty{display:none}.experience-main #answer{font-size:14px;color:#56757d}.experience-main .card{margin-top:4px}
+
+.experience-main #memory-settings{margin:0 0 0 auto;padding:6px 10px;background:#e5f0f2;color:#07566b}.experience-main #reset{margin-left:0}#memory-panel{background:white;border:1px solid #dce7e9;border-radius:16px;padding:14px;margin-top:16px;font-size:14px}#memory-panel small{display:block;color:#56757d}#memory-panel button{font-size:13px;padding:9px 12px}#memory-panel textarea{font-size:16px}.saved-history{max-height:260px;overflow:auto;white-space:pre-wrap}
+
+.experience-main #cards{gap:10px}
+.experience-main .compact-card{display:grid;grid-template-columns:64px minmax(0,1fr) 88px;gap:10px;padding:12px;border-radius:16px;align-items:center}
+.card-media{position:relative;align-self:start;padding-bottom:12px}
+.experience-main .compact-card .cover{width:64px;height:74px;border-radius:10px;object-fit:cover}
+.experience-main .compact-card .logo{width:34px;height:34px;border:2px solid white;position:relative;margin:-15px 0 0 32px;object-fit:contain}
+.experience-main .compact-card .details{padding:0;min-width:0}
+.experience-main .compact-card h2{font-size:16px;line-height:1.2;margin:0 0 4px;overflow-wrap:anywhere}
+.experience-main .compact-card p{font-size:12px;line-height:1.35;margin:3px 0;overflow-wrap:anywhere}
+.card-actions{display:flex;flex-direction:column;gap:7px}
+.experience-main .card-actions .action{display:flex;align-items:center;justify-content:center;min-height:40px;margin:0;padding:7px 5px;border-radius:10px;font-size:12px;line-height:1.2;text-align:center}
+.card-phone{display:inline-block;font-size:12px;color:#c83e42;text-decoration:none;margin-top:4px;overflow-wrap:anywhere}
+.card-distance{color:#56757d}
+@media(max-width:360px){.experience-main .compact-card{grid-template-columns:48px minmax(0,1fr) 76px;gap:7px;padding:10px}.experience-main .compact-card .cover{width:48px;height:62px}.experience-main .compact-card .logo{margin-left:18px;width:30px;height:30px}}
+
+.experience-main .compact-card .card-media{padding-bottom:24px}
+.experience-main .compact-card .logo{display:block;position:relative;width:56px;height:56px;margin:-18px auto 0;border:0;border-radius:50%;background:#fff;box-shadow:0px -17px 11px -5px rgba(0,0,0,.3)}
+.experience-main .compact-card .card-phone{display:inline-flex;align-items:center;gap:4px;background:#dc2626;color:white;border-radius:20px;padding:5px 8px;font-size:11px}
+.card-town{color:#3ea6c4}.card-hours,.card-distance{font-size:12px}
+@media(max-width:360px){.experience-main .compact-card .logo{width:46px;height:46px;margin:-16px auto 0}}
+
+.experience-main .compact-card{grid-template-columns:80px minmax(0,1fr) 100px;gap:9px}
+.experience-main .compact-card .cover{width:80px;height:100px}
+.experience-main .compact-card .details{text-align:center}
+.experience-main .compact-card .card-actions{align-items:center}
+.experience-main .compact-card .card-actions>a,.experience-main .compact-card .card-actions>button{width:100%;box-sizing:border-box;justify-content:center;text-align:center}
+.experience-main .compact-card .card-actions .card-phone{min-height:40px;margin:0;padding:7px 4px;border-radius:10px;font-size:11px;white-space:nowrap}
+@media(max-width:380px){.experience-main .compact-card{grid-template-columns:64px minmax(0,1fr) 90px;gap:6px;padding:10px}.experience-main .compact-card .cover{width:64px;height:88px}.experience-main .compact-card h2{font-size:14px}.experience-main .compact-card .card-actions .card-phone{font-size:10px}}
+
+.experience-main .compact-card{grid-template-columns:92px minmax(0,1fr) 100px}
+.experience-main .compact-card .card-media{align-self:center;height:87px;padding-bottom:0}
+.experience-main .compact-card .cover{width:92px;height:55px;object-fit:cover}
+.experience-main .compact-card .logo{width:52px;height:52px;margin:-20px auto 0}
+@media(max-width:380px){.experience-main .compact-card{grid-template-columns:76px minmax(0,1fr) 90px}.experience-main .compact-card .cover{width:76px;height:55px}.experience-main .compact-card .logo{width:52px;height:52px;margin:-20px auto 0}}
+
+.experience-main .compact-card.has-profile{position:relative}
+.experience-main .card-profile-link{color:inherit;text-decoration:none}
+.experience-main .card-profile-link::after{content:'';position:absolute;inset:0;border-radius:20px}
+.experience-main .card-profile-link:focus-visible::after{outline:3px solid #ef8024;outline-offset:-3px}
+.experience-main .compact-card.has-profile .card-actions{position:relative;z-index:1}
+
+.experience-main .compact-card .event-alternative{font-size:11px;color:#07566b;background:#e0ecef;border-radius:8px;padding:4px 6px}
+.experience-main .event-card{grid-template-columns:92px minmax(0,1fr) 100px}
+.experience-main .event-card .card-actions{align-self:center;position:relative;z-index:2}
+.experience-main .event-occurrences{position:relative;z-index:2;margin-top:6px;text-align:left;color:#52717a;font-size:11px}
+.experience-main .event-occurrences summary{cursor:pointer;color:#07566b;font-weight:600}
+.experience-main .event-occurrences p{font-size:10px;margin:5px 0}
+@media(max-width:380px){.experience-main .event-card{grid-template-columns:76px minmax(0,1fr) 90px}}
+
+.experience-main .chat-assistant p{white-space:pre-line;margin:0}.experience-main .chat-assistant p+p{margin-top:12px}
+
+.recommendation-group{display:grid;gap:12px}.recommendation-group-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.experience-main .recommendation-group-heading h2{font-size:18px;margin:0}.recommendation-group-heading a{color:#07566b;text-decoration:underline;font-size:14px;white-space:nowrap}
+
+.experience-main .compact-card.beach-condition-card{grid-template-columns:110px minmax(0,1fr);align-items:center}
+.experience-main .beach-condition-card .card-media{grid-column:1;grid-row:1;height:auto}
+.experience-main .beach-condition-card .cover{width:110px;height:90px;border-radius:14px;object-fit:cover}
+.experience-main .beach-condition-card .details{grid-column:2;grid-row:1}
+.experience-main .beach-condition-card .card-actions{grid-column:2;grid-row:2;justify-self:center;width:110px}
+.experience-main .beach-condition-card .beach-conditions{grid-column:1/-1;grid-row:3;position:relative;z-index:1;border-top:1px solid #e0ecef;padding-top:8px;font-size:12px;color:#52717a}
+.beach-conditions summary{cursor:pointer;color:#07566b;font-weight:600}
+.beach-conditions p{margin:6px 0}
+@media(max-width:380px){.experience-main .compact-card.beach-condition-card{grid-template-columns:90px minmax(0,1fr)}.experience-main .beach-condition-card .cover{width:90px;height:85px}}
